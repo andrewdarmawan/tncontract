@@ -189,6 +189,33 @@ def tensor_product(tensor1, tensor2):
     """Take tensor product of two tensors without contracting any indices"""
     return contract(tensor1, tensor2, [], [])
 
+def tensor_to_matrix(tensor, output_labels):
+    """
+    Convert a tensor to a matrix regarding output_labels as output (row index)
+    and the remaining indices as input (column index).
+    """
+    t = tensor.copy()
+    # Move labels in output_labels first and reshape accordingly
+    total_output_dimension=1
+    for i,label in enumerate(output_labels):
+        t.move_index(label, i)
+        total_output_dimension*=t.data.shape[i]
+
+    total_input_dimension=int(np.product(t.data.shape)/total_output_dimension)
+    return np.reshape(t.data,(total_output_dimension, total_input_dimension))
+
+def matrix_to_tensor(matrix, output_dims, input_dims, output_labels,
+        input_labels):
+    """
+    Convert a matrix to a tensor. The row index is divided into indices
+    with dimensions and labels specified in output_dims and output_labels,
+    respectively, and similarly the column index is divided into indices as
+    specified by input_dims and input_labels.
+    """
+    return Tensor(np.reshape(matrix,
+        np.concatenate((output_dims, input_dims))),
+        np.concatenate((output_labels, input_labels)))
+
 def tensor_svd(tensor, input_labels):
     """Compute the singular value decomposition of the matrix obtained from the tensor by regarding
     input_labels as input and the remaining indices as the output"""
