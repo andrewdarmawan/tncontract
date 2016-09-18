@@ -23,7 +23,7 @@ def qobj_to_tensor(qobj, labels=None):
         Qobj to convert.
     labels : list, optional
         List of labels for the indices. Output labels followed by input labels.
-        Defaults to `['physout1', ..., 'physoutn', 'physin1', ..., 'physinn']
+        Defaults to `['out1', ..., 'outk', 'in1', ..., 'ink']
 
     Notes
     -----
@@ -40,8 +40,8 @@ def qobj_to_tensor(qobj, labels=None):
     input_dims = qobj.dims[1]
     nsys = len(output_dims)
     if labels is None:
-        output_labels = ['physout'+str(k) for k in range(nsys)]
-        input_labels = ['physin'+str(k) for k in range(nsys)]
+        output_labels = ['out'+str(k) for k in range(nsys)]
+        input_labels = ['in'+str(k) for k in range(nsys)]
     else:
         output_labels = labels[:nsys]
         input_labels = labels[nsys:]
