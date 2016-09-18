@@ -213,8 +213,7 @@ def matrix_to_tensor(matrix, output_dims, input_dims, output_labels,
     specified by input_dims and input_labels.
     """
     return Tensor(np.reshape(matrix,
-        np.concatenate((output_dims, input_dims))),
-        np.concatenate((output_labels, input_labels)))
+        np.concatenate((output_dims, input_dims))), output_labels+input_labels)
 
 def tensor_svd(tensor, input_labels):
     """Compute the singular value decomposition of the matrix obtained from the tensor by regarding

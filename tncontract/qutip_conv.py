@@ -8,7 +8,7 @@ Requires `qutip`.
 
 import numpy as np
 
-# import qutip as qt
+import qutip as qt
 
 import tncontract as tn
 
@@ -36,32 +36,44 @@ def qobj_to_tensor(qobj, labels=None):
         # wrong dims (not a ket, bra or operator)
         raise ValueError("qobj element not a ket/bra/operator")
 
-    physout = qobj.dims[0]
-    physin = qobj.dims[1]
-    nsys = len(physout)
+    output_dims = qobj.dims[0]
+    input_dims = qobj.dims[1]
+    nsys = len(output_dims)
     if labels is None:
-        physoutstr = ['physout'+str(k) for k in range(nsys)]
-        physinstr = ['physin'+str(k) for k in range(nsys)]
+        output_labels = ['physout'+str(k) for k in range(nsys)]
+        input_labels = ['physin'+str(k) for k in range(nsys)]
     else:
-        physoutstr = labels[:nsys]
-        physinstr = labels[nsys:]
+        output_labels = labels[:nsys]
+        input_labels = labels[nsys:]
 
-    t = tn.Tensor(np.reshape(data, physout+physin), physoutstr+physinstr)
+    t = tn.matrix_to_tensor(data, output_dims, input_dims, output_labels,
+            input_labels)
     t.remove_all_dummy_indices()
     return t
 
 
-def tensor_to_qobj(tens, input_labels, output_labels):
+def tensor_to_qobj(tensor, output_labels):
     """
     Convert a `Tensor` object to a `qutip.Qobj`
 
     Parameters
     ----------
-    tens : `Tensor`
+    tensor : `Tensor`
         Tensor to convert.
     input_labels : list
     output_labels : list
     """
 
-    return
+    output_dims = []
+    for label in output_labels:
+        output_dims.append(tensor.index_dimension(label))
+
+    input_labels=[x for x in tensor.labels if x not in output_labels]
+    input_dims = []
+    for label in input_labels:
+        input_dims.append(tensor.index_dimension(label))
+
+    data = tn.tensor_to_matrix(tensor, output_labels)
+    dims = [output_dims, input_dims]
+    return qt.Qobj(data, dims=dims)
 
