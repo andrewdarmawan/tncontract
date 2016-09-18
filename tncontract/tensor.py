@@ -107,6 +107,9 @@ class Tensor():
     def remove_dummy_index(self, label):
         """Remove the first dummy index (that is, an index of dimension 1) 
         with specified label."""
+        if not self.index_dimension('label' == 1):
+            # index not a dummy index
+            raise ValueError("Index specified is not a dummy index.")
         self.move_index(label, 0)
         self.labels=self.labels[1:]
         self.data=self.data[0]
@@ -212,8 +215,7 @@ def matrix_to_tensor(matrix, output_dims, input_dims, output_labels,
     respectively, and similarly the column index is divided into indices as
     specified by input_dims and input_labels.
     """
-    return Tensor(np.reshape(matrix,
-        np.concatenate((output_dims, input_dims))), output_labels+input_labels)
+    return Tensor(np.reshape(matrix, tuple(output_dims)+tuple(input_dims)), output_labels+input_labels)
 
 def tensor_svd(tensor, input_labels):
     """Compute the singular value decomposition of the matrix obtained from the tensor by regarding
