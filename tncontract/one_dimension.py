@@ -1,5 +1,7 @@
 import numpy as np
+
 from tncontract.tensor import *
+
 
 class OneDimensionalTensorNetwork():
     """A one dimensional tensor network specified by a 1D array of tensors (a list or 1D numpy array)
@@ -39,6 +41,33 @@ class OneDimensionalTensorNetwork():
         self.left_label=self.right_label
         self.right_label=temp
 
+    def swap_sites(self, i):
+        """ Swap site i and i+1 of a OneDimensionalTensorNetwork """
+        A = self[i]
+        B = self[i+1]
+        A_phys_labels = [l for l in A.labels if l!=self.left_label and
+                l!=self.right_label]
+        B_phys_labels = [l for l in B.labels if l!=self.left_label and
+                l!=self.right_label]
+        A.prime_label(A_phys_labels)
+        t = contract(A, B, self.right_label, self.left_label)
+        U, S, V = tensor_svd(t, [self.left_label] + B_phys_labels)
+        U.replace_label('svd_in', 'right')
+        self[i] = U
+        V.unprime_label(A_phys_labels)
+        SV = contract(S, V, ['svd_in'], ['svd_out'])
+        SV.replace_label('svd_out', 'left')
+        self[i+1] = SV
+
+    def leftdim(self, site):
+        """Return left index dimesion for site"""
+        return self.data[site].index_dimension(self.left_label)
+
+    def rightdim(self, site):
+        """Return right index dimesion for site"""
+        return self.data[site].index_dimension(self.right_label)
+
+
 class MatrixProductState(OneDimensionalTensorNetwork):
     """Matrix product state"is a list of tensors, each having and index labelled "phys" 
     and at least one of the indices "left", "right"
@@ -46,10 +75,21 @@ class MatrixProductState(OneDimensionalTensorNetwork):
     specified as "left", "right", "phys" need to specify which labels correspond to these using 
     arguments left_label, right_label, phys_label. 
     The tensors input will be copied, and will not point in memory to the original ones."""
-        
+
     def __init__(self, tensors, left_label, right_label, phys_label):
         OneDimensionalTensorNetwork.__init__(self, tensors, left_label, right_label)
         self.phys_label=phys_label
+
+    def __repr__(self):
+        return ("MatrixProductState(tensors=%r, left_label=%r, right_label=%r, phys_label=%r)" 
+                % (self.data, self.left_label, self.right_label, self.phys_label))
+
+    def __str__(self):
+        return ("MatrixProductState object: " +
+              "sites = " + str(len(self)) + 
+              ", left_label = " + self.left_label + 
+              ", right_label = " + self.right_label + 
+              ", phys_label = " + self.phys_label)
 
     def copy(self):
         """Replaces the standard copy method, returning an MPS of tensors that aren't linked in memory to the 
@@ -198,6 +238,10 @@ class MatrixProductState(OneDimensionalTensorNetwork):
                     print("Tensors right canonised up to site "+str(first_site_not_right_canonised))
         return (first_site_not_left_canonised, first_site_not_right_canonised)
 
+    def physdim(self, site):
+        """Return physical index dimesion for site"""
+        return self.data[site].index_dimension(self.phys_label)
+
 
 class MatrixProductOperator(OneDimensionalTensorNetwork):
     #TODO currently assumes open boundaries
@@ -211,7 +255,29 @@ class MatrixProductOperator(OneDimensionalTensorNetwork):
         self.physout_label=physout_label
         self.physin_label=physin_label
 
+    def __repr__(self):
+        return ("MatrixProductOperator(tensors=%r, left_label=%r, right_label=%r, physout_label=%r, phsin_labe=%r)" 
+                % (self.data, self.left_label, self.right_label,
+                    self.physout_label, self.physin_label))
+
+    def __str__(self):
+        return ("MatrixProductState object: " +
+              "sites = " + str(len(self)) +
+              ", left_label = " + self.left_label +
+              ", right_label = " + self.right_label +
+              ", physout_label = " + self.physout_label +
+              ", physin_label = " + self.physin_label)
+
     ###TODO replace copy method
+
+    def physoutdim(self, site):
+        """Return output physical index dimesion for site"""
+        return self.data[site].index_dimension(self.physout_label)
+
+    def physindim(self, site):
+        """Return input physical index dimesion for site"""
+        return self.data[site].index_dimension(self.physin_label)
+
 
 def contract_multi_index_tensor_with_one_dim_array(tensor, array, label1, label2):
     """Will contract a one dimensional tensor array of length N 
@@ -504,5 +570,120 @@ def contract_mps_mpo(mps, mpo):
         new_mps.append(new_tensor)
     new_mps=MatrixProductState(new_mps, mps.left_label, mps.right_label, mpo.physout_label)
     return new_mps
+
+
+def onebody_sum_mpo(terms, output_label=None):
+    """
+    Construct an MPO from a sum of onebody operators.
+
+    Parameters
+    ---------
+    terms : list
+        A list containing the terms in the sum. Each term should be 2D 
+        array-like, e.g., a rank-two Tensor or numpy array.
+    output_label : str, optional
+        Specify the label corresponding to the output index. Must be the same
+        for each element of `terms`. If not specified the first index is taken 
+        to be the output index.
+
+    Returns
+    ------
+    MatrixProductOperator
+    """
+    tensors = []
+    for i, term1 in enumerate(terms):
+        if output_label is not None:
+            term = term1.copy()
+            term.move_index(output_label, 0)
+        else:
+            term = term1
+        if i==0:
+            B = np.zeros(shape=term.shape+[2], dtype=complex)
+            for k in range(term.shape[0]):
+                for l in range(term.shape[1]):
+                    B[k,l,:] = [term[k, l], k==l]
+            tensors.append(Tensor(B, ['physout', 'physin', 'right']))
+        elif i==len(terms)-1:
+            B = np.zeros(shape=term.shape+[2], dtype=complex)
+            for k in range(term.shape[0]):
+                for l in range(term.shape[1]):
+                    B[k,l,:] = [k==l, term[k, l]]
+            tensors.append(Tensor(B, ['physout', 'physin', 'left']))
+        else:
+            B = np.zeros(shape=term.shape+[2,2], dtype=complex)
+            for k in range(term.shape[0]):
+                for l in range(term.shape[1]):
+                    B[k,l,:,:] = [[k==l, 0], [term[k, l], k==l]]
+            tensors.append(Tensor(B, ['physout', 'physin', 'left', 'right']))
+    return MatrixProductOperator(tensors, left_label='left',
+        right_label='right', physin_label='physin', physout_label='physout')
+
+
+def expvals_mps(mps, oplist, output_label=None, canonised=None):
+    """
+    Return single site expectation values <op>_i for all i
+
+    Parameters
+    ----------
+    mps : MatrixProductState
+    oplist : list or Tensor
+        List of rank-two tensors representing the operators at each site.
+        If a single `Tensor` is given this will be used for all sites.
+    output_label : str, optional
+        Specify the label corresponding to the output index. Must be the same
+        for each element of `terms`. If not specified the first index is taken 
+        to be the output index.
+    canonised : {'left', 'right', None}, optional
+        Flag to specify theat `mps` is already in left or right canonical form.
+
+    Returns
+    ------
+    array
+        Complex array of same length as `mps` of expectation values.
+
+    Notes
+    -----
+    `mps` will be in left canonical form after the function call.
+    """
+    N = len(mps)
+    expvals = np.zeros(N, dtype=complex)
+    if not np.iterable(oplist):
+        oplist_new = [oplist]*N
+    else:
+        oplist_new = oplist
+
+    if canonised == 'left':
+        mps.reverse()
+        oplist_new = oplist_new[::-1]
+    elif canonised != 'right':
+        mps.right_canonise()
+
+    for k, op in enumerate(oplist_new):
+        # compute exp value for site k
+        A = mps[k]
+        if output_label is None:
+            out_label = op.labels[0]
+            in_label = op.labels[1]
+        else:
+            out_label = output_label
+            in_label = [x for x in op.labels if x is not out_label][0]
+        Ad = A.copy()
+        Ad.conjugate()
+        exp = contract(A, op, mps.phys_label, in_label)
+        exp = contract(Ad, exp, mps.phys_label, out_label)
+        exp.contract_internal(mps.left_label, mps.left_label, index1=0,
+                index2=1)
+        exp.contract_internal(mps.right_label, mps.right_label, index1=0,
+                index2=1)
+        expvals[k] = exp.data
+        # move orthogonality center along MPS
+        mps.left_canonise(k, k+1)
+
+    if canonised == 'left':
+        mps.reverse()
+        oplist_new = oplist_new[::-1]
+        expvals = expvals[::-1]
+
+    return expvals
 
 

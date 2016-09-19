@@ -5,6 +5,15 @@ class Tensor():
         self.labels=labels
         self.data=data
 
+    def __repr__(self):
+        return "Tensor(data=%r, labels=%r)" % (self.data, self.labels)
+
+    def __str__(self):
+        return ("Tensor object: "
+                "shape = " + str(self.shape) +
+                ", labels = " + str(self.labels) + "\n" +
+                "Tensor data = \n" + str(self.data))
+
     def replace_label(self, old_labels, new_labels):
         """
         Takes two lists old_labels, new_labels as arguments. If a label in self.labels is in old_labels,
@@ -20,6 +29,62 @@ class Tensor():
         for i,label in enumerate(self.labels):
             if label in old_labels:
                 self.labels[i]=new_labels[old_labels.index(label)]
+
+    def prime_label(self, labels):
+        """
+        Add suffix "_p" to any label of the form "label" or "label_p_p..._p"
+        for all `label` in `labels`
+
+        See also
+        -------
+        unprime_label
+        """
+        if not isinstance(labels, list):
+            labels=[labels]
+        for i, label in enumerate(self.labels):
+            for unprimedlabel in labels:
+                if label.startswith(unprimedlabel):
+                    primes = label[len(unprimedlabel):]
+                    if primes == '_p'*int(len(primes)/2):
+                        self.labels[i] += '_p'
+
+    def unprime_label(self, labels):
+        """
+        Remove the last "_p" from any label of the form "label_p_p.._p"
+        for all `label` in `labels`
+
+        Examples
+        --------
+        >>> t = Tensor(np.array([1,0]), labels=['idx'])
+        >>> t.prime_label('idx')
+        >>> print(t)
+        Tensor object: shape = (2,), labels = ['idx_p']
+        Tensor data =
+        [1 0]
+        >>> t.prime_label('idx')
+        >>> print(t)
+        Tensor object: shape = (2,), labels = ['idx_p_p']
+        Tensor data =
+        [1 0]
+        >>> t.unprime_label('idx')
+        >>> print(t)
+        Tensor object: shape = (2,), labels = ['idx_p']
+        Tensor data =
+        [1 0]
+        >>> t.unprime_label('idx')
+        >>> print(t)
+        Tensor object: shape = (2,), labels = ['idx']
+        Tensor data =
+        [1 0]
+        """
+        if not isinstance(labels, list):
+            labels=[labels]
+        for i, label in enumerate(self.labels):
+            for unprimedlabel in labels:
+                if label.startswith(unprimedlabel):
+                    primes = label[len(unprimedlabel):]
+                    if primes == '_p'*int(len(primes)/2):
+                        self.labels[i]=label[:-2]
 
     def contract_internal(self, label1, label2, index1=0, index2=0):
         """By default will contract the first index with label1 with the 
@@ -64,6 +129,7 @@ class Tensor():
             self.labels.insert(p, label)
     def sort_labels(self):
         self.consolidate_indices()
+
     def copy(self):
         """Creates a copy of the tensor that does not point to the original"""
         """Never use A=B in python as modifying A will modify B"""
@@ -84,10 +150,13 @@ class Tensor():
             self.data=np.rollaxis(self.data,index,position)
         else:
             self.data=np.rollaxis(self.data,index,position+1)
+
     def conjugate(self):
         self.data=self.data.conjugate()
+
     def inv(self):
         self.data=np.linalg.inv(self.data)
+
     def add_suffix_to_labels(self,suffix):
         """Warning: by changing the labels, e.g. with this method, 
         the MPS will no longer be in the correct form for various MPS functions."""
@@ -107,6 +176,9 @@ class Tensor():
     def remove_dummy_index(self, label):
         """Remove the first dummy index (that is, an index of dimension 1) 
         with specified label."""
+        if not self.index_dimension('label' == 1):
+            # index not a dummy index
+            raise ValueError("Index specified is not a dummy index.")
         self.move_index(label, 0)
         self.labels=self.labels[1:]
         self.data=self.data[0]
@@ -131,7 +203,14 @@ class Tensor():
         """Will return the dimension of the first index with label=label"""
         index = self.labels.index(label)
         return self.data.shape[index]
-    
+
+    def to_matrix(self, output_labels):
+        """
+        Convert tensor to a matrix regarding output_labels as output 
+        (row index) and the remaining indices as input (column index).
+        """
+        return tensor_to_matrix(self, output_labels)
+
     @property
     def shape(self):
         return self.data.shape
@@ -188,6 +267,31 @@ def contract(tensor1, tensor2, label_list1, label_list2, index_list1=None, index
 def tensor_product(tensor1, tensor2):
     """Take tensor product of two tensors without contracting any indices"""
     return contract(tensor1, tensor2, [], [])
+
+def tensor_to_matrix(tensor, output_labels):
+    """
+    Convert a tensor to a matrix regarding output_labels as output (row index)
+    and the remaining indices as input (column index).
+    """
+    t = tensor.copy()
+    # Move labels in output_labels first and reshape accordingly
+    total_output_dimension=1
+    for i,label in enumerate(output_labels):
+        t.move_index(label, i)
+        total_output_dimension*=t.data.shape[i]
+
+    total_input_dimension=int(np.product(t.data.shape)/total_output_dimension)
+    return np.reshape(t.data,(total_output_dimension, total_input_dimension))
+
+def matrix_to_tensor(matrix, output_dims, input_dims, output_labels,
+        input_labels):
+    """
+    Convert a matrix to a tensor. The row index is divided into indices
+    with dimensions and labels specified in output_dims and output_labels,
+    respectively, and similarly the column index is divided into indices as
+    specified by input_dims and input_labels.
+    """
+    return Tensor(np.reshape(matrix, tuple(output_dims)+tuple(input_dims)), output_labels+input_labels)
 
 def tensor_svd(tensor, input_labels):
     """Compute the singular value decomposition of the matrix obtained from the tensor by regarding
