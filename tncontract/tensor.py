@@ -30,6 +30,62 @@ class Tensor():
             if label in old_labels:
                 self.labels[i]=new_labels[old_labels.index(label)]
 
+    def prime_label(self, labels):
+        """
+        Add suffix "_p" to any label of the form "label" or "label_p_p..._p"
+        for all `label` in `labels`
+
+        See also
+        -------
+        unprime_label
+        """
+        if not isinstance(labels, list):
+            labels=[labels]
+        for i, label in enumerate(self.labels):
+            for unprimedlabel in labels:
+                if label.startswith(unprimedlabel):
+                    primes = label[len(unprimedlabel):]
+                    if primes == '_p'*int(len(primes)/2):
+                        self.labels[i] += '_p'
+
+    def unprime_label(self, labels):
+        """
+        Remove the last "_p" from any label of the form "label_p_p.._p"
+        for all `label` in `labels`
+
+        Examples
+        --------
+        >>> t = Tensor(np.array([1,0]), labels=['idx'])
+        >>> t.prime_label('idx')
+        >>> print(t)
+        Tensor object: shape = (2,), labels = ['idx_p']
+        Tensor data =
+        [1 0]
+        >>> t.prime_label('idx')
+        >>> print(t)
+        Tensor object: shape = (2,), labels = ['idx_p_p']
+        Tensor data =
+        [1 0]
+        >>> t.unprime_label('idx')
+        >>> print(t)
+        Tensor object: shape = (2,), labels = ['idx_p']
+        Tensor data =
+        [1 0]
+        >>> t.unprime_label('idx')
+        >>> print(t)
+        Tensor object: shape = (2,), labels = ['idx']
+        Tensor data =
+        [1 0]
+        """
+        if not isinstance(labels, list):
+            labels=[labels]
+        for i, label in enumerate(self.labels):
+            for unprimedlabel in labels:
+                if label.startswith(unprimedlabel):
+                    primes = label[len(unprimedlabel):]
+                    if primes == '_p'*int(len(primes)/2):
+                        self.labels[i]=label[:-2]
+
     def contract_internal(self, label1, label2, index1=0, index2=0):
         """By default will contract the first index with label1 with the 
         first index with label2. index1 and index2 can be specified to contract 
@@ -147,6 +203,13 @@ class Tensor():
         """Will return the dimension of the first index with label=label"""
         index = self.labels.index(label)
         return self.data.shape[index]
+
+    def to_matrix(self, output_labels):
+        """
+        Convert tensor to a matrix regarding output_labels as output 
+        (row index) and the remaining indices as input (column index).
+        """
+        return tensor_to_matrix(self, output_labels)
 
     @property
     def shape(self):
