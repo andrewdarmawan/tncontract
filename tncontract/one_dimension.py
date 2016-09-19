@@ -41,6 +41,14 @@ class OneDimensionalTensorNetwork():
         self.left_label=self.right_label
         self.right_label=temp
 
+    def leftdim(self, site):
+        """Return left index dimesion for site"""
+        return self.data[site].index_dimension(self.left_label)
+
+    def rightdim(self, site):
+        """Return right index dimesion for site"""
+        return self.data[site].index_dimension(self.right_label)
+
 class MatrixProductState(OneDimensionalTensorNetwork):
     """Matrix product state"is a list of tensors, each having and index labelled "phys" 
     and at least one of the indices "left", "right"
@@ -200,6 +208,10 @@ class MatrixProductState(OneDimensionalTensorNetwork):
                     print("Tensors right canonised up to site "+str(first_site_not_right_canonised))
         return (first_site_not_left_canonised, first_site_not_right_canonised)
 
+    def physdim(self, site):
+        """Return physical index dimesion for site"""
+        return self.data[site].index_dimension(self.phys_label)
+
 
 class MatrixProductOperator(OneDimensionalTensorNetwork):
     #TODO currently assumes open boundaries
@@ -214,6 +226,15 @@ class MatrixProductOperator(OneDimensionalTensorNetwork):
         self.physin_label=physin_label
 
     ###TODO replace copy method
+
+    def physoutdim(self, site):
+        """Return output physical index dimesion for site"""
+        return self.data[site].index_dimension(self.physout_label)
+
+    def physindim(self, site):
+        """Return input physical index dimesion for site"""
+        return self.data[site].index_dimension(self.physin_label)
+
 
 def contract_multi_index_tensor_with_one_dim_array(tensor, array, label1, label2):
     """Will contract a one dimensional tensor array of length N 
