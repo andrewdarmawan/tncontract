@@ -19,13 +19,17 @@ def qobj_to_tensor(qobj, labels=None, trim_dummy=True):
 
     Parameters
     ----------
-    qobj : `Qobj`
+    qobj : Qobj
         Qobj to convert.
     labels : list, optional
         List of labels for the indices. Output labels followed by input labels.
         Defaults to `['out1', ..., 'outk', 'in1', ..., 'ink']
     trim_dummy : bool
         If true dummy indices of dimension one are trimmed away
+
+    Returns
+    ------
+    Tensor
     """
 
     data = qobj.data.toarray()
@@ -56,10 +60,14 @@ def tensor_to_qobj(tensor, output_labels):
 
     Parameters
     ----------
-    tensor : `Tensor`
+    tensor : Tensor
         Tensor to convert.
-    input_labels : list
     output_labels : list
+        List of labels taken that will be the output indices for the Qobj.
+
+    Returns
+    ------
+    Qobj
     """
 
     output_dims = []

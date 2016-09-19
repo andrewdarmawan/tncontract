@@ -64,6 +64,7 @@ class Tensor():
             self.labels.insert(p, label)
     def sort_labels(self):
         self.consolidate_indices()
+
     def copy(self):
         """Creates a copy of the tensor that does not point to the original"""
         """Never use A=B in python as modifying A will modify B"""
@@ -84,10 +85,13 @@ class Tensor():
             self.data=np.rollaxis(self.data,index,position)
         else:
             self.data=np.rollaxis(self.data,index,position+1)
+
     def conjugate(self):
         self.data=self.data.conjugate()
+
     def inv(self):
         self.data=np.linalg.inv(self.data)
+
     def add_suffix_to_labels(self,suffix):
         """Warning: by changing the labels, e.g. with this method, 
         the MPS will no longer be in the correct form for various MPS functions."""
@@ -134,7 +138,7 @@ class Tensor():
         """Will return the dimension of the first index with label=label"""
         index = self.labels.index(label)
         return self.data.shape[index]
-    
+
     @property
     def shape(self):
         return self.data.shape
