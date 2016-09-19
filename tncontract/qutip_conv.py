@@ -54,7 +54,7 @@ def qobj_to_tensor(qobj, labels=None, trim_dummy=True):
     return t
 
 
-def tensor_to_qobj(tensor, output_labels):
+def tensor_to_qobj(tensor, output_labels, input_labels):
     """
     Convert a `Tensor` object to a `qutip.Qobj`
 
@@ -63,23 +63,57 @@ def tensor_to_qobj(tensor, output_labels):
     tensor : Tensor
         Tensor to convert.
     output_labels : list
-        List of labels taken that will be the output indices for the Qobj.
+        List of labels that will be the output indices for the `Qobj`.
+        `None` can be used to insert a dummy index of dimension one.
+    inpul_labels : list
+        List of labels that will be the input indices for the `Qobj`.
+        `None` can be used to insert a dummy index of dimension one.
 
     Returns
-    ------
+    -------
     Qobj
+
+    Notes
+    -----
+    The `output_labels` and `input_labels` determines the tensor product
+    structure of the resulting `Qobj`, inclding the order of the components.
+    If the indices corresponding to `output_labels` have dimensions 
+    [dim_out1, ..., dim_outk] and the indices corresponding to `input_labels` 
+    have dimensions [dim_in1, ..., dim_inl], the `Qobj.dims` attribute will be
+    `Qobj.dims = [[dim_out1, ..., dim_outk], [dim_in1, ..., dim_inl]]
+
+    Examples
+    --------
+    Turn a rank-one vector into a ket `Qobj` (note the use of a `None` input
+    label to get a well defined `Qobj`)
+    >>> t = Tensor(np.array([1,0]), labels=['idx1'])
+    >>> q = tensor_to_qobj(t, ['idx1'], [None])
+    >>> print(q)
+    Quantum object: dims = [[2], [1]], shape = [2, 1], type = ket
+    Qobj data =
+    [[ 1.]
+     [ 0.]]
     """
 
     output_dims = []
-    for label in output_labels:
-        output_dims.append(tensor.index_dimension(label))
-
-    input_labels=[x for x in tensor.labels if x not in output_labels]
     input_dims = []
-    for label in input_labels:
-        input_dims.append(tensor.index_dimension(label))
+    t = tensor.copy()
 
-    data = tn.tensor_to_matrix(tensor, output_labels)
+    # order the indices according to output_labels and input_labels
+    for i, label in enumerate(output_labels+input_labels):
+        if label is None:
+            label = 'dummy'+str(i)
+            t.add_dummy_index(label, i)
+        t.move_index(label, i)
+        if i < len(output_labels):
+            output_dims.append(t.shape[i])
+        else:
+            input_dims.append(t.shape[i])
+
+    output_labels_new = [l if l is not None else 'dummy'+str(i)
+            for i,l in enumerate(output_labels)]
+
+    data = tn.tensor_to_matrix(t, output_labels_new)
     dims = [output_dims, input_dims]
     return qt.Qobj(data, dims=dims)
 

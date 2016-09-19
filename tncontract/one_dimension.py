@@ -529,7 +529,7 @@ def contract_mps_mpo(mps, mpo):
     return new_mps
 
 
-def onebody_sum_mpo(terms, output_label=None, input_label=None):
+def onebody_sum_mpo(terms, output_label=None):
     """
     Construct an MPO from a sum of onebody operators.
 
@@ -614,7 +614,6 @@ def expvals_mps(mps, oplist, output_label=None, canonised=None):
         oplist_new = oplist_new[::-1]
     elif canonised is not 'right':
         mps.right_canonise()
-
 
     for k, op in enumerate(oplist_new):
         # compute exp value for site k
