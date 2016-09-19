@@ -56,10 +56,21 @@ class MatrixProductState(OneDimensionalTensorNetwork):
     specified as "left", "right", "phys" need to specify which labels correspond to these using 
     arguments left_label, right_label, phys_label. 
     The tensors input will be copied, and will not point in memory to the original ones."""
-        
+
     def __init__(self, tensors, left_label, right_label, phys_label):
         OneDimensionalTensorNetwork.__init__(self, tensors, left_label, right_label)
         self.phys_label=phys_label
+
+    def __repr__(self):
+        return ("MatrixProductState(tensors=%r, left_label=%r, right_label=%r, phys_label=%r)" 
+                % (self.data, self.left_label, self.right_label, self.phys_label))
+
+    def __str__(self):
+        return ("MatrixProductState object: " +
+              "sites = " + str(len(self)) + 
+              ", left_label = " + self.left_label + 
+              ", right_label = " + self.right_label + 
+              ", phys_label = " + self.phys_label)
 
     def copy(self):
         """Replaces the standard copy method, returning an MPS of tensors that aren't linked in memory to the 
@@ -224,6 +235,19 @@ class MatrixProductOperator(OneDimensionalTensorNetwork):
         OneDimensionalTensorNetwork.__init__(self, tensors, left_label, right_label)
         self.physout_label=physout_label
         self.physin_label=physin_label
+
+    def __repr__(self):
+        return ("MatrixProductOperator(tensors=%r, left_label=%r, right_label=%r, physout_label=%r, phsin_labe=%r)" 
+                % (self.data, self.left_label, self.right_label,
+                    self.physout_label, self.physin_label))
+
+    def __str__(self):
+        return ("MatrixProductState object: " +
+              "sites = " + str(len(self)) +
+              ", left_label = " + self.left_label +
+              ", right_label = " + self.right_label +
+              ", physout_label = " + self.physout_label +
+              ", physin_label = " + self.physin_label)
 
     ###TODO replace copy method
 

@@ -5,6 +5,15 @@ class Tensor():
         self.labels=labels
         self.data=data
 
+    def __repr__(self):
+        return "Tensor(data=%r, labels=%r)" % (self.data, self.labels)
+
+    def __str__(self):
+        return ("Tensor object: "
+                "shape = " + str(self.shape) +
+                ", labels = " + str(self.labels) + "\n" +
+                "Tensor data = \n" + str(self.data))
+
     def replace_label(self, old_labels, new_labels):
         """
         Takes two lists old_labels, new_labels as arguments. If a label in self.labels is in old_labels,
