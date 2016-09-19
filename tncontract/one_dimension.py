@@ -42,7 +42,11 @@ class OneDimensionalTensorNetwork():
         self.right_label=temp
 
     def swap_sites(self, i):
-        """ Swap site i and i+1 of a OneDimensionalTensorNetwork """
+        """
+        Apply a swap gate swapping all "physical" (i.e., non-"left" and
+        non-"right") indices for site i and i+1 of a
+        OneDimensionalTensorNetwork
+        """
         A = self[i]
         B = self[i+1]
         A_phys_labels = [l for l in A.labels if l!=self.left_label and
@@ -241,6 +245,62 @@ class MatrixProductState(OneDimensionalTensorNetwork):
     def physdim(self, site):
         """Return physical index dimesion for site"""
         return self.data[site].index_dimension(self.phys_label)
+
+    def apply_gate(self, gate, firstsite, gate_outputs, gate_inputs):
+        """
+        Apply Tensor `gate` on sites `firstsite`, `firstsite`+1, ...,
+        `firstsite`+`nsites`-1. The physical index of the nth site is
+        contracted with the nth label of `gate_inputs`. After the contraction
+        the MPS is put back into the original form by SVD, and the nth sites 
+        physical index is given by the nth label of `gate_outputs`.
+
+        Parameters
+        ----------
+        gate : Tensor
+            Tensor representing the multisite gate.
+        firstsite : int
+            First site of MPS involved in the gate
+        gate_outputs : list of str
+            Output labels corresponding to the input labels given by
+            `gate_inputs`. Must have the same length as `gate_inputs`.
+        gate_inputs : list of str
+            Input labels. The first index of the list is contracted with
+            `firstsite`, the second with `firstsite`+1 etc.
+
+        Notes
+        -----
+        At the end of the gate all physical indices are relabeled to
+        `self.phys_label`.
+
+        Only use this for gates acting on small number of sites.
+        """
+        nsites = len(gate_inputs)
+        if len(gate_outputs) != nsites:
+            raise ValueError("len(gate_outputs) != len(gate_inputs)")
+
+        # contract the sites first
+        t = self[firstsite].copy()
+        t.replace_label(self.phys_label, self.phys_label+'0')
+        for k in range(1, nsites):
+            nextsite = firstsite+k
+            t = contract(t, mps[nextsite], ['right'], ['left'])
+            t.replace_label(self.phys_label, self.phys_label+str(k))
+
+        # contract all physical indices with gate input indices
+        for k in range(nsites):
+            t = contract(t, gate, self.phys_label+'k', gate_inputs[k])
+
+        # split big tensor into MPS form by exact SVD
+        for k in range(nsites-1):
+            site = firstsite+k
+            U, S, V = tensor_svd(t, ['left', gate_outputs[k]])
+            U.replace_label('svd_in', 'right')
+            U.replace_label(gate_outputs[k], self.phys_label)
+            self[site] = U
+            t = contract(S, V, ['svd_in'], ['svd_out'])
+            t.replace_label('svd_out', 'left')
+        t.replace_label(gate_outputs[nsites-1], self.phys_label)
+        self[firstsite+nsites-1] = t
 
 
 class MatrixProductOperator(OneDimensionalTensorNetwork):
