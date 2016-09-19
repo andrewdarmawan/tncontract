@@ -41,6 +41,24 @@ class OneDimensionalTensorNetwork():
         self.left_label=self.right_label
         self.right_label=temp
 
+    def swap_sites(self, i):
+        """ Swap site i and i+1 of a OneDimensionalTensorNetwork """
+        A = self[i]
+        B = self[i+1]
+        A_phys_labels = [l for l in A.labels if l!=self.left_label and
+                l!=self.right_label]
+        B_phys_labels = [l for l in B.labels if l!=self.left_label and
+                l!=self.right_label]
+        A.prime_label(A_phys_labels)
+        t = contract(A, B, self.right_label, self.left_label)
+        U, S, V = tensor_svd(t, [self.left_label] + B_phys_labels)
+        U.replace_label('svd_in', 'right')
+        self[i] = U
+        V.unprime_label(A_phys_labels)
+        SV = contract(S, V, ['svd_in'], ['svd_out'])
+        SV.replace_label('svd_out', 'left')
+        self[i+1] = SV
+
     def leftdim(self, site):
         """Return left index dimesion for site"""
         return self.data[site].index_dimension(self.left_label)
@@ -48,6 +66,7 @@ class OneDimensionalTensorNetwork():
     def rightdim(self, site):
         """Return right index dimesion for site"""
         return self.data[site].index_dimension(self.right_label)
+
 
 class MatrixProductState(OneDimensionalTensorNetwork):
     """Matrix product state"is a list of tensors, each having and index labelled "phys" 
@@ -633,10 +652,10 @@ def expvals_mps(mps, oplist, output_label=None, canonised=None):
     else:
         oplist_new = oplist
 
-    if canonised is 'left':
+    if canonised == 'left':
         mps.reverse()
         oplist_new = oplist_new[::-1]
-    elif canonised is not 'right':
+    elif canonised != 'right':
         mps.right_canonise()
 
     for k, op in enumerate(oplist_new):
@@ -660,7 +679,7 @@ def expvals_mps(mps, oplist, output_label=None, canonised=None):
         # move orthogonality center along MPS
         mps.left_canonise(k, k+1)
 
-    if canonised is 'left':
+    if canonised == 'left':
         mps.reverse()
         oplist_new = oplist_new[::-1]
         expvals = expvals[::-1]
