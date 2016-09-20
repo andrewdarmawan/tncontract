@@ -295,7 +295,7 @@ class MatrixProductState(OneDimensionalTensorNetwork):
             gate_inputs = gate.labels[int(len(gate.labels)/2):]
         elif gate_outputs is None:
             gate_outputs =[x for x in gate.labels if x not in gate_inputs]
-        elif physin_labels is None:
+        elif gate_inputs is None:
             gate_inputs =[x for x in gate.labels if x not in gate_outputs]
 
         nsites = len(gate_inputs)
@@ -307,7 +307,7 @@ class MatrixProductState(OneDimensionalTensorNetwork):
                 periodic_boundaries=False)
 
         # contract all physical indices with gate input indices
-        t = contract(t, gate, self.phys_label, gate_inputs)
+        t = tsr.contract(t, gate, self.phys_label, gate_inputs)
 
         # split big tensor into MPS form by exact SVD
         mps = tensor_to_mps(t, mps_phys_label=self.phys_label,
@@ -380,12 +380,12 @@ def tensor_to_mps(tensor, phys_labels=None, mps_phys_label='phys',
     t = tensor.copy()
     mps = []
     for k in range(nsites-1):
-        U, S, V = tensor_svd(t, [left_label]*(left_label in t.labels)
+        U, S, V = tsr.tensor_svd(t, [left_label]*(left_label in t.labels)
                 +[phys_labels[k]])
         U.replace_label('svd_in', right_label)
         U.replace_label(phys_labels[k], mps_phys_label)
         mps.append(U)
-        t = contract(S, V, ['svd_in'], ['svd_out'])
+        t = tsr.contract(S, V, ['svd_in'], ['svd_out'])
         t.replace_label('svd_out', left_label)
     t.replace_label(phys_labels[nsites-1], mps_phys_label)
     mps.append(t)
@@ -443,13 +443,13 @@ def tensor_to_mpo(tensor, physout_labels=None, physin_labels=None,
     t = tensor.copy()
     mpo = []
     for k in range(nsites-1):
-        U, S, V = tensor_svd(t, [left_label]*(left_label in t.labels)
+        U, S, V = tsr.tensor_svd(t, [left_label]*(left_label in t.labels)
                 +[physout_labels[k], physin_labels[k]])
         U.replace_label('svd_in', right_label)
         U.replace_label(physout_labels[k], mpo_physout_label)
         U.replace_label(physin_labels[k], mpo_physin_label)
         mpo.append(U)
-        t = contract(S, V, ['svd_in'], ['svd_out'])
+        t = tsr.contract(S, V, ['svd_in'], ['svd_out'])
         t.replace_label('svd_out', left_label)
     t.replace_label(physout_labels[nsites-1], mpo_physout_label)
     t.replace_label(physin_labels[nsites-1], mpo_physin_label)
@@ -502,7 +502,7 @@ def contract_virtual_indices(array_1d, start=0, end=-1, periodic_boundaries=True
     """
     C=array_1d[start]
     for x in array_1d[start+1:end]:
-        C=contract(C, x, array_1d.right_label, array_1d.left_label)
+        C=tsr.contract(C, x, array_1d.right_label, array_1d.left_label)
     if periodic_boundaries:
         # Contract left and right boundary indices (periodic boundaries)
         # Note that this will simply remove boundary indices of dimension one.
@@ -626,12 +626,12 @@ def variational_compress_mps(mps, chi, max_iter=20):
             I_phys=tsr.Tensor(data=np.identity(phys_index_dim), labels=["phys_cc", "phys"])
             #Define the A matrix
             if i==0:
-                A=tensor_product(right_boundary, I_phys)
+                A=tsr.tensor_product(right_boundary, I_phys)
             elif i==n-1:
-                A=tensor_product(left_boundary, I_phys)
+                A=tsr.tensor_product(left_boundary, I_phys)
             else:
-                A=tensor_product(left_boundary, right_boundary)
-                A=tensor_product(A, I_phys)
+                A=tsr.tensor_product(left_boundary, right_boundary)
+                A=tsr.tensor_product(A, I_phys)
 
             #Compute linear component "b"
             #Right contraction
