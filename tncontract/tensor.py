@@ -16,8 +16,9 @@ class Tensor():
 
     def replace_label(self, old_labels, new_labels):
         """
-        Takes two lists old_labels, new_labels as arguments. If a label in self.labels is in old_labels,
-        it is replaced with the respective label in new_labels.
+        Takes two lists old_labels, new_labels as arguments. If a label in 
+        self.labels is in old_labels, it is replaced with the respective label 
+        in new_labels.
         """
 
         #If either argument is not a list, convert to list with single entry
@@ -88,7 +89,7 @@ class Tensor():
 
     def contract_internal(self, label1, label2, index1=0, index2=0):
         """By default will contract the first index with label1 with the 
-        first index with label2. index1 and index2 can be specified to contract 
+        first index with label2. index1 and index2 can be specified to contract
         indices that are not the first with the specified label."""
 
         label1_indices=[i for i,x in enumerate(self.labels) if x==label1]
@@ -97,7 +98,8 @@ class Tensor():
         index_to_contract1=label1_indices[index1]
         index_to_contract2=label2_indices[index2]
 
-        self.data=np.trace(self.data, axis1=index_to_contract1, axis2=index_to_contract2)
+        self.data=np.trace(self.data, axis1=index_to_contract1, axis2=
+                index_to_contract2)
 
         #The following removes the contracted indices from the list of labels 
         self.labels=[label for j,label in enumerate(self.labels) 
@@ -105,7 +107,7 @@ class Tensor():
 
     def consolidate_indices(self):
         """Combines all indices with the same label into a single label.
-        Also puts labels in alphabetical order (and reshapes data accordingly). 
+        Also puts labels in alphabetical order (and reshapes data accordingly).
         """
         labels_unique=sorted(set(self.labels))
         for p,label in enumerate(labels_unique):
@@ -119,7 +121,8 @@ class Tensor():
                 total_dim=total_dim*self.data.shape[p+r]
             #New shape after consolidating all indices with label into 
             #one at position p
-            new_shape=list(self.data.shape[0:p])+[total_dim]+list(self.data.shape[p+len(indices):])
+            new_shape= (list(self.data.shape[0:p])+[total_dim]+
+                    list(self.data.shape[p+len(indices):]))
             self.data=np.reshape(self.data,tuple(new_shape))
 
             #Update self.labels
@@ -136,8 +139,9 @@ class Tensor():
         return Tensor(data=self.data.copy(), labels=self.labels.copy())
 
     def move_index(self, label, position):
-        """Change the order of the indices by moving the first index with label to position, 
-        possibly shifting other indices forward or back in the process. """
+        """Change the order of the indices by moving the first index with label
+        to position, possibly shifting other indices forward or back in the 
+        process. """
         index = self.labels.index(label)
 
         #Move label in list
@@ -159,15 +163,17 @@ class Tensor():
 
     def add_suffix_to_labels(self,suffix):
         """Warning: by changing the labels, e.g. with this method, 
-        the MPS will no longer be in the correct form for various MPS functions."""
+        the MPS will no longer be in the correct form for various MPS functions
+        ."""
         new_labels=[]
         for label in self.labels:
             new_labels.append(label+suffix)
         self.labels=new_labels
 
     def add_dummy_index(self, label, position=0):
-        """Add an additional index to the tensor with dimension 1, and label specified by the index "label"
-        The position argument specifies where the index will be inserted. """
+        """Add an additional index to the tensor with dimension 1, and label 
+        specified by the index "label". The position argument specifies where 
+        the index will be inserted. """
         #Will insert an axis of length 1 in the first position
         self.data=self.data[np.newaxis,:]
         self.labels.insert(0, label)
@@ -215,7 +221,8 @@ class Tensor():
     def shape(self):
         return self.data.shape
 
-def contract(tensor1, tensor2, label_list1, label_list2, index_list1=None, index_list2=None):
+def contract(tensor1, tensor2, label_list1, label_list2, index_list1=None, 
+        index_list2=None):
     """Contract two different tensors according to the specified labels"""
     """Indices to contract are specified by label_list1 and label_list2"""
     """Will find all the indices of tensor1 data with label label_list1[0],"""
@@ -230,30 +237,38 @@ def contract(tensor1, tensor2, label_list1, label_list2, index_list1=None, index
     tensor1_indices=[]
     for label in label_list1:
         #Append all indices to tensor1_indices with label
-        tensor1_indices.extend([i for i,x in enumerate(tensor1.labels) if x==label])
+        tensor1_indices.extend([i for i,x in enumerate(tensor1.labels) 
+            if x==label])
 
     tensor2_indices=[]
     for label in label_list2:
         #Append all indices to tensor1_indices with label
-        tensor2_indices.extend([i for i,x in enumerate(tensor2.labels) if x==label])
+        tensor2_indices.extend([i for i,x in enumerate(tensor2.labels) 
+            if x==label])
         
-    #Replace the index -1 with the len(tensor1_indeces), to refer to the last element in the list
+    #Replace the index -1 with the len(tensor1_indeces), 
+    #to refer to the last element in the list
     if index_list1 != None:
-        index_list1=[x if x!=-1 else len(tensor1_indices)-1 for x in index_list1]
+        index_list1=[x if x!=-1 else len(tensor1_indices)-1 for x 
+                in index_list1]
     if index_list2 != None:
-        index_list2=[x if x!=-1 else len(tensor2_indices)-1 for x in index_list2]
+        index_list2=[x if x!=-1 else len(tensor2_indices)-1 for x 
+                in index_list2]
    
     #Select some subset or permutation of these indices if specified
     #If no list is specified, contract all indices with the specified labels
     #If an empty list is specified, no indices will be contracted
     if index_list1 != None:
-        tensor1_indices=[j for i,j in enumerate(tensor1_indices) if i in index_list1]
+        tensor1_indices=[j for i,j in enumerate(tensor1_indices) 
+                if i in index_list1]
     if index_list2 != None:
-        tensor2_indices=[j for i,j in enumerate(tensor2_indices) if i in index_list2]
+        tensor2_indices=[j for i,j in enumerate(tensor2_indices) 
+                if i in index_list2]
 
     
     #Contract the two tensors
-    C=Tensor(np.tensordot(tensor1.data, tensor2.data, (tensor1_indices, tensor2_indices)))
+    C=Tensor(np.tensordot(tensor1.data, tensor2.data, 
+        (tensor1_indices, tensor2_indices)))
     #The following removes the contracted indices from the list of labels 
     #and concatenates them
     new_tensor1_labels=[i for j,i in enumerate(tensor1.labels) 
@@ -291,14 +306,17 @@ def matrix_to_tensor(matrix, output_dims, input_dims, output_labels,
     respectively, and similarly the column index is divided into indices as
     specified by input_dims and input_labels.
     """
-    return Tensor(np.reshape(matrix, tuple(output_dims)+tuple(input_dims)), output_labels+input_labels)
+    return Tensor(np.reshape(matrix, tuple(output_dims)+tuple(input_dims)), 
+            output_labels+input_labels)
 
 def tensor_svd(tensor, input_labels):
-    """Compute the singular value decomposition of the matrix obtained from the tensor by regarding
-    input_labels as input and the remaining indices as the output"""
+    """Compute the singular value decomposition of the matrix obtained from the
+    tensor by regarding input_labels as input and the remaining indices as the 
+    output"""
     t=tensor.copy()
 
-    #Move labels in input_labels to the beginning of list, and reshape data accordingly
+    #Move labels in input_labels to the beginning of list, and reshape data 
+    #accordingly
     total_input_dimension=1
     for i,label in enumerate(input_labels):
         t.move_index(label, i)
@@ -308,7 +326,8 @@ def tensor_svd(tensor, input_labels):
 
     old_shape=t.data.shape
     total_output_dimension=int(np.product(t.data.shape)/total_input_dimension)
-    data_matrix=np.reshape(t.data,(total_input_dimension, total_output_dimension))
+    data_matrix=np.reshape(t.data,(total_input_dimension, 
+        total_output_dimension))
 
     u,s,v=np.linalg.svd(data_matrix, full_matrices=False)
 
@@ -327,10 +346,12 @@ def tensor_svd(tensor, input_labels):
 
     return U, S, V
 
-def truncated_svd(tensor, input_labels, chi, threshold=10**-15, absorb_singular_values="right"):
-    """Will perform svd of a tensor, as in tensor_svd, and provide approximate decomposition by truncating
-    all but the largest k singular values then absorbing S into U, V or both. Truncation is performed  
-    by specifying the parameter chi (number of singular values to keep)."""
+def truncated_svd(tensor, input_labels, chi, threshold=10**-15, 
+        absorb_singular_values="right"):
+    """Will perform svd of a tensor, as in tensor_svd, and provide approximate
+    decomposition by truncating all but the largest k singular values then 
+    absorbing S into U, V or both. Truncation is performedby specifying the 
+    parameter chi (number of singular values to keep)."""
 
     U,S,V=tensor_svd(tensor, input_labels)
     
