@@ -45,7 +45,12 @@ class OneDimensionalTensorNetwork():
         """
         Apply a swap gate swapping all "physical" (i.e., non-"left" and
         non-"right") indices for site i and i+1 of a
-        OneDimensionalTensorNetwork
+        OneDimensionalTensorNetwork.
+
+        Notes
+        -----
+        The swap is implemented as described
+        in Y.-Y. Shi et al, Phys. Rev. A 74, 022320 (2006).
         """
         A = self[i]
         B = self[i+1]
@@ -253,10 +258,12 @@ class MatrixProductState(OneDimensionalTensorNetwork):
     def apply_gate(self, gate, firstsite, gate_outputs=None, gate_inputs=None):
         """
         Apply Tensor `gate` on sites `firstsite`, `firstsite`+1, ...,
-        `firstsite`+`nsites`-1. The physical index of the nth site is
-        contracted with the nth label of `gate_inputs`. After the contraction
-        the MPS is put back into the original form by SVD, and the nth sites 
-        physical index is given by the nth label of `gate_outputs`.
+        `firstsite`+`nsites`-1, where `nsites` is the length of gate_inputs.
+        The physical index of the nth site is contracted with the nth label of 
+        `gate_inputs`. After the contraction the MPS is put back into the 
+        original form by SVD, and the nth sites physical index is given by the 
+        nth label of `gate_outputs` (but relabeled to `self.phys_label` to
+        preserve the original MPS form).
 
         Parameters
         ----------
@@ -762,7 +769,8 @@ def contract_mps_mpo(mps, mpo):
 
 def onebody_sum_mpo(terms, output_label=None):
     """
-    Construct an MPO from a sum of onebody operators.
+    Construct an MPO from a sum of onebody operators, using the recipe from
+    the Supplemental Material of [1]_ (Eqs. (3) and (4))
 
     Parameters
     ---------
@@ -777,6 +785,10 @@ def onebody_sum_mpo(terms, output_label=None):
     Returns
     ------
     MatrixProductOperator
+
+    References
+    ----------
+    .. [1] E. Sanchez-Burillo et al., Phys. Rev. Lett. 113, 263604 (2014)
     """
     tensors = []
     for i, term1 in enumerate(terms):
