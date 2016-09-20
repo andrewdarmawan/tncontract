@@ -41,7 +41,7 @@ class OneDimensionalTensorNetwork():
         self.left_label=self.right_label
         self.right_label=temp
 
-    def swap_sites(self, i):
+    def swap_gate(self, i):
         """
         Apply a swap gate swapping all "physical" (i.e., non-"left" and
         non-"right") indices for site i and i+1 of a
@@ -284,8 +284,8 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         """
         # Set gate_outputs and gate_inputs to default values if not given
         if gate_outputs is None and gate_inputs is None:
-            gate_outputs = gate.labels[:int(len(phys_labels)/2)]
-            gate_inputs = gate.labels[int(len(phys_labels)/2):]
+            gate_outputs = gate.labels[:int(len(gate.labels)/2)]
+            gate_inputs = gate.labels[int(len(gate.labels)/2):]
         elif gate_outputs is None:
             gate_outputs =[x for x in gate.labels if x not in gate_inputs]
         elif physin_labels is None:
