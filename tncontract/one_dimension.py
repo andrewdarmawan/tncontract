@@ -396,7 +396,6 @@ def tensor_to_mpo(tensor, physout_labels, physin_labels,
         Label for index of `tensor` that will be regarded as the rightmost
         index of the resulting MPO if it exists.
         Also used as `right_label` for the
-        resulting MPO.
     """
     nsites = len(physin_labels)
     t = tensor.copy()
