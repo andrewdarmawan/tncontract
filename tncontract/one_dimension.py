@@ -502,7 +502,7 @@ def contract_virtual_indices(array_1d, start=0, end=-1, periodic_boundaries=True
     """
     C=array_1d[start]
     for x in array_1d[start+1:end]:
-        C=contract(C, x, array_1d.right_label, array_1d.left_label)
+        C=tsr.contract(C, x, array_1d.right_label, array_1d.left_label)
     if periodic_boundaries:
         # Contract left and right boundary indices (periodic boundaries)
         # Note that this will simply remove boundary indices of dimension one.
