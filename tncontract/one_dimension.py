@@ -71,6 +71,10 @@ class OneDimensionalTensorNetwork():
         """Return right index dimesion for site"""
         return self.data[site].index_dimension(self.right_label)
 
+    @property
+    def nsites(self):
+        return len(self.data)
+
 
 class MatrixProductState(OneDimensionalTensorNetwork):
     """Matrix product state"is a list of tensors, each having and index labelled "phys" 
@@ -246,7 +250,7 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         """Return physical index dimesion for site"""
         return self.data[site].index_dimension(self.phys_label)
 
-    def apply_gate(self, gate, firstsite, gate_outputs, gate_inputs):
+    def apply_gate(self, gate, firstsite, gate_outputs=None, gate_inputs=None):
         """
         Apply Tensor `gate` on sites `firstsite`, `firstsite`+1, ...,
         `firstsite`+`nsites`-1. The physical index of the nth site is
@@ -260,12 +264,16 @@ class MatrixProductState(OneDimensionalTensorNetwork):
             Tensor representing the multisite gate.
         firstsite : int
             First site of MPS involved in the gate
-        gate_outputs : list of str
+        gate_outputs : list of str, optional
             Output labels corresponding to the input labels given by
             `gate_inputs`. Must have the same length as `gate_inputs`.
-        gate_inputs : list of str
+            If `None` the first half of `gate.labels` will be taken as output
+            labels.
+        gate_inputs : list of str, optional
             Input labels. The first index of the list is contracted with
             `firstsite`, the second with `firstsite`+1 etc.
+            If `None` the second half of `gate.labels` will be taken as input
+            labels.
 
         Notes
         -----
@@ -274,6 +282,15 @@ class MatrixProductState(OneDimensionalTensorNetwork):
 
         Only use this for gates acting on small number of sites.
         """
+        # Set gate_outputs and gate_inputs to default values if not given
+        if gate_outputs is None and gate_inputs is None:
+            gate_outputs = gate.labels[:int(len(phys_labels)/2)]
+            gate_inputs = gate.labels[int(len(phys_labels)/2):]
+        elif gate_outputs is None:
+            gate_outputs =[x for x in gate.labels if x not in gate_inputs]
+        elif physin_labels is None:
+            gate_inputs =[x for x in gate.labels if x not in gate_outputs]
+
         nsites = len(gate_inputs)
         if len(gate_outputs) != nsites:
             raise ValueError("len(gate_outputs) != len(gate_inputs)")
@@ -341,11 +358,11 @@ def tensor_to_mps(tensor, phys_labels=None, mps_phys_label='phys',
         Physical labels of the resulting MPS will be renamed to this value.
     left_label : str
         Label for index of `tensor` that will be regarded as the leftmost index
-        of the resulting MPS if it exists.
+        of the resulting MPS if it exists (must be unique).
         Also used as `left_label` for the resulting MPS.
     right_label : str
         Label for index of `tensor` that will be regarded as the rightmost
-        index of the resulting MPS if it exists.
+        index of the resulting MPS if it exists (must be unique).
         Also used as `right_label` for the resulting MPS.
     """
     if phys_labels is None:
@@ -369,7 +386,7 @@ def tensor_to_mps(tensor, phys_labels=None, mps_phys_label='phys',
             left_label=left_label, right_label=right_label)
 
 
-def tensor_to_mpo(tensor, physout_labels, physin_labels,
+def tensor_to_mpo(tensor, physout_labels=None, physin_labels=None,
         mpo_physout_label='physout', mpo_physin_label='physin',
         left_label='left', right_label='right'):
     """
@@ -378,26 +395,44 @@ def tensor_to_mpo(tensor, physout_labels, physin_labels,
     Parameters
     ----------
     tensor : Tensor
-    physout_labels : list of str
+    physout_labels : list of str, optional
         The output physical indices for the MPO. First site of MPO has output
         index corresponding to physout_labels[0] etc.
-    physin_labels : list of str
+        If `None` the first half of `tensor.labels` will be taken as output
+        labels.
+    physin_labels : list of str, optional
         The input physical indices for the MPO. First site of MPO has input
         index corresponding to physin_labels[0] etc.
+        If `None` the second half of `tensor.labels` will be taken as input
+        labels.
     mpo_phys_label : str
         Physical input labels of the resulting MPO will be renamed to this.
     mpo_phys_label : str
         Physical output labels of the resulting MPO will be renamed to this.
     left_label : str
         Label for index of `tensor` that will be regarded as the leftmost index
-        of the resulting MPO if it exists.
+        of the resulting MPO if it exists (must be unique).
         Also used as `left_label` for the resulting MPO.
     right_label : str
         Label for index of `tensor` that will be regarded as the rightmost
-        index of the resulting MPO if it exists.
-        Also used as `right_label` for the
+        index of the resulting MPO if it exists (must be unique).
+        Also used as `right_label` for the resulting MPO.
     """
+    # Set physout_labels and physin_labels to default values if not given
+    phys_labels =[x for x in tensor.labels if x not in
+            [left_label, right_label]]
+    if physout_labels is None and physin_labels is None:
+        physout_labels = phys_labels[:int(len(phys_labels)/2)]
+        physin_labels = phys_labels[int(len(phys_labels)/2):]
+    elif physout_labels is None:
+        physout_labels =[x for x in phys_labels if x not in physin_labels]
+    elif physin_labels is None:
+        physin_labels =[x for x in phys_labels if x not in physout_labels]
+
     nsites = len(physin_labels)
+    if len(physout_labels) != nsites:
+        raise ValueError("len(physout_labels) != len(physin_labels)")
+
     t = tensor.copy()
     mpo = []
     for k in range(nsites-1):
