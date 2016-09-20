@@ -316,8 +316,8 @@ def tensor_svd(tensor, input_labels):
     try:
         u,s,v=np.linalg.svd(data_matrix, full_matrices=False)
     except np.linalg.LinAlgError:
-        warnings.warn('numpy.linalg.svd failed, trying scipy.linalg.svd with'+
-                'lapack_driver="gesvd"')
+        warnings.warn(('numpy.linalg.svd failed, trying scipy.linalg.svd with'+
+                ' lapack_driver="gesvd"'))
         u,s,v=sp.linalg.svd(data_matrix, full_matrices=False, 
                 lapack_driver='gesvd')
 
