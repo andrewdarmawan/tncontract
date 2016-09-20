@@ -1,6 +1,6 @@
 import numpy as np
 
-from tncontract.tensor import *
+import tncontract.tensor as tsr
 
 
 class OneDimensionalTensorNetwork():
@@ -50,12 +50,12 @@ class OneDimensionalTensorNetwork():
         B_phys_labels = [l for l in B.labels if l!=self.left_label and
                 l!=self.right_label]
         A.prime_label(A_phys_labels)
-        t = contract(A, B, self.right_label, self.left_label)
-        U, S, V = tensor_svd(t, [self.left_label] + B_phys_labels)
+        t = tsr.contract(A, B, self.right_label, self.left_label)
+        U, S, V = tsr.tensor_svd(t, [self.left_label] + B_phys_labels)
         U.replace_label('svd_in', 'right')
         self[i] = U
         V.unprime_label(A_phys_labels)
-        SV = contract(S, V, ['svd_in'], ['svd_out'])
+        SV = tsr.contract(S, V, ['svd_in'], ['svd_out'])
         SV.replace_label('svd_out', 'left')
         self[i+1] = SV
 
@@ -119,7 +119,7 @@ class MatrixProductState(OneDimensionalTensorNetwork):
                     self[i].data=self[i].data*norm
                 return
             else:
-                U,S,V = tensor_svd(self[i], [self.phys_label, self.left_label])
+                U,S,V = tsr.tensor_svd(self[i], [self.phys_label, self.left_label])
 
             #Truncate to threshold and to specified chi
             #Normalise S
@@ -139,8 +139,8 @@ class MatrixProductState(OneDimensionalTensorNetwork):
 
             U.replace_label("svd_in", self.right_label)
             self[i]=U
-            self[i+1]=contract(V, self[i+1], self.right_label, self.left_label)
-            self[i+1]=contract(S, self[i+1], ["svd_in"], ["svd_out"])
+            self[i+1]=tsr.contract(V, self[i+1], self.right_label, self.left_label)
+            self[i+1]=tsr.contract(S, self[i+1], ["svd_in"], ["svd_out"])
             self[i+1].replace_label("svd_out", self.left_label)
 
             #Reabsorb normalisation factors into next tensor
@@ -200,14 +200,14 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         mps_cc=mps_complex_conjugate(self)
         first_site_not_left_canonised=len(self)-1
         for i in range(len(self)-1): 
-            I=contract(self[i], mps_cc[i], [self.phys_label, self.left_label], [mps_cc.phys_label, mps_cc.left_label])
+            I=tsr.contract(self[i], mps_cc[i], [self.phys_label, self.left_label], [mps_cc.phys_label, mps_cc.left_label])
             #Check if tensor is left canonised.
             if np.linalg.norm(I.data-np.identity(I.data.shape[0])) > threshold:
                 first_site_not_left_canonised=i
                 break
         first_site_not_right_canonised=0
         for i in range(len(self)-1,0, -1): 
-            I=contract(self[i], mps_cc[i], [self.phys_label, self.right_label], [mps_cc.phys_label, mps_cc.right_label])
+            I=tsr.contract(self[i], mps_cc[i], [self.phys_label, self.right_label], [mps_cc.phys_label, mps_cc.right_label])
             #Check if tensor is right canonised.
             right_canonised_sites=[]
             if np.linalg.norm(I.data-np.identity(I.data.shape[0])) > threshold:
@@ -294,10 +294,10 @@ def contract_multi_index_tensor_with_one_dim_array(tensor, array, label1, label2
     temp_label=0 
     tensor.replace_label(label1, temp_label)
 
-    C=contract(tensor, array[0], temp_label, label2, index_list1=[0])
+    C=tsr.contract(tensor, array[0], temp_label, label2, index_list1=[0])
     for i in range(1, len(array)):
         #TODO make this work
-        C=contract(C, array[i], [array.right_label, temp_label], [array.left_label, label2], index_list1=[0,1])
+        C=tsr.contract(C, array[i], [array.right_label, temp_label], [array.left_label, label2], index_list1=[0,1])
 
     #Contract boundaries of array
     C.contract_internal(array.right_label, array.left_label)
@@ -308,7 +308,7 @@ def contract_multi_index_tensor_with_one_dim_array(tensor, array, label1, label2
 def contract_virtual_indices(array_1d):
     C=array_1d[0]
     for x in array_1d[1:]:
-        C=contract(C, x, array_1d.right_label, array_1d.left_label)
+        C=tsr.contract(C, x, array_1d.right_label, array_1d.left_label)
     #Contract left and right boundary indices (periodic boundaries)
     #For open boundaries, these will have dimension 1 and therefore will simply
     #be removed
@@ -344,14 +344,14 @@ def check_canonical_form_mps(mps, threshold=10**-14, print_output=True):
     mps_cc=mps_complex_conjugate(mps)
     first_site_not_left_canonised=len(mps)-1
     for i in range(len(mps)-1): 
-        I=contract(mps[i], mps_cc[i], [mps.phys_label, mps.left_label], [mps_cc.phys_label, mps_cc.left_label])
+        I=tsr.contract(mps[i], mps_cc[i], [mps.phys_label, mps.left_label], [mps_cc.phys_label, mps_cc.left_label])
         #Check if tensor is left canonised.
         if np.linalg.norm(I.data-np.identity(I.data.shape[0])) > threshold:
             first_site_not_left_canonised=i
             break
     first_site_not_right_canonised=0
     for i in range(len(mps)-1,0, -1): 
-        I=contract(mps[i], mps_cc[i], [mps.phys_label, mps.right_label], [mps_cc.phys_label, mps_cc.right_label])
+        I=tsr.contract(mps[i], mps_cc[i], [mps.phys_label, mps.right_label], [mps_cc.phys_label, mps_cc.right_label])
         #Check if tensor is right canonised.
         right_canonised_sites=[]
         if np.linalg.norm(I.data-np.identity(I.data.shape[0])) > threshold:
@@ -412,24 +412,24 @@ def variational_compress_mps(mps, chi, max_iter=20):
 
             #Right contraction
             if i!=n-1:
-                right_boundary=contract(new_mps[-1], new_mps_cc[-1], ["phys"], ["phys"] )
+                right_boundary=tsr.contract(new_mps[-1], new_mps_cc[-1], ["phys"], ["phys"] )
                 for j in range(n-2, i, -1):
-                    right_boundary=contract(right_boundary, new_mps[j], ["left"], ["right"])
-                    right_boundary=contract(right_boundary, new_mps_cc[j], ["left_cc", "phys"], ["right_cc", "phys"])
+                    right_boundary=tsr.contract(right_boundary, new_mps[j], ["left"], ["right"])
+                    right_boundary=tsr.contract(right_boundary, new_mps_cc[j], ["left_cc", "phys"], ["right_cc", "phys"])
 
             #Left contraction
             if i!=0:
-                left_boundary=contract(new_mps[0], new_mps_cc[0], ["phys"], ["phys"] )
+                left_boundary=tsr.contract(new_mps[0], new_mps_cc[0], ["phys"], ["phys"] )
                 for j in range(1,i):
-                    left_boundary=contract(left_boundary, new_mps[j], ["right"], ["left"])
-                    left_boundary=contract(left_boundary, new_mps_cc[j], ["right_cc", "phys"], ["left_cc", "phys"])
+                    left_boundary=tsr.contract(left_boundary, new_mps[j], ["right"], ["left"])
+                    left_boundary=tsr.contract(left_boundary, new_mps_cc[j], ["right_cc", "phys"], ["left_cc", "phys"])
 
             #Combine left and right components to form A
 
             #Dimension of the physical index
             phys_index=new_mps[i].labels.index("phys")
             phys_index_dim=new_mps[i].data.shape[phys_index]
-            I_phys=Tensor(data=np.identity(phys_index_dim), labels=["phys_cc", "phys"])
+            I_phys=tsr.Tensor(data=np.identity(phys_index_dim), labels=["phys_cc", "phys"])
             #Define the A matrix
             if i==0:
                 A=tensor_product(right_boundary, I_phys)
@@ -442,25 +442,25 @@ def variational_compress_mps(mps, chi, max_iter=20):
             #Compute linear component "b"
             #Right contraction
             if i!=n-1:
-                right_boundary=contract(mps[-1], new_mps_cc[-1], ["phys"], ["phys"] )
+                right_boundary=tsr.contract(mps[-1], new_mps_cc[-1], ["phys"], ["phys"] )
                 for j in range(n-2, i, -1):
-                    right_boundary=contract(right_boundary, mps[j], ["left"], ["right"])
-                    right_boundary=contract(right_boundary, new_mps_cc[j], ["left_cc", "phys"], ["right_cc", "phys"])
+                    right_boundary=tsr.contract(right_boundary, mps[j], ["left"], ["right"])
+                    right_boundary=tsr.contract(right_boundary, new_mps_cc[j], ["left_cc", "phys"], ["right_cc", "phys"])
             #Left contraction
             if i!=0:
-                left_boundary=contract(mps[0], new_mps_cc[0], ["phys"], ["phys"] )
+                left_boundary=tsr.contract(mps[0], new_mps_cc[0], ["phys"], ["phys"] )
                 for j in range(1,i):
-                    left_boundary=contract(left_boundary, mps[j], ["right"], ["left"])
-                    left_boundary=contract(left_boundary, new_mps_cc[j], ["right_cc", "phys"], ["left_cc", "phys"])
+                    left_boundary=tsr.contract(left_boundary, mps[j], ["right"], ["left"])
+                    left_boundary=tsr.contract(left_boundary, new_mps_cc[j], ["right_cc", "phys"], ["left_cc", "phys"])
 
             #Connect left and right boundaries to form b
             if i==0:
-                b=contract(mps[0], right_boundary, ["right"], ["left"])
+                b=tsr.contract(mps[0], right_boundary, ["right"], ["left"])
             elif i==n-1:
-                b=contract(left_boundary, mps[-1], ["right"], ["left"])
+                b=tsr.contract(left_boundary, mps[-1], ["right"], ["left"])
             else:
-                b=contract(left_boundary, mps[i], ["right"], ["left"])
-                b=contract(b, right_boundary, ["right"], ["left"])
+                b=tsr.contract(left_boundary, mps[i], ["right"], ["left"])
+                b=tsr.contract(b, right_boundary, ["right"], ["left"])
 
             #Put indices in correct order, convert to matrices, and solve linear equation
             if i==0:
@@ -476,7 +476,7 @@ def variational_compress_mps(mps, chi, max_iter=20):
                 b.move_index("left_cc", 0)
                 b_vector=b.data.flatten()
                 minimum=np.linalg.solve(A_matrix, b_vector)
-                updated_tensor=Tensor(data=np.reshape(minimum, (old_shape[0], old_shape[1])), labels=["right", "phys"])
+                updated_tensor=tsr.Tensor(data=np.reshape(minimum, (old_shape[0], old_shape[1])), labels=["right", "phys"])
             elif i==n-1:
                 A.move_index("right_cc", 0)
                 A.move_index("phys_cc", 1)
@@ -489,7 +489,7 @@ def variational_compress_mps(mps, chi, max_iter=20):
                 b_vector=b.data.flatten()
                 minimum=np.linalg.solve(A_matrix, b_vector)
 
-                updated_tensor=Tensor(data=np.reshape(minimum, (old_shape[0], old_shape[1])), labels=["left", "phys"])
+                updated_tensor=tsr.Tensor(data=np.reshape(minimum, (old_shape[0], old_shape[1])), labels=["left", "phys"])
             else:
                 A.move_index("right_cc", 0)
                 A.move_index("left_cc", 1)
@@ -505,7 +505,7 @@ def variational_compress_mps(mps, chi, max_iter=20):
                 b_vector=b.data.flatten()
                 minimum=np.linalg.solve(A_matrix, b_vector)
 
-                updated_tensor=Tensor(data=np.reshape(minimum, (old_shape[0], old_shape[1], old_shape[2])), 
+                updated_tensor=tsr.Tensor(data=np.reshape(minimum, (old_shape[0], old_shape[1], old_shape[2])), 
                         labels=["left", "right", "phys"])
                 updated_tensor.consolidate_indices()
             new_mps[i]=updated_tensor
@@ -538,10 +538,10 @@ def inner_product_mps(mps_bra, mps_ket, complex_conjugate_bra=True, return_whole
     mps_ket.standard_labels()
     mps_bra_cc.standard_labels(suffix="_cc") #Suffix to distinguish from mps_ket labels
 
-    left_boundary=contract(mps_bra_cc[0], mps_ket[0], mps_bra_cc.phys_label, mps_ket.phys_label)
+    left_boundary=tsr.contract(mps_bra_cc[0], mps_ket[0], mps_bra_cc.phys_label, mps_ket.phys_label)
     for i in range(1,len(mps_ket)):
-        left_boundary=contract(left_boundary, mps_bra_cc[i], mps_bra_cc.right_label, mps_bra_cc.left_label)
-        left_boundary=contract(left_boundary, mps_ket[i], [mps_ket.right_label, mps_bra_cc.phys_label], [mps_ket.left_label, mps_ket.phys_label])
+        left_boundary=tsr.contract(left_boundary, mps_bra_cc[i], mps_bra_cc.right_label, mps_bra_cc.left_label)
+        left_boundary=tsr.contract(left_boundary, mps_ket[i], [mps_ket.right_label, mps_bra_cc.phys_label], [mps_ket.left_label, mps_ket.phys_label])
 
     #Restore labels of mps_ket
     mps_ket.replace_left_right_phys_labels(new_left_label=mps_ket_old_labels[0], new_right_label=mps_ket_old_labels[1],
@@ -565,7 +565,7 @@ def contract_mps_mpo(mps, mpo):
     N=len(mps)
     new_mps=[]
     for i in range(N):
-        new_tensor=contract(mps[i], mpo[i], mps.phys_label, mpo.physin_label)
+        new_tensor=tsr.contract(mps[i], mpo[i], mps.phys_label, mpo.physin_label)
         new_tensor.consolidate_indices()
         new_mps.append(new_tensor)
     new_mps=MatrixProductState(new_mps, mps.left_label, mps.right_label, mpo.physout_label)
@@ -602,19 +602,19 @@ def onebody_sum_mpo(terms, output_label=None):
             for k in range(term.shape[0]):
                 for l in range(term.shape[1]):
                     B[k,l,:] = [term[k, l], k==l]
-            tensors.append(Tensor(B, ['physout', 'physin', 'right']))
+            tensors.append(tsr.Tensor(B, ['physout', 'physin', 'right']))
         elif i==len(terms)-1:
             B = np.zeros(shape=term.shape+[2], dtype=complex)
             for k in range(term.shape[0]):
                 for l in range(term.shape[1]):
                     B[k,l,:] = [k==l, term[k, l]]
-            tensors.append(Tensor(B, ['physout', 'physin', 'left']))
+            tensors.append(tsr.Tensor(B, ['physout', 'physin', 'left']))
         else:
             B = np.zeros(shape=term.shape+[2,2], dtype=complex)
             for k in range(term.shape[0]):
                 for l in range(term.shape[1]):
                     B[k,l,:,:] = [[k==l, 0], [term[k, l], k==l]]
-            tensors.append(Tensor(B, ['physout', 'physin', 'left', 'right']))
+            tensors.append(tsr.Tensor(B, ['physout', 'physin', 'left', 'right']))
     return MatrixProductOperator(tensors, left_label='left',
         right_label='right', physin_label='physin', physout_label='physout')
 
@@ -669,8 +669,8 @@ def expvals_mps(mps, oplist, output_label=None, canonised=None):
             in_label = [x for x in op.labels if x is not out_label][0]
         Ad = A.copy()
         Ad.conjugate()
-        exp = contract(A, op, mps.phys_label, in_label)
-        exp = contract(Ad, exp, mps.phys_label, out_label)
+        exp = tsr.contract(A, op, mps.phys_label, in_label)
+        exp = tsr.contract(Ad, exp, mps.phys_label, out_label)
         exp.contract_internal(mps.left_label, mps.left_label, index1=0,
                 index2=1)
         exp.contract_internal(mps.right_label, mps.right_label, index1=0,
