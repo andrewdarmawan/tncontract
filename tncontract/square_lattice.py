@@ -1,6 +1,5 @@
 import numpy as np
-from tncontract.one_dimension import *
-from tncontract.tensor import *
+import tncontract.one_dimension as od
 
 class SquareLatticeTensorNetwork():
     """Base class for square lattices, e.g. square-lattice PEPS and PEPO.
@@ -61,13 +60,13 @@ class SquareLatticeTensorNetwork():
         column, then contracting one column at a time."""
         rows, cols = self.data.shape
         mpo=column_to_mpo(self, 0)
-        C=contract_virtual_indices(mpo)
+        C=od.contract_virtual_indices(mpo)
         for i in range(1, cols):
             if i==until_column+1:
                 #Return the contraction early
                 return C
             mpo=column_to_mpo(self, i)
-            C=contract_multi_index_tensor_with_one_dim_array(C, mpo, 
+            C=od.contract_multi_index_tensor_with_one_dim_array(C, mpo, 
                     self.right_label, self.left_label)
             C.remove_all_dummy_indices()
         return C
@@ -84,19 +83,19 @@ class SquareLatticeTensorNetwork():
                 mps_to_compress = column_to_mpo(self, 0, to_mps=True)
             else:
                 column_mpo=column_to_mpo(self, col)
-                mps_to_compress = contract_mps_mpo(compressed_mps, column_mpo)
+                mps_to_compress = od.contract_mps_mpo(compressed_mps, column_mpo)
 
             if compression_type=="svd":
-                compressed_mps = svd_compress_mps(mps_to_compress, chi, normalise=normalise)
+                compressed_mps = od.svd_compress_mps(mps_to_compress, chi, normalise=normalise)
             elif compression_type=="variational":
-                compressed_mps = variational_compress_mps(mps_to_compress, chi, max_iter=10)
+                compressed_mps = od.variational_compress_mps(mps_to_compress, chi, max_iter=10)
 
             if col == until_column:
                 return compressed_mps
 
         #For final column, compute contraction exactly
         final_column_mps=column_to_mpo(self, ncols-1, to_mps=True)
-        return inner_product_mps(compressed_mps, final_column_mps, return_whole_tensor=True, 
+        return od.inner_product_mps(compressed_mps, final_column_mps, return_whole_tensor=True, 
                 complex_conjugate_bra=False)
 
 class SquareLatticePEPS(SquareLatticeTensorNetwork):
@@ -117,18 +116,18 @@ def column_to_mpo(square_tn, col, to_mps=False):
     new_data=square_tn[:,col].copy()
     if to_mps and (col==0 or col==square_tn.shape[1]-1):
         if col==0:
-            new_mps=MatrixProductState(new_data, square_tn.up_label, 
+            new_mps=od.MatrixProductState(new_data, square_tn.up_label, 
                     square_tn.down_label, square_tn.right_label)
             for x in new_mps.data:
                 x.remove_all_dummy_indices(square_tn.left_label)
         else: #Last column
-            new_mps=MatrixProductState(new_data, square_tn.up_label, 
+            new_mps=od.MatrixProductState(new_data, square_tn.up_label, 
                     square_tn.down_label, square_tn.left_label)
             for x in new_mps.data:
                 x.remove_all_dummy_indices(square_tn.right_label)
         return new_mps
     else:
-        return MatrixProductOperator(new_data, square_tn.up_label, 
+        return od.MatrixProductOperator(new_data, square_tn.up_label, 
             square_tn.down_label, square_tn.right_label, 
             square_tn.left_label)
 
