@@ -41,8 +41,17 @@ class OneDimensionalTensorNetwork():
         self.left_label=self.right_label
         self.right_label=temp
 
-    def swap_sites(self, i):
-        """ Swap site i and i+1 of a OneDimensionalTensorNetwork """
+    def swap_gate(self, i):
+        """
+        Apply a swap gate swapping all "physical" (i.e., non-"left" and
+        non-"right") indices for site i and i+1 of a
+        OneDimensionalTensorNetwork.
+
+        Notes
+        -----
+        The swap is implemented as described
+        in Y.-Y. Shi et al, Phys. Rev. A 74, 022320 (2006).
+        """
         A = self[i]
         B = self[i+1]
         A_phys_labels = [l for l in A.labels if l!=self.left_label and
@@ -66,6 +75,10 @@ class OneDimensionalTensorNetwork():
     def rightdim(self, site):
         """Return right index dimesion for site"""
         return self.data[site].index_dimension(self.right_label)
+
+    @property
+    def nsites(self):
+        return len(self.data)
 
 
 class MatrixProductState(OneDimensionalTensorNetwork):
@@ -242,6 +255,65 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         """Return physical index dimesion for site"""
         return self.data[site].index_dimension(self.phys_label)
 
+    def apply_gate(self, gate, firstsite, gate_outputs=None, gate_inputs=None):
+        """
+        Apply Tensor `gate` on sites `firstsite`, `firstsite`+1, ...,
+        `firstsite`+`nsites`-1, where `nsites` is the length of gate_inputs.
+        The physical index of the nth site is contracted with the nth label of 
+        `gate_inputs`. After the contraction the MPS is put back into the 
+        original form by SVD, and the nth sites physical index is given by the 
+        nth label of `gate_outputs` (but relabeled to `self.phys_label` to
+        preserve the original MPS form).
+
+        Parameters
+        ----------
+        gate : Tensor
+            Tensor representing the multisite gate.
+        firstsite : int
+            First site of MPS involved in the gate
+        gate_outputs : list of str, optional
+            Output labels corresponding to the input labels given by
+            `gate_inputs`. Must have the same length as `gate_inputs`.
+            If `None` the first half of `gate.labels` will be taken as output
+            labels.
+        gate_inputs : list of str, optional
+            Input labels. The first index of the list is contracted with
+            `firstsite`, the second with `firstsite`+1 etc.
+            If `None` the second half of `gate.labels` will be taken as input
+            labels.
+
+        Notes
+        -----
+        At the end of the gate all physical indices are relabeled to
+        `self.phys_label`.
+
+        Only use this for gates acting on small number of sites.
+        """
+        # Set gate_outputs and gate_inputs to default values if not given
+        if gate_outputs is None and gate_inputs is None:
+            gate_outputs = gate.labels[:int(len(gate.labels)/2)]
+            gate_inputs = gate.labels[int(len(gate.labels)/2):]
+        elif gate_outputs is None:
+            gate_outputs =[x for x in gate.labels if x not in gate_inputs]
+        elif physin_labels is None:
+            gate_inputs =[x for x in gate.labels if x not in gate_outputs]
+
+        nsites = len(gate_inputs)
+        if len(gate_outputs) != nsites:
+            raise ValueError("len(gate_outputs) != len(gate_inputs)")
+
+        # contract the sites first
+        t = contract_virtual_indices(self, firstsite, firstsite+nsites,
+                periodic_boundaries=False)
+
+        # contract all physical indices with gate input indices
+        t = contract(t, gate, self.phys_label, gate_inputs)
+
+        # split big tensor into MPS form by exact SVD
+        mps = tensor_to_mps(t, mps_phys_label=self.phys_label,
+                left_label=self.left_label, right_label=self.right_label)
+        self.data[firstsite:firstsite+nsites] = mps.data
+
 
 class MatrixProductOperator(OneDimensionalTensorNetwork):
     #TODO currently assumes open boundaries
@@ -261,7 +333,7 @@ class MatrixProductOperator(OneDimensionalTensorNetwork):
                     self.physout_label, self.physin_label))
 
     def __str__(self):
-        return ("MatrixProductState object: " +
+        return ("MatrixProductOperator object: " +
               "sites = " + str(len(self)) +
               ", left_label = " + self.left_label +
               ", right_label = " + self.right_label +
@@ -277,6 +349,114 @@ class MatrixProductOperator(OneDimensionalTensorNetwork):
     def physindim(self, site):
         """Return input physical index dimesion for site"""
         return self.data[site].index_dimension(self.physin_label)
+
+
+def tensor_to_mps(tensor, phys_labels=None, mps_phys_label='phys',
+        left_label='left', right_label='right'):
+    """
+    Split a tensor into MPS form by exact SVD
+
+    Parameters
+    ----------
+    tensor : Tensor
+    phys_labels list of str, optional
+        Can be used to specify the order of the physical indices for the MPS.
+    mps_phys_label : str
+        Physical labels of the resulting MPS will be renamed to this value.
+    left_label : str
+        Label for index of `tensor` that will be regarded as the leftmost index
+        of the resulting MPS if it exists (must be unique).
+        Also used as `left_label` for the resulting MPS.
+    right_label : str
+        Label for index of `tensor` that will be regarded as the rightmost
+        index of the resulting MPS if it exists (must be unique).
+        Also used as `right_label` for the resulting MPS.
+    """
+    if phys_labels is None:
+        phys_labels =[x for x in tensor.labels if x not in
+                [left_label, right_label]]
+
+    nsites = len(phys_labels)
+    t = tensor.copy()
+    mps = []
+    for k in range(nsites-1):
+        U, S, V = tensor_svd(t, [left_label]*(left_label in t.labels)
+                +[phys_labels[k]])
+        U.replace_label('svd_in', right_label)
+        U.replace_label(phys_labels[k], mps_phys_label)
+        mps.append(U)
+        t = contract(S, V, ['svd_in'], ['svd_out'])
+        t.replace_label('svd_out', left_label)
+    t.replace_label(phys_labels[nsites-1], mps_phys_label)
+    mps.append(t)
+    return MatrixProductState(mps, phys_label=mps_phys_label,
+            left_label=left_label, right_label=right_label)
+
+
+def tensor_to_mpo(tensor, physout_labels=None, physin_labels=None,
+        mpo_physout_label='physout', mpo_physin_label='physin',
+        left_label='left', right_label='right'):
+    """
+    Split a tensor into MPO form by exact SVD
+
+    Parameters
+    ----------
+    tensor : Tensor
+    physout_labels : list of str, optional
+        The output physical indices for the MPO. First site of MPO has output
+        index corresponding to physout_labels[0] etc.
+        If `None` the first half of `tensor.labels` will be taken as output
+        labels.
+    physin_labels : list of str, optional
+        The input physical indices for the MPO. First site of MPO has input
+        index corresponding to physin_labels[0] etc.
+        If `None` the second half of `tensor.labels` will be taken as input
+        labels.
+    mpo_phys_label : str
+        Physical input labels of the resulting MPO will be renamed to this.
+    mpo_phys_label : str
+        Physical output labels of the resulting MPO will be renamed to this.
+    left_label : str
+        Label for index of `tensor` that will be regarded as the leftmost index
+        of the resulting MPO if it exists (must be unique).
+        Also used as `left_label` for the resulting MPO.
+    right_label : str
+        Label for index of `tensor` that will be regarded as the rightmost
+        index of the resulting MPO if it exists (must be unique).
+        Also used as `right_label` for the resulting MPO.
+    """
+    # Set physout_labels and physin_labels to default values if not given
+    phys_labels =[x for x in tensor.labels if x not in
+            [left_label, right_label]]
+    if physout_labels is None and physin_labels is None:
+        physout_labels = phys_labels[:int(len(phys_labels)/2)]
+        physin_labels = phys_labels[int(len(phys_labels)/2):]
+    elif physout_labels is None:
+        physout_labels =[x for x in phys_labels if x not in physin_labels]
+    elif physin_labels is None:
+        physin_labels =[x for x in phys_labels if x not in physout_labels]
+
+    nsites = len(physin_labels)
+    if len(physout_labels) != nsites:
+        raise ValueError("len(physout_labels) != len(physin_labels)")
+
+    t = tensor.copy()
+    mpo = []
+    for k in range(nsites-1):
+        U, S, V = tensor_svd(t, [left_label]*(left_label in t.labels)
+                +[physout_labels[k], physin_labels[k]])
+        U.replace_label('svd_in', right_label)
+        U.replace_label(physout_labels[k], mpo_physout_label)
+        U.replace_label(physin_labels[k], mpo_physin_label)
+        mpo.append(U)
+        t = contract(S, V, ['svd_in'], ['svd_out'])
+        t.replace_label('svd_out', left_label)
+    t.replace_label(physout_labels[nsites-1], mpo_physout_label)
+    t.replace_label(physin_labels[nsites-1], mpo_physin_label)
+    mpo.append(t)
+    return MatrixProductOperator(mpo, physout_label=mpo_physout_label,
+            physin_label=mpo_physin_label, left_label=left_label,
+            right_label=right_label)
 
 
 def contract_multi_index_tensor_with_one_dim_array(tensor, array, label1, label2):
@@ -305,16 +485,30 @@ def contract_multi_index_tensor_with_one_dim_array(tensor, array, label1, label2
     tensor.replace_label(temp_label, label1)
     return C
 
-def contract_virtual_indices(array_1d):
-    C=array_1d[0]
-    for x in array_1d[1:]:
-        C=tsr.contract(C, x, array_1d.right_label, array_1d.left_label)
-    #Contract left and right boundary indices (periodic boundaries)
-    #For open boundaries, these will have dimension 1 and therefore will simply
-    #be removed
-    C.contract_internal(array_1d.right_label, array_1d.left_label) 
+def contract_virtual_indices(array_1d, start=0, end=-1, periodic_boundaries=True):
+    """
+    Return a Tensor by contracting all virtual indices of a segment of a
+    OneDimensionalTensorNetwork.
+
+    Params
+    -----
+    array_1d : OneDimensionalTensorNetwork
+    start : int
+        First site of segment to be contracted
+    end : int
+        Last site of segment to be contracted
+    periodic_boundaries : bool
+        If `True` leftmost and rightmost virtual indices are contracted.
+    """
+    C=array_1d[start]
+    for x in array_1d[start+1:end]:
+        C=contract(C, x, array_1d.right_label, array_1d.left_label)
+    if periodic_boundaries:
+        # Contract left and right boundary indices (periodic boundaries)
+        # Note that this will simply remove boundary indices of dimension one.
+        C.contract_internal(array_1d.right_label, array_1d.left_label) 
     return C
- 
+
 def left_canonical_form_mps(orig_mps, chi=0, threshold=10**-14, normalise=False):
     """Computes left canonical form of an MPS using algorithm in Schollwock 2011, 
     by taking successive SVDs.
@@ -512,6 +706,7 @@ def variational_compress_mps(mps, chi, max_iter=20):
 
     return new_mps
 
+
 def mps_complex_conjugate(mps):
     """Will take complex conjugate of every entry of every tensor in mps, 
     and append label_suffix to every label"""
@@ -574,7 +769,8 @@ def contract_mps_mpo(mps, mpo):
 
 def onebody_sum_mpo(terms, output_label=None):
     """
-    Construct an MPO from a sum of onebody operators.
+    Construct an MPO from a sum of onebody operators, using the recipe from
+    the Supplemental Material of [1]_ (Eqs. (3) and (4))
 
     Parameters
     ---------
@@ -589,6 +785,10 @@ def onebody_sum_mpo(terms, output_label=None):
     Returns
     ------
     MatrixProductOperator
+
+    References
+    ----------
+    .. [1] E. Sanchez-Burillo et al., Phys. Rev. Lett. 113, 263604 (2014)
     """
     tensors = []
     for i, term1 in enumerate(terms):

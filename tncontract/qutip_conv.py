@@ -126,7 +126,7 @@ def qobjlist_to_mpo(qobjlist):
     and "right" indices with bond dimension one are added between the elements
     of the list.
     """
-    tensors = []
+    tensors = np.array([])
     for i, qobj in enumerate(qobjlist):
         if not len(np.shape(qobj.dims)) == 2:
             # wrong dims (not a ket, bra or operator)
@@ -140,17 +140,9 @@ def qobjlist_to_mpo(qobjlist):
         t.add_dummy_index('right', -1)
 
         # Break up many-body operators by SVDing
-        for k in range(nsys-1):
-            U, S, V = tn.tensor_svd(t, ['out'+str(k), 'in'+str(k), 'left'])
-            U.replace_label('svd_in', 'right')
-            U.replace_label('out'+str(k), 'physout')
-            U.replace_label('in'+str(k), 'physin')
-            tensors.append(U)
-            t = tn.contract(S, V, ['svd_in'], ['svd_out'])
-            t.replace_label('svd_out', 'left')
-        t.replace_label('out'+str(nsys-1), 'physout')
-        t.replace_label('in'+str(nsys-1), 'physin')
-        tensors.append(t)
+        tmp_mpo = tn.tensor_to_mpo(t)
+
+        tensors = np.concatenate((tensors, tmp_mpo.data))
     return tn.MatrixProductOperator(tensors, left_label='left',
         right_label='right', physin_label='physin', physout_label='physout')
 
@@ -167,8 +159,8 @@ def qobjlist_to_mps(qobjlist):
     tensors = mpo.data
     for t in tensors:
         # Remove dummy input labels
-        t.remove_all_dummy_indices(labels=['physin'])
+        t.remove_all_dummy_indices(labels=[mpo.physin_label])
         # Change physical label to the standard choice 'phys'
-        t.replace_label(['physout'], ['phys'])
+        t.replace_label(mpo.physout_label, 'phys')
     return tn.MatrixProductState(tensors, left_label='left',
         right_label='right', phys_label='phys')
