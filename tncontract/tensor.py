@@ -1,4 +1,6 @@
+import warnings
 import numpy as np
+import scipy as sp
 
 class Tensor():
     def __init__(self, data=None, labels=[]):
@@ -310,7 +312,14 @@ def tensor_svd(tensor, input_labels):
     total_output_dimension=int(np.product(t.data.shape)/total_input_dimension)
     data_matrix=np.reshape(t.data,(total_input_dimension, total_output_dimension))
 
-    u,s,v=np.linalg.svd(data_matrix, full_matrices=False)
+    #u,s,v=np.linalg.svd(data_matrix, full_matrices=False)
+    try:
+        u,s,v=np.linalg.svd(data_matrix, full_matrices=False)
+    except np.linalg.LinAlgError:
+        warnings.warn('numpy.linalg.svd failed, trying scipy.linalg.svd with'+
+                'lapack_driver="gesvd"')
+        u,s,v=sp.linalg.svd(data_matrix, full_matrices=False, 
+                lapack_driver='gesvd')
 
     #Define tensors according to svd 
     n_input_indices=len(input_labels)
