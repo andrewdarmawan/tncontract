@@ -485,7 +485,7 @@ def contract_multi_index_tensor_with_one_dim_array(tensor, array, label1, label2
     tensor.replace_label(temp_label, label1)
     return C
 
-def contract_virtual_indices(array_1d, start=0, end=-1, periodic_boundaries=True):
+def contract_virtual_indices(array_1d, start=0, end=None, periodic_boundaries=True):
     """
     Return a Tensor by contracting all virtual indices of a segment of a
     OneDimensionalTensorNetwork.
