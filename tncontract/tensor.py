@@ -3,6 +3,22 @@ import numpy as np
 import scipy as sp
 
 class Tensor():
+    """
+    A class containing a numpy array, and a list of labels.
+    
+    The `Tensor` class contains a multi-dimensional ndarray (stored in
+    the `data` attribute), and list of labels (stored in the `labels` attribute
+    where each label in `labels` corresponds to an axis of `data`. Labels are
+    assumed to be strings. The order of the labels in `labels` should agree
+    with the order of the axes in `data` such that the first label corresponds
+    to the first axis and so on, and the length of labels should equal the
+    number of axes in `data`. Functions and methods that act on Tensor objects
+    should update `labels` whenever `data` is changed and vice versa, such that
+    a given label always corresponds to the same axis. For instance, if two
+    axes are swapped in `data` the corresponding labels should be swapped in
+    `labels`. The exceptions being when labels are explicitly changed.
+    
+    """
     def __init__(self, data=None, labels=[]):
         self.labels=labels
         self.data=data
