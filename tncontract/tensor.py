@@ -13,8 +13,8 @@ class Tensor():
     def __str__(self):
         return ("Tensor object: "
                 "shape = " + str(self.shape) +
-                ", labels = " + str(self.labels) + "\n" +
-                "Tensor data = \n" + str(self.data))
+                ", labels = " + str(self.labels))# + "\n" +
+                #"Tensor data = \n" + str(self.data))
 
     def replace_label(self, old_labels, new_labels):
         """
