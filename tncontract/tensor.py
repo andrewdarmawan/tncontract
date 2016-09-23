@@ -39,11 +39,11 @@ class Tensor():
         for the to the i-1th axis of data.
     
     """
-    def __init__(self, data, labels=[]):
+    def __init__(self, data, labels=[], base_label="i"):
         self.data=data
         
         if len(labels)==0:
-            self.assign_labels()
+            self.assign_labels(base_label=base_label)
         elif len(labels)==len(self.data.shape):
             self.labels=labels
         else:
