@@ -39,9 +39,15 @@ class Tensor():
         for the to the i-1th axis of data.
     
     """
-    def __init__(self, data=None, labels=[]):
-        self.labels=labels
+    def __init__(self, data, labels=[]):
         self.data=data
+        
+        if len(labels)==0:
+            self.assign_labels()
+        elif len(labels)==len(self.data.shape):
+            self.labels=labels
+        else:
+            raise ValueError("Labels do not match shape of data.")  
 
     def __repr__(self):
         return "Tensor(data=%r, labels=%r)" % (self.data, self.labels)
