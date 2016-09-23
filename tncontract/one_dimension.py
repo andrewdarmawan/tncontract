@@ -78,6 +78,15 @@ class OneDimensionalTensorNetwork():
         """Return right index dimesion for site"""
         return self.data[site].index_dimension(self.right_label)
 
+    def bonddims(self):
+        """Return list of all bond dimensions"""
+        if self.nsites == 0:
+            return []
+        bonds = [self.leftdim(0)]
+        for i in range(self.nsites):
+            bonds.append(self.rightdim(i))
+        return bonds
+
     @property
     def nsites(self):
         return len(self.data)
@@ -520,6 +529,36 @@ def tensor_to_mpo(tensor, physout_labels=None, physin_labels=None,
     return MatrixProductOperator(mpo, physout_label=mpo_physout_label,
             physin_label=mpo_physin_label, left_label=left_label,
             right_label=right_label)
+
+def init_mps_random(nsites, physdim, bonddim=1, left_label='left',
+        right_label='right', phys_label='phys'):
+    """
+    Create an MPS with `nsites` sites and random tensors with physical 
+    dimensions given by `physdim` and bond dimensions given by
+    `bonddim`. Open boundary conditions are used. The MPS is not normalized.
+
+    Parameters
+    ----------
+    nsites : int
+    physdim : int or list of ints
+    bonddim : int or list of ints, optional
+        The nth element of `bonddim` determines the right and left index of
+        the tensors at sites n and n+1, respectively. The length of `bonddim`
+        should be `nsites`-1. If `bonddim` is an int this is this is used for
+        all bonds.
+    left_label : str
+    right_label : str
+    phys_label : str
+    """
+    if not np.iterable(physdim):
+        physdim = [physdim]*nsites
+    if not np.iterable(bonddim):
+        bonddim = [bonddim]*(nsites-1)
+    bonddim = [1] + bonddim + [1]
+    tensors = [tsr.Tensor(np.random.rand(physdim[i], bonddim[i], bonddim[i+1]),
+        [phys_label, left_label, right_label]) for i in range(nsites)]
+    return MatrixProductState(tensors, left_label=left_label,
+            right_label=right_label, phys_label=phys_label)
 
 
 def contract_multi_index_tensor_with_one_dim_array(tensor, array, label1, 
