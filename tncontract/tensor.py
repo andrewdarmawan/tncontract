@@ -52,6 +52,11 @@ class Tensor():
                 ", labels = " + str(self.labels) + "\n" +
                 "Tensor data = \n" + str(self.data))
 
+    def assign_labels(self, base_label="i"):
+        """Assign labels to all of the indices of `Tensor`. The i-th axis will
+        be assigned the label `base_label`+"i-1"."""
+        self.labels=[base_label+str(i) for i in range(len(self.data.shape))]
+
     def replace_label(self, old_labels, new_labels):
         """
         Takes two lists old_labels, new_labels as arguments. If a label in 
