@@ -175,9 +175,9 @@ class MatrixProductState(OneDimensionalTensorNetwork):
                     self.left_label])
 
             #Truncate to threshold and to specified chi
-            #Normalise S
             singular_values=np.diag(S.data)
             largest_singular_value=singular_values[0]
+            #Normalise S
             singular_values=singular_values/largest_singular_value
             norm*=largest_singular_value
 
@@ -198,7 +198,6 @@ class MatrixProductState(OneDimensionalTensorNetwork):
             self[i+1].replace_label("svd_out", self.left_label)
 
             #Reabsorb normalisation factors into next tensor
-            #If normalise is True, this is not done
             #Note if i==N-1 (end of chain), this will not be reached 
             #and normalisation factors will be taken care of in the earlier 
             #block.
