@@ -319,6 +319,11 @@ class MatrixProductState(OneDimensionalTensorNetwork):
                             str(first_site_not_right_canonised))
         return (first_site_not_left_canonised, first_site_not_right_canonised)
 
+    def svd_compress(self, chi, threshold=10**-15, normalise=False):
+        """Simply right canonise the left canonical form according to Schollwock"""
+        self.left_canonise(chi=chi, threshold=threshold, normalise=normalise)
+        self.right_canonise(chi=chi, threshold=threshold, normalise=normalise)
+
     def physdim(self, site):
         """Return physical index dimesion for site"""
         return self.data[site].index_dimension(self.phys_label)
