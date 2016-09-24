@@ -3,9 +3,51 @@ import numpy as np
 import scipy as sp
 
 class Tensor():
-    def __init__(self, data=None, labels=[]):
-        self.labels=labels
+    """
+    A single tensor containing a numpy array and a list of labels.
+    
+    A tensor, for our purposes, is a multi-index array of complex numbers.
+    Tensors can be contracted with other tensors to form new tensors. A basic
+    contraction requires specification of two indices, either from the same
+    tensor of from a pair of different tensors. It is possible to represent
+    tensors as numpy arrays, and to perform contractions using the
+    `numpy.tensordot` function, however we have found that, when contracting
+    complex tensor networks, keeping track of which axis corresponds to which 
+    index can be troublesome. The `Tensor` class, simplifies tensor 
+    contractions by assigning labels (strings) to axis.
+
+    The `Tensor` class contains a multi-dimensional ndarray (stored in
+    the `data` attribute), and list of labels (stored in the `labels` attribute
+    where each label in `labels` corresponds to an axis of `data`. Labels are
+    assumed to be strings. The order of the labels in `labels` should agree
+    with the order of the axes in `data` such that the first label corresponds
+    to the first axis and so on, and the length of labels should equal the
+    number of axes in `data`. Functions and methods that act on Tensor objects
+    should update `labels` whenever `data` is changed and vice versa, such that
+    a given label always corresponds to the same axis. For instance, if two
+    axes are swapped in `data` the corresponding labels should be swapped in
+    `labels`. The exceptions being when labels are explicitly changed e.g. when
+    using the `replace_label` method. 
+
+    Attributes
+    ----------
+
+    data : ndarray
+        A multi-dimensional array of numbers. 
+    labels : list
+        A list of strings which label the axes of data. `label[i]` is the label
+        for the to the i-1th axis of data.
+    
+    """
+    def __init__(self, data, labels=[], base_label="i"):
         self.data=data
+        
+        if len(labels)==0:
+            self.assign_labels(base_label=base_label)
+        elif len(labels)==len(self.data.shape):
+            self.labels=labels
+        else:
+            raise ValueError("Labels do not match shape of data.")  
 
     def __repr__(self):
         return "Tensor(data=%r, labels=%r)" % (self.data, self.labels)
@@ -15,6 +57,11 @@ class Tensor():
                 "shape = " + str(self.shape) +
                 ", labels = " + str(self.labels))# + "\n" +
                 #"Tensor data = \n" + str(self.data))
+
+    def assign_labels(self, base_label="i"):
+        """Assign labels to all of the indices of `Tensor`. The i-th axis will
+        be assigned the label `base_label`+"i-1"."""
+        self.labels=[base_label+str(i) for i in range(len(self.data.shape))]
 
     def replace_label(self, old_labels, new_labels):
         """

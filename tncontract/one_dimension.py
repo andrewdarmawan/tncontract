@@ -138,15 +138,9 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         a segment of also possible by specifying the `start` and `end` 
         parameters. Truncating singular values can be performed by specifying 
         `chi` and `threshold`. If `normalise`=True and the entire MPS is to be
-        left-canonised, the resulting MPS will represent a normalised state.
-        To prevent diverging norm of the state, after every singular-value
-        decomposition, the matrix of singular values is always divided by the 
-        largest singular value. If `normalise`!=True, the final tensor will be
-        multiplied by all of these factors to restore the original norm of the
-        state. This is also true if the last tensor to be left canonised is not
-        at the end of the chain, only the factors will be absorbed into the
-        tensor immediately after the last canonised tensor. `normalise`=True
-        effectively discards these factors. 
+        left-canonised, the resulting MPS will represent a normalised state. If
+        only a segment of the MPS is to be left canonised, then `normalise`
+        will have no effect (the resulting state will have same norm as input).
 
         Parameters
         ----------
@@ -155,7 +149,7 @@ class MatrixProductState(OneDimensionalTensorNetwork):
             The segment of the MPS to be left canonised. All tensors from 
             `start` to `end`-1 will be left canonised. `end`=-1 implies that
             the MPS will be canonised to the right boundary.
-        chi: int
+        chi : int
             Maximum number of singular values of each tensor to keep after
             performing singular-value decomposition.
         threshold : float
@@ -164,7 +158,10 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         normalise : bool
             False value indicates resulting state will have same norm as
             original. True value indicates that, if the entire MPS is to be
-            left canonised, it will be normalised (have norm=1). 
+            left canonised, it will be divided by a factor such that it is
+            normalised (have norm=1). Has no effect if only a segment of the 
+            MPS is to be left canonised (resulting state will have the same
+            norm as input).
         """
         N=len(self)
         if end==-1:
@@ -177,7 +174,7 @@ class MatrixProductState(OneDimensionalTensorNetwork):
             if i==N-1:
                 #The final SVD has no right index, so S and V are just scalars.
                 #S is the norm of the state. 
-                if normalise==True:
+                if normalise==True and start==0: #Whole chain is canonised
                     self[i].data=self[i].data/np.linalg.norm(self[i].data)
                 else:
                     self[i].data=self[i].data*norm
@@ -187,9 +184,9 @@ class MatrixProductState(OneDimensionalTensorNetwork):
                     self.left_label])
 
             #Truncate to threshold and to specified chi
-            #Normalise S
             singular_values=np.diag(S.data)
             largest_singular_value=singular_values[0]
+            #Normalise S
             singular_values=singular_values/largest_singular_value
             norm*=largest_singular_value
 
@@ -210,13 +207,11 @@ class MatrixProductState(OneDimensionalTensorNetwork):
             self[i+1].replace_label("svd_out", self.left_label)
 
             #Reabsorb normalisation factors into next tensor
-            #If normalise is True, this is not done
             #Note if i==N-1 (end of chain), this will not be reached 
             #and normalisation factors will be taken care of in the earlier 
             #block.
             if i==end-1:
-                if not normalise:
-                    self[i+1].data*=norm
+                self[i+1].data*=norm
 
     def right_canonise(self, start=0, end=-1, chi=0, threshold=10**-14, 
             normalise=False):

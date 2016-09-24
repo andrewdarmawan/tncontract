@@ -3,13 +3,16 @@ import tncontract.one_dimension as od
 
 class SquareLatticeTensorNetwork():
     """Base class for square lattices, e.g. square-lattice PEPS and PEPO.
-    The argument "tensors" is a two-dimensional array (a list of lists or 2D numpy array) of Tensor objects.
+    The argument "tensors" is a two-dimensional array (a list of lists or 2D 
+    numpy array) of Tensor objects.
     Each tensor is expected to have have four indices: up, down, left, right. 
-    The labels corresponding these indices are specified using the required arguments :
-    left_label, right_label, up_label, down_label
-    If the state has open boundaries, the edge indices of tensors on the boundary should have dimension 1. 
-    If not, the tensors will be put in this form."""
-    def __init__(self, tensors, up_label, right_label, down_label, left_label, copy_data=True):
+    The labels corresponding these indices are specified using the required 
+    arguments : left_label, right_label, up_label, down_label
+    If the state has open boundaries, the edge indices of tensors on the 
+    boundary should have dimension 1. If not, the tensors will be put in this 
+    form."""
+    def __init__(self, tensors, up_label, right_label, down_label, left_label, 
+            copy_data=True):
         self.up_label=up_label
         self.right_label=right_label
         self.down_label=down_label
@@ -22,10 +25,12 @@ class SquareLatticeTensorNetwork():
                 copied_tensors.append([x.copy() for x in row])
             self.data=np.array(copied_tensors)
         else:
-            #This will not create copies of tensors in memory (just link to originals)
+            #This will not create copies of tensors in memory 
+            #(just link to originals)
             self.data=np.array(tensors)
 
-        #Every tensor will have four indices corresponding to "left", "right" and "up", "down" labels. 
+        #Every tensor will have four indices corresponding to 
+        #"left", "right" and "up", "down" labels. 
         for i,x in np.ndenumerate(self.data):
             if left_label not in x.labels: x.add_dummy_index(left_label)
             if right_label not in x.labels: x.add_dummy_index(right_label)
@@ -47,8 +52,8 @@ class SquareLatticeTensorNetwork():
         return self.data.shape
 
     def is_left_right_periodic(self):
-        """Check whether state is periodic by checking whether the left indices of the first
-        column have dimension greater than one"""
+        """Check whether state is periodic by checking whether the left 
+        indices of the first column have dimension greater than one"""
         for x in self[:,0]:
             if x.index_dimension(self.left_label)>1:
                 return True
@@ -71,10 +76,12 @@ class SquareLatticeTensorNetwork():
             C.remove_all_dummy_indices()
         return C
 
-    def mps_contract(self, chi, compression_type="svd", normalise=False, until_column=-1):
-        """Approximately contract a square lattice tensor network using MPS evolution and compression.
-        Will contract from left to right.
-        If normalise is set to True, the normalise argument to svd_compress_mps will be set to true."""
+    def mps_contract(self, chi, compression_type="svd", normalise=False, 
+            until_column=-1):
+        """Approximately contract a square lattice tensor network using MPS 
+        evolution and compression. Will contract from left to right.
+        If normalise is set to True, the normalise argument to 
+        svd_compress_mps will be set to true."""
 
         nrows, ncols = self.shape
 
@@ -83,24 +90,29 @@ class SquareLatticeTensorNetwork():
                 mps_to_compress = column_to_mpo(self, 0, to_mps=True)
             else:
                 column_mpo=column_to_mpo(self, col)
-                mps_to_compress = od.contract_mps_mpo(compressed_mps, column_mpo)
+                mps_to_compress = od.contract_mps_mpo(compressed_mps, 
+                        column_mpo)
 
             if compression_type=="svd":
-                compressed_mps = od.svd_compress_mps(mps_to_compress, chi, normalise=normalise)
+                compressed_mps = od.svd_compress_mps(mps_to_compress, chi, 
+                        normalise=normalise)
             elif compression_type=="variational":
-                compressed_mps = od.variational_compress_mps(mps_to_compress, chi, max_iter=10)
+                compressed_mps = od.variational_compress_mps(mps_to_compress, 
+                        chi, max_iter=10)
 
             if col == until_column:
                 return compressed_mps
 
         #For final column, compute contraction exactly
         final_column_mps=column_to_mpo(self, ncols-1, to_mps=True)
-        return od.inner_product_mps(compressed_mps, final_column_mps, return_whole_tensor=True, 
-                complex_conjugate_bra=False)
+        return od.inner_product_mps(compressed_mps, final_column_mps, 
+                return_whole_tensor=True, complex_conjugate_bra=False)
 
 class SquareLatticePEPS(SquareLatticeTensorNetwork):
-    def __init__(self, tensors, up_label, right_label, down_label, left_label, phys_label):
-        SquareLatticeTensorNetwork.__init__(self, tensors, up_label, right_label, down_label, left_label)
+    def __init__(self, tensors, up_label, right_label, down_label, left_label,
+            phys_label):
+        SquareLatticeTensorNetwork.__init__(self, tensors, up_label, 
+                right_label, down_label, left_label)
         self.phys_label=phys_label
 
 def column_to_mpo(square_tn, col, to_mps=False):
