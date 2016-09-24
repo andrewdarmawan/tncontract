@@ -215,13 +215,15 @@ class MatrixProductState(OneDimensionalTensorNetwork):
 
     def right_canonise(self, start=0, end=-1, chi=0, threshold=10**-14, 
             normalise=False):
-        """Perform right canonisation. Start and end specify the interval 
-        which will be left canonised. If start and end aren't specified, the 
-        MPS will be put in left canonical form. end=-1 means until the end of 
-        chain. If partial_normalise=True, then on canonising a small part of 
-        the chain, each S matrix obtained during SVDs will be divided by the 
-        largest eigenvalue of S.
-        """
+        """Perform right canonisation of MPS. Identical to `left_canonise`
+        except that process is mirrored (i.e. canonisation is performed from
+        right to left). `start` and `end` specify the interval to be canonised.
+
+        Notes
+        -----
+        The first tensor to be canonised is `end`-1 and the
+        final tensor to be canonised is `start`""" 
+
         self.reverse()
         N=len(self)
         if end==-1:
