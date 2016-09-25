@@ -326,7 +326,8 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         """Return physical index dimesion for site"""
         return self.data[site].index_dimension(self.phys_label)
 
-    def apply_gate(self, gate, firstsite, gate_outputs=None, gate_inputs=None):
+    def apply_gate(self, gate, firstsite, gate_outputs=None, gate_inputs=None,
+            chi=0, threshold=1e-15):
         """
         Apply Tensor `gate` on sites `firstsite`, `firstsite`+1, ...,
         `firstsite`+`nsites`-1, where `nsites` is the length of gate_inputs.
@@ -352,6 +353,12 @@ class MatrixProductState(OneDimensionalTensorNetwork):
             `firstsite`, the second with `firstsite`+1 etc.
             If `None` the second half of `gate.labels` will be taken as input
             labels.
+        chi : int, optional
+            Maximum number of singular values of each tensor to keep after
+            performing singular-value decomposition.
+        threshold : float
+            Lower bound on the magnitude of singular values to keep. Singular
+            values less than or equal to this value will be truncated.
 
         Notes
         -----
@@ -382,7 +389,8 @@ class MatrixProductState(OneDimensionalTensorNetwork):
 
         # split big tensor into MPS form by exact SVD
         mps = tensor_to_mps(t, mps_phys_label=self.phys_label,
-                left_label=self.left_label, right_label=self.right_label)
+                left_label=self.left_label, right_label=self.right_label,
+                chi=chi, threshold=threshold)
         self.data[firstsite:firstsite+nsites] = mps.data
 
 
@@ -427,7 +435,7 @@ class MatrixProductOperator(OneDimensionalTensorNetwork):
 
 
 def tensor_to_mps(tensor, phys_labels=None, mps_phys_label='phys',
-        left_label='left', right_label='right'):
+        left_label='left', right_label='right', chi=0, threshold=1e-15):
     """
     Split a tensor into MPS form by exact SVD
 
@@ -446,31 +454,37 @@ def tensor_to_mps(tensor, phys_labels=None, mps_phys_label='phys',
         Label for index of `tensor` that will be regarded as the rightmost
         index of the resulting MPS if it exists (must be unique).
         Also used as `right_label` for the resulting MPS.
+    chi : int, optional
+        Maximum number of singular values of each tensor to keep after
+        performing singular-value decomposition.
+    threshold : float
+        Lower bound on the magnitude of singular values to keep. Singular
+        values less than or equal to this value will be truncated.
     """
     if phys_labels is None:
         phys_labels =[x for x in tensor.labels if x not in
                 [left_label, right_label]]
 
     nsites = len(phys_labels)
-    t = tensor.copy()
+    V = tensor.copy()
     mps = []
     for k in range(nsites-1):
-        U, S, V = tsr.tensor_svd(t, [left_label]*(left_label in t.labels)
-                +[phys_labels[k]])
+        U, V, _ = tsr.truncated_svd(V, [left_label]*(left_label in V.labels)
+                +[phys_labels[k]], chi=chi, threshold=threshold)
         U.replace_label('svd_in', right_label)
         U.replace_label(phys_labels[k], mps_phys_label)
         mps.append(U)
-        t = tsr.contract(S, V, ['svd_in'], ['svd_out'])
-        t.replace_label('svd_out', left_label)
-    t.replace_label(phys_labels[nsites-1], mps_phys_label)
-    mps.append(t)
+        #t = tsr.contract(S, V, ['svd_in'], ['svd_out'])
+        V.replace_label('svd_out', left_label)
+    V.replace_label(phys_labels[nsites-1], mps_phys_label)
+    mps.append(V)
     return MatrixProductState(mps, phys_label=mps_phys_label,
             left_label=left_label, right_label=right_label)
 
 
 def tensor_to_mpo(tensor, physout_labels=None, physin_labels=None,
         mpo_physout_label='physout', mpo_physin_label='physin',
-        left_label='left', right_label='right'):
+        left_label='left', right_label='right', chi=0, threshold=1e-15):
     """
     Split a tensor into MPO form by exact SVD
 
@@ -499,6 +513,12 @@ def tensor_to_mpo(tensor, physout_labels=None, physin_labels=None,
         Label for index of `tensor` that will be regarded as the rightmost
         index of the resulting MPO if it exists (must be unique).
         Also used as `right_label` for the resulting MPO.
+    chi : int, optional
+        Maximum number of singular values of each tensor to keep after
+        performing singular-value decomposition.
+    threshold : float
+        Lower bound on the magnitude of singular values to keep. Singular
+        values less than or equal to this value will be truncated.
     """
     # Set physout_labels and physin_labels to default values if not given
     phys_labels =[x for x in tensor.labels if x not in
@@ -515,20 +535,20 @@ def tensor_to_mpo(tensor, physout_labels=None, physin_labels=None,
     if len(physout_labels) != nsites:
         raise ValueError("len(physout_labels) != len(physin_labels)")
 
-    t = tensor.copy()
+    V = tensor.copy()
     mpo = []
     for k in range(nsites-1):
-        U, S, V = tsr.tensor_svd(t, [left_label]*(left_label in t.labels)
-                +[physout_labels[k], physin_labels[k]])
+        U, V, _ = tsr.truncated_svd(V, [left_label]*(left_label in V.labels)
+                +[physout_labels[k], physin_labels[k]],
+                chi=chi, threshold=threshold)
         U.replace_label('svd_in', right_label)
         U.replace_label(physout_labels[k], mpo_physout_label)
         U.replace_label(physin_labels[k], mpo_physin_label)
         mpo.append(U)
-        t = tsr.contract(S, V, ['svd_in'], ['svd_out'])
-        t.replace_label('svd_out', left_label)
-    t.replace_label(physout_labels[nsites-1], mpo_physout_label)
-    t.replace_label(physin_labels[nsites-1], mpo_physin_label)
-    mpo.append(t)
+        V.replace_label('svd_out', left_label)
+    V.replace_label(physout_labels[nsites-1], mpo_physout_label)
+    V.replace_label(physin_labels[nsites-1], mpo_physin_label)
+    mpo.append(V)
     return MatrixProductOperator(mpo, physout_label=mpo_physout_label,
             physin_label=mpo_physin_label, left_label=left_label,
             right_label=right_label)

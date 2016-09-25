@@ -402,22 +402,44 @@ def tensor_svd(tensor, input_labels):
 
     return U, S, V
 
-def truncated_svd(tensor, input_labels, chi, threshold=10**-15, 
+def truncated_svd(tensor, input_labels, chi=0, threshold=10**-15, 
         absorb_singular_values="right"):
-    """Will perform svd of a tensor, as in tensor_svd, and provide approximate
+    """
+    Will perform svd of a tensor, as in tensor_svd, and provide approximate
     decomposition by truncating all but the largest k singular values then 
     absorbing S into U, V or both. Truncation is performedby specifying the 
-    parameter chi (number of singular values to keep)."""
+    parameter chi (number of singular values to keep).
+
+    Parameters
+    ----------
+    chi : int, optional
+        Maximum number of singular values of each tensor to keep after
+        performing singular-value decomposition.
+    threshold : float
+        Relative threshold for the magnitude of singular values to keep.
+        Singular values less than or equal to this value will be truncated.
+    """
 
     U,S,V=tensor_svd(tensor, input_labels)
-    
-    #Slice columns from U, rows from V
-    U.data=U.data[... , 0:chi]
-    V.data=V.data[0:chi,:]
-    V.data=V.data[0:chi,...]
 
-    truncated_evals=np.diag(S.data)[chi:]
-    S.data=S.data[0:chi, 0:chi]
+    singular_values=np.diag(S.data)
+    #Truncate to relative threshold and to specified chi
+    if chi:
+        singular_values_to_keep = singular_values[:chi]
+        truncated_evals = singular_values[chi:]
+    else:
+        singular_values_to_keep = singular_values
+        truncated_evals = singular_values
+    # Absolute threshold
+    absthreshold = threshold*singular_values[0]
+    singular_values_to_keep = singular_values_to_keep[singular_values_to_keep>
+            absthreshold]
+    truncated_evals=truncated_evals[truncated_evals<absthreshold]
+
+    S.data=np.diag(singular_values_to_keep)
+    #Truncate corresponding singular index of U and V
+    U.data=U.data[:,:,0:len(singular_values_to_keep)]
+    V.data=V.data[0:len(singular_values_to_keep)]
 
     #Absorb singular values S into either V or U
     #or take the square root of S and absorb into both (default)
