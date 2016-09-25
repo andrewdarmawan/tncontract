@@ -228,7 +228,7 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         N=len(self)
         if end==-1:
             end=N
-        self.left_canonise(start=N-end, end=N-start, chi=0,
+        self.left_canonise(start=N-end, end=N-start, chi=chi,
                 threshold=threshold, normalise=normalise)
         self.reverse()
 
