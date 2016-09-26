@@ -43,15 +43,25 @@ class OneDimensionalTensorNetwork():
         self.left_label=self.right_label
         self.right_label=temp
 
-    def swap_gate(self, i):
+    def swap_gate(self, i, chi=0, threshold=1e-15):
         """
         Apply a swap gate swapping all "physical" (i.e., non-"left" and
         non-"right") indices for site i and i+1 of a
         OneDimensionalTensorNetwork.
 
+        Parameters
+        ----------
+        i : int
+        chi : int, optional
+            Maximum number of singular values of each tensor to keep after
+            performing singular-value decomposition.
+        threshold : float
+            Lower bound on the magnitude of singular values to keep. Singular
+            values less than or equal to this value will be truncated.
+
         Notes
         -----
-        The swap is implemented as described
+        The swap is implemented by SVD as described
         in Y.-Y. Shi et al, Phys. Rev. A 74, 022320 (2006).
         """
         A = self[i]
@@ -62,13 +72,13 @@ class OneDimensionalTensorNetwork():
                 l!=self.right_label]
         A.prime_label(A_phys_labels)
         t = tsr.contract(A, B, self.right_label, self.left_label)
-        U, S, V = tsr.tensor_svd(t, [self.left_label] + B_phys_labels)
-        U.replace_label('svd_in', 'right')
+        U, V, _ = tsr.truncated_svd(t, [self.left_label] + B_phys_labels,
+                chi=chi, threshold=threshold)
+        U.replace_label('svd_in', self.right_label)
         self[i] = U
         V.unprime_label(A_phys_labels)
-        SV = tsr.contract(S, V, ['svd_in'], ['svd_out'])
-        SV.replace_label('svd_out', 'left')
-        self[i+1] = SV
+        V.replace_label('svd_out', self.left_label)
+        self[i+1] = V
 
     def leftdim(self, site):
         """Return left index dimesion for site"""
