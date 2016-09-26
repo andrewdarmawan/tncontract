@@ -270,6 +270,18 @@ class Tensor():
     def shape(self):
         return self.data.shape
 
+#Tensor constructors
+def random_tensor(*args, labels=[], base_label="i"):
+    """Construct a random tensor of a given shape. Entries are generated using
+    `numpy.random.rand`."""
+    return Tensor(np.random.rand(*args), labels=labels, base_label=base_label)
+
+def zeros_tensor(*args, labels=[], dtype=np.float, base_label="i"):
+    """Construct a tensor of a given shape with every entry equal to zero."""
+    arg_tuple=tuple([x for x in iter(*args)])
+    return Tensor(np.zeros(*args, dtype=dtype), labels=labels,
+            base_label=base_label)
+
 def contract(tensor1, tensor2, label_list1, label_list2, index_list1=None, 
         index_list2=None):
     """Contract two different tensors according to the specified labels"""
