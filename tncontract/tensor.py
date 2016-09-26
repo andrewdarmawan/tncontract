@@ -36,7 +36,7 @@ class Tensor():
         A multi-dimensional array of numbers. 
     labels : list
         A list of strings which label the axes of data. `label[i]` is the label
-        for the to the i-1th axis of data.
+        for the `i`-1th axis of data.
     
     """
     def __init__(self, data, labels=[], base_label="i"):
