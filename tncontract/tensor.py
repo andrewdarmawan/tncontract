@@ -58,6 +58,18 @@ class Tensor():
                 ", labels = " + str(self.labels))# + "\n" +
                 #"Tensor data = \n" + str(self.data))
 
+    #Define functions for getting and setting labels
+    def get_labels(self):
+        return self._labels
+
+    def set_labels(self, labels):
+        if len(labels)==len(self.data.shape):
+            self._labels=list(labels)
+        else:
+            raise ValueError("Labels do not match shape of data.")
+
+    labels=property(get_labels, set_labels)
+
     def assign_labels(self, base_label="i"):
         """Assign labels to all of the indices of `Tensor`. The i-th axis will
         be assigned the label `base_label`+"i-1"."""
@@ -176,9 +188,10 @@ class Tensor():
 
             #Update self.labels
             #Remove all instances of label from self.labels
-            self.labels=[x for x in self.labels if x != label]
+            new_labels=[x for x in self.labels if x != label]
             #Reinsert label at position p
-            self.labels.insert(p, label)
+            new_labels.insert(p,label)
+            self.labels=new_labels
     def sort_labels(self):
         self.consolidate_indices()
 
@@ -247,12 +260,12 @@ class Tensor():
             if labels!= None:
                 if x in labels and orig_shape[i]==1:
                     self.move_index(x, 0)
-                    self.labels=self.labels[1:]
                     self.data=self.data[0]
+                    self.labels=self.labels[1:]
             elif orig_shape[i]==1:
                 self.move_index(x, 0)
-                self.labels=self.labels[1:]
                 self.data=self.data[0]
+                self.labels=self.labels[1:]
 
     def index_dimension(self, label):
         """Will return the dimension of the first index with label=label"""
