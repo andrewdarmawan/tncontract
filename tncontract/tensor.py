@@ -278,7 +278,6 @@ def random_tensor(*args, labels=[], base_label="i"):
 
 def zeros_tensor(*args, labels=[], dtype=np.float, base_label="i"):
     """Construct a tensor of a given shape with every entry equal to zero."""
-    arg_tuple=tuple([x for x in iter(*args)])
     return Tensor(np.zeros(*args, dtype=dtype), labels=labels,
             base_label=base_label)
 
