@@ -5,7 +5,7 @@ A simple tensor-network library. Here's a basic example to get started.
 #Define a 2x2 tensor corresponding to the identity matrix. Assign labels "spam"
 #and "eggs" to, respectively, the first and second indices of the tensor
 
->>>A = Tensor([[1, 0], [0, 1]], labels=["spam", "eggs"])
+>>> A = Tensor([[1, 0], [0, 1]], labels=["spam", "eggs"])
 >>> print(A)
 Tensor object: shape = (2, 2), labels = ['spam', 'eggs']
 
