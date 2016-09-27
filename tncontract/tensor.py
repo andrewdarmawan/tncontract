@@ -40,7 +40,7 @@ class Tensor():
     
     """
     def __init__(self, data, labels=[], base_label="i"):
-        self.data=data
+        self.data=np.array(data)
         
         if len(labels)==0:
             self.assign_labels(base_label=base_label)
