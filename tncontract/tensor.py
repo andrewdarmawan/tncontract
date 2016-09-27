@@ -1,6 +1,7 @@
 import warnings
 import numpy as np
 import scipy as sp
+import uuid
 
 class Tensor():
     """
@@ -77,7 +78,7 @@ class Tensor():
         """
         Takes two lists old_labels, new_labels as arguments. If a label in 
         self.labels is in old_labels, it is replaced with the respective label 
-        in new_labels.
+        In new_labels.
         """
 
         #If either argument is not a list, convert to list with single entry
@@ -280,6 +281,10 @@ class Tensor():
     @property
     def shape(self):
         return self.data.shape
+
+def unique_label():
+    """Generate a long, random string that is very likely to be unique."""
+    return str(uuid.uuid4()
 
 #Tensor constructors
 def random_tensor(*args, labels=[], base_label="i"):
