@@ -385,20 +385,33 @@ def matrix_to_tensor(matrix, output_dims, input_dims, output_labels,
     return Tensor(np.reshape(matrix, tuple(output_dims)+tuple(input_dims)), 
             output_labels+input_labels)
 
-def tensor_svd(tensor, input_labels):
-    """Compute the singular value decomposition of the matrix obtained from the
-    tensor by regarding input_labels as input and the remaining indices as the 
-    output"""
+def tensor_svd(tensor, row_labels):
+    """
+    Compute the singular value decomposition of `tensor` by rehaping it into a
+    matrix.
+
+    Indices with labels in `row_labels` are fused to form a single index 
+    corresponding to the rows of the matrix (typically the left index of a
+    matrix). The remaining indices are fused to form the column indices. An SVD
+    is performed on this matrix, yeilding three matrices U, S, V, where U and
+    V are unitary and S is diagonaal with positive entries. These three
+    matrices are then reshaped into tensors as described below. 
+
+    Returns
+    -------
+    U : Tensor
+    Tensor resulting from 
+    """
     t=tensor.copy()
 
-    #Move labels in input_labels to the beginning of list, and reshape data 
+    #Move labels in row_labels to the beginning of list, and reshape data 
     #accordingly
     total_input_dimension=1
-    for i,label in enumerate(input_labels):
+    for i,label in enumerate(row_labels):
         t.move_index(label, i)
         total_input_dimension*=t.data.shape[i]
 
-    output_labels=[x for x in t.labels if x not in input_labels]
+    column_labels=[x for x in t.labels if x not in row_labels]
 
     old_shape=t.data.shape
     total_output_dimension=int(np.product(t.data.shape)/total_input_dimension)
@@ -415,21 +428,21 @@ def tensor_svd(tensor, input_labels):
                 lapack_driver='gesvd')
 
     #Define tensors according to svd 
-    n_input_indices=len(input_labels)
+    n_input_indices=len(row_labels)
 
     #New shape original index labels as well as svd index
     U_shape=list(old_shape[0:n_input_indices])
     U_shape.append(u.shape[1])
-    U=Tensor(data=np.reshape(u, U_shape), labels=input_labels+["svd_in"])
+    U=Tensor(data=np.reshape(u, U_shape), labels=row_labels+["svd_in"])
     V_shape=list(old_shape)[n_input_indices:]
     V_shape.insert(0,v.shape[0])
-    V=Tensor(data=np.reshape(v, V_shape), labels=["svd_out"]+output_labels)
+    V=Tensor(data=np.reshape(v, V_shape), labels=["svd_out"]+column_labels)
 
     S=Tensor(data=np.diag(s), labels=["svd_out", "svd_in"])
 
     return U, S, V
 
-def truncated_svd(tensor, input_labels, chi=0, threshold=10**-15, 
+def truncated_svd(tensor, row_labels, chi=0, threshold=10**-15, 
         absorb_singular_values="right"):
     """
     Will perform svd of a tensor, as in tensor_svd, and provide approximate
@@ -447,7 +460,7 @@ def truncated_svd(tensor, input_labels, chi=0, threshold=10**-15,
         Singular values less than or equal to this value will be truncated.
     """
 
-    U,S,V=tensor_svd(tensor, input_labels)
+    U,S,V=tensor_svd(tensor, row_labels)
 
     singular_values=np.diag(S.data)
     #Truncate to relative threshold and to specified chi
