@@ -5,13 +5,13 @@ A simple tensor-network library. Here's a basic example to get started.
 #Define a 2x2 tensor corresponding to the identity matrix. Assign labels "spam"
 #and "eggs" to, respectively, the first and second indices of the tensor
 
->>> A = Tensor([[1, 0], [0, 1]], labels=["spam", "eggs"])
+>>> A = Tensor([[1, 0], [0, 1]], labels = ["spam", "eggs"])
 >>> print(A)
 Tensor object: shape = (2, 2), labels = ['spam', 'eggs']
 
 #Define a 2x3x2x4 tensor with random entries without specifying labels. 
 #As labels are not specified, they will be assigned automatically using the
-convention "i0", "i1", "i2", ...
+#convention "i0", "i1", "i2", ...
 
 >>> B = random_tensor(2, 3, 2, 4)
 >>> print(B)
