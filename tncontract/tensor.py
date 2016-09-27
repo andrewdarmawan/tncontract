@@ -44,10 +44,8 @@ class Tensor():
         
         if len(labels)==0:
             self.assign_labels(base_label=base_label)
-        elif len(labels)==len(self.data.shape):
-            self.labels=labels
         else:
-            raise ValueError("Labels do not match shape of data.")  
+            self.labels=labels
 
     def __repr__(self):
         return "Tensor(data=%r, labels=%r)" % (self.data, self.labels)
