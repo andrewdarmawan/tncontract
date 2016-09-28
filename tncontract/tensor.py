@@ -385,22 +385,36 @@ def matrix_to_tensor(matrix, output_dims, input_dims, output_labels,
     return Tensor(np.reshape(matrix, tuple(output_dims)+tuple(input_dims)), 
             output_labels+input_labels)
 
-def tensor_svd(tensor, row_labels):
+def tensor_svd(tensor, row_labels, svd_label="svd"):
     """
-    Compute the singular value decomposition of `tensor` by rehaping it into a
-    matrix.
+    Compute the singular value decomposition of `tensor` after reshaping it 
+    into a matrix.
 
     Indices with labels in `row_labels` are fused to form a single index 
     corresponding to the rows of the matrix (typically the left index of a
     matrix). The remaining indices are fused to form the column indices. An SVD
-    is performed on this matrix, yeilding three matrices U, S, V, where U and
-    V are unitary and S is diagonaal with positive entries. These three
-    matrices are then reshaped into tensors as described below. 
+    is performed on this matrix, yielding three matrices u, s, v, where u and
+    v are unitary and s is diagonal with positive entries. These three
+    matrices are then reshaped into tensors U, S, and V as described below.
 
     Returns
     -------
     U : Tensor
-    Tensor resulting from 
+        Tensor obtained by reshaping the matrix u obtained by SVD as described 
+        above. Has indices labelled by `row_labels` corresponding to the
+        indices labelled `row_labels` of `tensor` and has one index labelled 
+        `svd_label`+"in" which connects to S.
+    V : Tensor
+        Tensor obtained by reshaping the matrix v obtained by SVD as described 
+        above. Indices correspond to the indices of `tensor` that aren't in 
+        `row_labels`. Has one index labelled  `svd_label`+"out" which connects
+        to S.
+    S : Tensor
+        Tensor with data consisting of a diagonal matrix of singular values.
+        Has two indices labelled `svd_label`+"out" and `svd_label`+"in" which
+        are contracted with with the `svd_label`+"in" label of U and the
+        `svd_label`+"out" of V respectively.
+
     """
     t=tensor.copy()
 
@@ -433,12 +447,12 @@ def tensor_svd(tensor, row_labels):
     #New shape original index labels as well as svd index
     U_shape=list(old_shape[0:n_input_indices])
     U_shape.append(u.shape[1])
-    U=Tensor(data=np.reshape(u, U_shape), labels=row_labels+["svd_in"])
+    U=Tensor(data=np.reshape(u, U_shape), labels=row_labels+[svd_label+"in"])
     V_shape=list(old_shape)[n_input_indices:]
     V_shape.insert(0,v.shape[0])
-    V=Tensor(data=np.reshape(v, V_shape), labels=["svd_out"]+column_labels)
+    V=Tensor(data=np.reshape(v, V_shape), labels=[svd_label+"out"]+column_labels)
 
-    S=Tensor(data=np.diag(s), labels=["svd_out", "svd_in"])
+    S=Tensor(data=np.diag(s), labels=[svd_label+"out", svd_label+"in"])
 
     return U, S, V
 
