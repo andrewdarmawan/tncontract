@@ -10,16 +10,11 @@ class Tensor():
     A tensor, for our purposes, is a multi-index array of complex numbers.
     Tensors can be contracted with other tensors to form new tensors. A basic
     contraction requires specification of two indices, either from the same
-    tensor of from a pair of different tensors. It is possible to represent
-    tensors as numpy arrays, and to perform contractions using the
-    `numpy.tensordot` function, however we have found that, when contracting
-    complex tensor networks, keeping track of which axis corresponds to which 
-    index can be troublesome. The `Tensor` class, simplifies tensor 
-    contractions by assigning labels (strings) to axis.
+    tensor of from a pair of different tensors. 
 
-    The `Tensor` class contains a multi-dimensional ndarray (stored in
-    the `data` attribute), and list of labels (stored in the `labels` attribute
-    where each label in `labels` corresponds to an axis of `data`. Labels are
+    The `Tensor` class contains a multi-dimensional ndarray (stored in the
+    `data` attribute), and list of labels (stored in the `labels` attribute)
+    where each label in `labels` corresponds to an axis of `data`.  Labels are
     assumed to be strings. The order of the labels in `labels` should agree
     with the order of the axes in `data` such that the first label corresponds
     to the first axis and so on, and the length of labels should equal the
@@ -284,7 +279,7 @@ class Tensor():
 
 def unique_label():
     """Generate a long, random string that is very likely to be unique."""
-    return str(uuid.uuid4()
+    return str(uuid.uuid4())
 
 #Tensor constructors
 def random_tensor(*args, labels=[], base_label="i"):
