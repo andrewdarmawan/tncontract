@@ -354,6 +354,28 @@ def tensor_product(tensor1, tensor2):
     """Take tensor product of two tensors without contracting any indices"""
     return contract(tensor1, tensor2, [], [])
 
+def distance(tensor1, tensor2):
+    """
+    Will compute the Frobenius distance between two tensors, specifically the
+    distance between the flattened data arrays in the 2 norm. 
+
+    Notes
+    -----
+    The `consolidate_indices` method will be run first on copies of the tensors 
+    to put the data in the same shape. `tensor1` and `tensor2` should have the
+    same labels, and same shape after applying `consolidate_indices`, otherwise
+    an error will be raised.
+    """
+    t1 = tensor1.copy()
+    t2 = tensor2.copy()
+    t1.consolidate_indices()
+    t2.consolidate_indices()
+    
+    if t1.labels == t2.labels:
+        return np.linalg.norm(t1.data - t2.data)
+    else:
+        raise ValueError("Input tensors have different labels.")
+
 def tensor_to_matrix(tensor, output_labels):
     """
     Convert a tensor to a matrix regarding output_labels as output (row index)
@@ -391,6 +413,25 @@ def tensor_svd(tensor, row_labels, svd_label="svd"):
     is performed on this matrix, yielding three matrices u, s, v, where u and
     v are unitary and s is diagonal with positive entries. These three
     matrices are then reshaped into tensors U, S, and V as described below.
+
+    Examples
+    --------
+    >>> a=random_tensor(2,3,4, labels = ["i0", "i1", "i2"])
+    >>> U,S,V = tensor_svd(a, ["i0", "i2"])
+    >>> print(U)
+    Tensor object: shape = (2, 4, 3), labels = ['i0', 'i2', 'svdin']
+    >>> print(V)
+    Tensor object: shape = (3, 3), labels = ['svdout', 'i1']
+    >>> print(S)
+    Tensor object: shape = (3, 3), labels = ['svdout', 'svdin']
+    
+    Recombining the three tensors obtained from SVD, yeilds a tensor very close
+    to the original.
+
+    >>> temp=tn.contract(S, V, "svdin", "svdout")
+    >>> b=tn.contract(U, temp, "svdin", "svdout")
+    >>> tn.distance(a,b)
+    1.922161284937472e-15
 
     Returns
     -------
