@@ -56,6 +56,16 @@ class Tensor():
                 ", labels = " + str(self.labels))# + "\n" +
                 #"Tensor data = \n" + str(self.data))
 
+    def __eq__(self, other):
+        if isinstance(other, Tensor):
+            return (np.array_equal(self.data, other.data) 
+                    and self.labels == other.labels)
+        else:
+            return False
+
+    def __neq__(self, other):
+        return not self.__eq__(other)
+
     #Define functions for getting and setting labels
     def get_labels(self):
         return self._labels
