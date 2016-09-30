@@ -641,30 +641,28 @@ def contract_virtual_indices(array_1d, start=0, end=None,
 
 def left_canonical_form_mps(orig_mps, chi=0, threshold=10**-14, 
         normalise=False):
-    """Computes left canonical form of an MPS using algorithm in 
-    Schollwock 2011, 
-    by taking successive SVDs.
-    Compression is usually not done at this stage, but it can by specifying 
-    the optional chi argument.
-    Setting chi=0 means no compression."""
-    """Possible to speed up using a QR rather than SVD decomposition"""
+    """
+    Computes left canonical form of an MPS
+
+    See also
+    --------
+    Tensor.left_canonise()
+    """
     mps=orig_mps.copy()
     mps.left_canonise(chi=chi, threshold=threshold, normalise=normalise)
+    return mps
+
+def right_canonical_form_mps(orig_mps, chi=0, threshold=10**-14, 
+        normalise=False):
+    """Computes left canonical form of an MPS"""
+
+    mps=orig_mps.copy()
+    mps.right_canonise(chi=chi, threshold=threshold, normalise=normalise)
     return mps
 
 def reverse_mps(mps):
     return MatrixProductState([x.copy() for x in reversed(mps)], 
             mps.right_label, mps.left_label, mps.phys_label)
-
-def right_canonical_form_mps(orig_mps, chi=0, threshold=10**-14, 
-        normalise=False):
-    """Identical to left canonical form but starting from right"""
-    #TODO replace with call to right canonise method
-    #mps=[x.copy() for x in orig_mps] #Dont want to modify the original mps
-    mps=reverse_mps(orig_mps)
-    mps=left_canonical_form_mps(mps, chi=chi, threshold=threshold, 
-            normalise=normalise)
-    return reverse_mps(mps)
 
 def check_canonical_form_mps(mps, threshold=10**-14, print_output=True):
     mps.check_canonical_form(threshold=threshold,
