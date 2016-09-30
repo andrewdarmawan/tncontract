@@ -1,6 +1,7 @@
 import warnings
 import numpy as np
 import scipy as sp
+import uuid
 
 class Tensor():
     """
@@ -9,16 +10,11 @@ class Tensor():
     A tensor, for our purposes, is a multi-index array of complex numbers.
     Tensors can be contracted with other tensors to form new tensors. A basic
     contraction requires specification of two indices, either from the same
-    tensor of from a pair of different tensors. It is possible to represent
-    tensors as numpy arrays, and to perform contractions using the
-    `numpy.tensordot` function, however we have found that, when contracting
-    complex tensor networks, keeping track of which axis corresponds to which 
-    index can be troublesome. The `Tensor` class, simplifies tensor 
-    contractions by assigning labels (strings) to axis.
+    tensor of from a pair of different tensors. 
 
-    The `Tensor` class contains a multi-dimensional ndarray (stored in
-    the `data` attribute), and list of labels (stored in the `labels` attribute
-    where each label in `labels` corresponds to an axis of `data`. Labels are
+    The `Tensor` class contains a multi-dimensional ndarray (stored in the
+    `data` attribute), and list of labels (stored in the `labels` attribute)
+    where each label in `labels` corresponds to an axis of `data`.  Labels are
     assumed to be strings. The order of the labels in `labels` should agree
     with the order of the axes in `data` such that the first label corresponds
     to the first axis and so on, and the length of labels should equal the
@@ -36,18 +32,16 @@ class Tensor():
         A multi-dimensional array of numbers. 
     labels : list
         A list of strings which label the axes of data. `label[i]` is the label
-        for the to the i-1th axis of data.
+        for the `i`-1th axis of data.
     
     """
     def __init__(self, data, labels=[], base_label="i"):
-        self.data=data
+        self.data=np.array(data)
         
         if len(labels)==0:
             self.assign_labels(base_label=base_label)
-        elif len(labels)==len(self.data.shape):
-            self.labels=labels
         else:
-            raise ValueError("Labels do not match shape of data.")  
+            self.labels=labels
 
     def __repr__(self):
         return "Tensor(data=%r, labels=%r)" % (self.data, self.labels)
@@ -58,6 +52,18 @@ class Tensor():
                 ", labels = " + str(self.labels))# + "\n" +
                 #"Tensor data = \n" + str(self.data))
 
+    #Define functions for getting and setting labels
+    def get_labels(self):
+        return self._labels
+
+    def set_labels(self, labels):
+        if len(labels)==len(self.data.shape):
+            self._labels=list(labels)
+        else:
+            raise ValueError("Labels do not match shape of data.")
+
+    labels=property(get_labels, set_labels)
+
     def assign_labels(self, base_label="i"):
         """Assign labels to all of the indices of `Tensor`. The i-th axis will
         be assigned the label `base_label`+"i-1"."""
@@ -67,7 +73,7 @@ class Tensor():
         """
         Takes two lists old_labels, new_labels as arguments. If a label in 
         self.labels is in old_labels, it is replaced with the respective label 
-        in new_labels.
+        In new_labels.
         """
 
         #If either argument is not a list, convert to list with single entry
@@ -176,9 +182,10 @@ class Tensor():
 
             #Update self.labels
             #Remove all instances of label from self.labels
-            self.labels=[x for x in self.labels if x != label]
+            new_labels=[x for x in self.labels if x != label]
             #Reinsert label at position p
-            self.labels.insert(p, label)
+            new_labels.insert(p,label)
+            self.labels=new_labels
     def sort_labels(self):
         self.consolidate_indices()
 
@@ -247,12 +254,12 @@ class Tensor():
             if labels!= None:
                 if x in labels and orig_shape[i]==1:
                     self.move_index(x, 0)
-                    self.labels=self.labels[1:]
                     self.data=self.data[0]
+                    self.labels=self.labels[1:]
             elif orig_shape[i]==1:
                 self.move_index(x, 0)
-                self.labels=self.labels[1:]
                 self.data=self.data[0]
+                self.labels=self.labels[1:]
 
     def index_dimension(self, label):
         """Will return the dimension of the first index with label=label"""
@@ -269,6 +276,21 @@ class Tensor():
     @property
     def shape(self):
         return self.data.shape
+
+def unique_label():
+    """Generate a long, random string that is very likely to be unique."""
+    return str(uuid.uuid4())
+
+#Tensor constructors
+def random_tensor(*args, labels=[], base_label="i"):
+    """Construct a random tensor of a given shape. Entries are generated using
+    `numpy.random.rand`."""
+    return Tensor(np.random.rand(*args), labels=labels, base_label=base_label)
+
+def zeros_tensor(*args, labels=[], dtype=np.float, base_label="i"):
+    """Construct a tensor of a given shape with every entry equal to zero."""
+    return Tensor(np.zeros(*args, dtype=dtype), labels=labels,
+            base_label=base_label)
 
 def contract(tensor1, tensor2, label_list1, label_list2, index_list1=None, 
         index_list2=None):
@@ -332,6 +354,28 @@ def tensor_product(tensor1, tensor2):
     """Take tensor product of two tensors without contracting any indices"""
     return contract(tensor1, tensor2, [], [])
 
+def distance(tensor1, tensor2):
+    """
+    Will compute the Frobenius distance between two tensors, specifically the
+    distance between the flattened data arrays in the 2 norm. 
+
+    Notes
+    -----
+    The `consolidate_indices` method will be run first on copies of the tensors 
+    to put the data in the same shape. `tensor1` and `tensor2` should have the
+    same labels, and same shape after applying `consolidate_indices`, otherwise
+    an error will be raised.
+    """
+    t1 = tensor1.copy()
+    t2 = tensor2.copy()
+    t1.consolidate_indices()
+    t2.consolidate_indices()
+    
+    if t1.labels == t2.labels:
+        return np.linalg.norm(t1.data - t2.data)
+    else:
+        raise ValueError("Input tensors have different labels.")
+
 def tensor_to_matrix(tensor, output_labels):
     """
     Convert a tensor to a matrix regarding output_labels as output (row index)
@@ -358,20 +402,66 @@ def matrix_to_tensor(matrix, output_dims, input_dims, output_labels,
     return Tensor(np.reshape(matrix, tuple(output_dims)+tuple(input_dims)), 
             output_labels+input_labels)
 
-def tensor_svd(tensor, input_labels):
-    """Compute the singular value decomposition of the matrix obtained from the
-    tensor by regarding input_labels as input and the remaining indices as the 
-    output"""
+def tensor_svd(tensor, row_labels, svd_label="svd"):
+    """
+    Compute the singular value decomposition of `tensor` after reshaping it 
+    into a matrix.
+
+    Indices with labels in `row_labels` are fused to form a single index 
+    corresponding to the rows of the matrix (typically the left index of a
+    matrix). The remaining indices are fused to form the column indices. An SVD
+    is performed on this matrix, yielding three matrices u, s, v, where u and
+    v are unitary and s is diagonal with positive entries. These three
+    matrices are then reshaped into tensors U, S, and V as described below.
+
+    Examples
+    --------
+    >>> a=random_tensor(2,3,4, labels = ["i0", "i1", "i2"])
+    >>> U,S,V = tensor_svd(a, ["i0", "i2"])
+    >>> print(U)
+    Tensor object: shape = (2, 4, 3), labels = ['i0', 'i2', 'svdin']
+    >>> print(V)
+    Tensor object: shape = (3, 3), labels = ['svdout', 'i1']
+    >>> print(S)
+    Tensor object: shape = (3, 3), labels = ['svdout', 'svdin']
+    
+    Recombining the three tensors obtained from SVD, yeilds a tensor very close
+    to the original.
+
+    >>> temp=tn.contract(S, V, "svdin", "svdout")
+    >>> b=tn.contract(U, temp, "svdin", "svdout")
+    >>> tn.distance(a,b)
+    1.922161284937472e-15
+
+    Returns
+    -------
+    U : Tensor
+        Tensor obtained by reshaping the matrix u obtained by SVD as described 
+        above. Has indices labelled by `row_labels` corresponding to the
+        indices labelled `row_labels` of `tensor` and has one index labelled 
+        `svd_label`+"in" which connects to S.
+    V : Tensor
+        Tensor obtained by reshaping the matrix v obtained by SVD as described 
+        above. Indices correspond to the indices of `tensor` that aren't in 
+        `row_labels`. Has one index labelled  `svd_label`+"out" which connects
+        to S.
+    S : Tensor
+        Tensor with data consisting of a diagonal matrix of singular values.
+        Has two indices labelled `svd_label`+"out" and `svd_label`+"in" which
+        are contracted with with the `svd_label`+"in" label of U and the
+        `svd_label`+"out" of V respectively.
+
+    """
     t=tensor.copy()
 
-    #Move labels in input_labels to the beginning of list, and reshape data 
+    #Move labels in row_labels to the beginning of list, and reshape data 
     #accordingly
     total_input_dimension=1
-    for i,label in enumerate(input_labels):
+    for i,label in enumerate(row_labels):
         t.move_index(label, i)
         total_input_dimension*=t.data.shape[i]
 
-    output_labels=[x for x in t.labels if x not in input_labels]
+    column_labels=[x for x in t.labels if x not in row_labels]
 
     old_shape=t.data.shape
     total_output_dimension=int(np.product(t.data.shape)/total_input_dimension)
@@ -388,21 +478,21 @@ def tensor_svd(tensor, input_labels):
                 lapack_driver='gesvd')
 
     #Define tensors according to svd 
-    n_input_indices=len(input_labels)
+    n_input_indices=len(row_labels)
 
     #New shape original index labels as well as svd index
     U_shape=list(old_shape[0:n_input_indices])
     U_shape.append(u.shape[1])
-    U=Tensor(data=np.reshape(u, U_shape), labels=input_labels+["svd_in"])
+    U=Tensor(data=np.reshape(u, U_shape), labels=row_labels+[svd_label+"in"])
     V_shape=list(old_shape)[n_input_indices:]
     V_shape.insert(0,v.shape[0])
-    V=Tensor(data=np.reshape(v, V_shape), labels=["svd_out"]+output_labels)
+    V=Tensor(data=np.reshape(v, V_shape), labels=[svd_label+"out"]+column_labels)
 
-    S=Tensor(data=np.diag(s), labels=["svd_out", "svd_in"])
+    S=Tensor(data=np.diag(s), labels=[svd_label+"out", svd_label+"in"])
 
     return U, S, V
 
-def truncated_svd(tensor, input_labels, chi=0, threshold=10**-15, 
+def truncated_svd(tensor, row_labels, chi=0, threshold=10**-15, 
         absorb_singular_values="right"):
     """
     Will perform svd of a tensor, as in tensor_svd, and provide approximate
@@ -420,7 +510,7 @@ def truncated_svd(tensor, input_labels, chi=0, threshold=10**-15,
         Singular values less than or equal to this value will be truncated.
     """
 
-    U,S,V=tensor_svd(tensor, input_labels)
+    U,S,V=tensor_svd(tensor, row_labels)
 
     singular_values=np.diag(S.data)
     #Truncate to relative threshold and to specified chi
