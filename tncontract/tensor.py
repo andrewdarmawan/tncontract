@@ -402,7 +402,7 @@ def matrix_to_tensor(matrix, output_dims, input_dims, output_labels,
     return Tensor(np.reshape(matrix, tuple(output_dims)+tuple(input_dims)), 
             output_labels+input_labels)
 
-def tensor_svd(tensor, row_labels, svd_label="svd"):
+def tensor_svd(tensor, row_labels, svd_label="svd_"):
     """
     Compute the singular value decomposition of `tensor` after reshaping it 
     into a matrix.
