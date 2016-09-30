@@ -1,5 +1,5 @@
 """
-mps_functions
+onedim_utils
 ==========
 
 Module with various functions for MPS/MPO manipulations.
