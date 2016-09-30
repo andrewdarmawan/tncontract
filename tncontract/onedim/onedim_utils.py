@@ -1,8 +1,8 @@
 """
-onedim_core
+onedim_utils
 ==========
 
-Module with various functions for MPS/MPO manipulations.
+Module with various functions for MPS/MPOs.
 """
 
 import numpy as np
@@ -11,125 +11,6 @@ import numpy as np
 from tncontract import tensor as tsr
 from tncontract import onedim as od
 
-
-def tensor_to_mps(tensor, phys_labels=None, mps_phys_label='phys',
-        left_label='left', right_label='right', chi=0, threshold=1e-15):
-    """
-    Split a tensor into MPS form by exact SVD
-
-    Parameters
-    ----------
-    tensor : Tensor
-    phys_labels list of str, optional
-        Can be used to specify the order of the physical indices for the MPS.
-    mps_phys_label : str
-        Physical labels of the resulting MPS will be renamed to this value.
-    left_label : str
-        Label for index of `tensor` that will be regarded as the leftmost index
-        of the resulting MPS if it exists (must be unique).
-        Also used as `left_label` for the resulting MPS.
-    right_label : str
-        Label for index of `tensor` that will be regarded as the rightmost
-        index of the resulting MPS if it exists (must be unique).
-        Also used as `right_label` for the resulting MPS.
-    chi : int, optional
-        Maximum number of singular values of each tensor to keep after
-        performing singular-value decomposition.
-    threshold : float
-        Lower bound on the magnitude of singular values to keep. Singular
-        values less than or equal to this value will be truncated.
-    """
-    if phys_labels is None:
-        phys_labels =[x for x in tensor.labels if x not in
-                [left_label, right_label]]
-
-    nsites = len(phys_labels)
-    V = tensor.copy()
-    mps = []
-    for k in range(nsites-1):
-        U, V, _ = tsr.truncated_svd(V, [left_label]*(left_label in V.labels)
-                +[phys_labels[k]], chi=chi, threshold=threshold)
-        U.replace_label('svd_in', right_label)
-        U.replace_label(phys_labels[k], mps_phys_label)
-        mps.append(U)
-        #t = tsr.contract(S, V, ['svd_in'], ['svd_out'])
-        V.replace_label('svd_out', left_label)
-    V.replace_label(phys_labels[nsites-1], mps_phys_label)
-    mps.append(V)
-    return od.MatrixProductState(mps, phys_label=mps_phys_label,
-            left_label=left_label, right_label=right_label)
-
-
-def tensor_to_mpo(tensor, physout_labels=None, physin_labels=None,
-        mpo_physout_label='physout', mpo_physin_label='physin',
-        left_label='left', right_label='right', chi=0, threshold=1e-15):
-    """
-    Split a tensor into MPO form by exact SVD
-
-    Parameters
-    ----------
-    tensor : Tensor
-    physout_labels : list of str, optional
-        The output physical indices for the MPO. First site of MPO has output
-        index corresponding to physout_labels[0] etc.
-        If `None` the first half of `tensor.labels` will be taken as output
-        labels.
-    physin_labels : list of str, optional
-        The input physical indices for the MPO. First site of MPO has input
-        index corresponding to physin_labels[0] etc.
-        If `None` the second half of `tensor.labels` will be taken as input
-        labels.
-    mpo_phys_label : str
-        Physical input labels of the resulting MPO will be renamed to this.
-    mpo_phys_label : str
-        Physical output labels of the resulting MPO will be renamed to this.
-    left_label : str
-        Label for index of `tensor` that will be regarded as the leftmost index
-        of the resulting MPO if it exists (must be unique).
-        Also used as `left_label` for the resulting MPO.
-    right_label : str
-        Label for index of `tensor` that will be regarded as the rightmost
-        index of the resulting MPO if it exists (must be unique).
-        Also used as `right_label` for the resulting MPO.
-    chi : int, optional
-        Maximum number of singular values of each tensor to keep after
-        performing singular-value decomposition.
-    threshold : float
-        Lower bound on the magnitude of singular values to keep. Singular
-        values less than or equal to this value will be truncated.
-    """
-    # Set physout_labels and physin_labels to default values if not given
-    phys_labels =[x for x in tensor.labels if x not in
-            [left_label, right_label]]
-    if physout_labels is None and physin_labels is None:
-        physout_labels = phys_labels[:int(len(phys_labels)/2)]
-        physin_labels = phys_labels[int(len(phys_labels)/2):]
-    elif physout_labels is None:
-        physout_labels =[x for x in phys_labels if x not in physin_labels]
-    elif physin_labels is None:
-        physin_labels =[x for x in phys_labels if x not in physout_labels]
-
-    nsites = len(physin_labels)
-    if len(physout_labels) != nsites:
-        raise ValueError("len(physout_labels) != len(physin_labels)")
-
-    V = tensor.copy()
-    mpo = []
-    for k in range(nsites-1):
-        U, V, _ = tsr.truncated_svd(V, [left_label]*(left_label in V.labels)
-                +[physout_labels[k], physin_labels[k]],
-                chi=chi, threshold=threshold)
-        U.replace_label('svd_in', right_label)
-        U.replace_label(physout_labels[k], mpo_physout_label)
-        U.replace_label(physin_labels[k], mpo_physin_label)
-        mpo.append(U)
-        V.replace_label('svd_out', left_label)
-    V.replace_label(physout_labels[nsites-1], mpo_physout_label)
-    V.replace_label(physin_labels[nsites-1], mpo_physin_label)
-    mpo.append(V)
-    return od.MatrixProductOperator(mpo, physout_label=mpo_physout_label,
-            physin_label=mpo_physin_label, left_label=left_label,
-            right_label=right_label)
 
 def init_mps_random(nsites, physdim, bonddim=1, left_label='left',
         right_label='right', phys_label='phys'):
