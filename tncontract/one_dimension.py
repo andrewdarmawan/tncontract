@@ -326,7 +326,7 @@ class MatrixProductState(OneDimensionalTensorNetwork):
                             str(first_site_not_right_canonised))
         return (first_site_not_left_canonised, first_site_not_right_canonised)
 
-    def svd_compress(self, chi, threshold=10**-15, normalise=False):
+    def svd_compress(self, chi=0, threshold=10**-15, normalise=False):
         """Simply right canonise the left canonical form according to 
         Schollwock"""
         self.left_canonise(threshold=threshold, normalise=normalise)
@@ -335,6 +335,10 @@ class MatrixProductState(OneDimensionalTensorNetwork):
     def physdim(self, site):
         """Return physical index dimesion for site"""
         return self.data[site].index_dimension(self.phys_label)
+
+    def norm(self):
+        """Return norm of mps"""
+        return np.sqrt(inner_product_mps(self, self))
 
     def apply_gate(self, gate, firstsite, gate_outputs=None, gate_inputs=None,
             chi=0, threshold=1e-15):
@@ -956,7 +960,10 @@ def onebody_sum_mpo(terms, output_label=None):
         right_label='right', physin_label='physin', physout_label='physout')
 
 
-def expvals_mps(mps, oplist, output_label=None, canonised=None):
+def expvals_mps(mps, oplist, output_label=None, canonised=None,
+        normalise=False):
+    # TODO: Figure out why this gives strange results when canonised keyword
+    # is used.
     """
     Return single site expectation values <op>_i for all i
 
@@ -972,6 +979,9 @@ def expvals_mps(mps, oplist, output_label=None, canonised=None):
         to be the output index.
     canonised : {'left', 'right', None}, optional
         Flag to specify theat `mps` is already in left or right canonical form.
+    normalise : bool, optional
+        If True and `canonised=None` the state will be normalised before
+        computing expectation values.
 
     Returns
     ------
@@ -993,7 +1003,7 @@ def expvals_mps(mps, oplist, output_label=None, canonised=None):
         mps.reverse()
         oplist_new = oplist_new[::-1]
     elif canonised != 'right':
-        mps.right_canonise()
+        mps.right_canonise(normalise=normalise)
 
     for k, op in enumerate(oplist_new):
         # compute exp value for site k
