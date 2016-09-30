@@ -180,8 +180,9 @@ class MatrixProductState(OneDimensionalTensorNetwork):
                     self[i].data=self[i].data*norm
                 return
             else:
+                svd_label=tsr.unique_label()
                 U,S,V = tsr.tensor_svd(self[i], [self.phys_label, 
-                    self.left_label])
+                    self.left_label], svd_label=svd_label)
 
             #Truncate to threshold and to specified chi
             singular_values=np.diag(S.data)
@@ -199,12 +200,13 @@ class MatrixProductState(OneDimensionalTensorNetwork):
             U.data=U.data[:,:,0:len(singular_values_to_keep)]
             V.data=V.data[0:len(singular_values_to_keep)]
 
-            U.replace_label("svd_in", self.right_label)
+            U.replace_label(svd_label+"in", self.right_label)
             self[i]=U
             self[i+1]=tsr.contract(V, self[i+1], self.right_label, 
                     self.left_label)
-            self[i+1]=tsr.contract(S, self[i+1], ["svd_in"], ["svd_out"])
-            self[i+1].replace_label("svd_out", self.left_label)
+            self[i+1]=tsr.contract(S, self[i+1], [svd_label+"in"], 
+                    [svd_label+"out"])
+            self[i+1].replace_label(svd_label+"out", self.left_label)
 
             #Reabsorb normalisation factors into next tensor
             #Note if i==N-1 (end of chain), this will not be reached 
