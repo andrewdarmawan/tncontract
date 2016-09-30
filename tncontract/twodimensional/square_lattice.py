@@ -1,6 +1,8 @@
 import numpy as np
 
-from ..onedimensional import one_dimension as od
+
+import tncontract.onedimensional as od
+
 
 class SquareLatticeTensorNetwork():
     """Base class for square lattices, e.g. square-lattice PEPS and PEPO.

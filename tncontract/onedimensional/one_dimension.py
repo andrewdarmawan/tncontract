@@ -1,6 +1,8 @@
 import numpy as np
 
-from .. import tensor as tsr
+
+from tncontract import tensor as tsr
+
 
 class OneDimensionalTensorNetwork():
     """A one dimensional tensor network specified by a 1D array of tensors (a 
