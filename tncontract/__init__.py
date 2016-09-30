@@ -16,8 +16,6 @@ twodimensional
 """
 
 from tncontract.version import __version__
-from tncontract.tensor import (Tensor, contract, distance, matrix_to_tensor,
-        tensor_to_matrix, random_tensor, tensor_product, tensor_svd,
-        truncated_svd, unique_label, zeros_tensor)
-from tncontract import onedim
-from tncontract import twodim
+from tncontract.tensor import *
+import tncontract.onedim
+import tncontract.twodim

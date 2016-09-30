@@ -3,6 +3,9 @@ import numpy as np
 import scipy as sp
 import uuid
 
+__all__ = ['Tensor', 'contract', 'distance', 'matrix_to_tensor',
+        'tensor_to_matrix', 'random_tensor', 'tensor_product', 'tensor_svd',
+        'truncated_svd', 'unique_label', 'zeros_tensor']
 
 class Tensor():
     """
