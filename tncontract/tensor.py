@@ -115,23 +115,15 @@ class Tensor():
         >>> t.prime_label('idx')
         >>> print(t)
         Tensor object: shape = (2,), labels = ['idx_p']
-        Tensor data =
-        [1 0]
         >>> t.prime_label('idx')
         >>> print(t)
         Tensor object: shape = (2,), labels = ['idx_p_p']
-        Tensor data =
-        [1 0]
         >>> t.unprime_label('idx')
         >>> print(t)
         Tensor object: shape = (2,), labels = ['idx_p']
-        Tensor data =
-        [1 0]
         >>> t.unprime_label('idx')
         >>> print(t)
         Tensor object: shape = (2,), labels = ['idx']
-        Tensor data =
-        [1 0]
         """
         if not isinstance(labels, list):
             labels=[labels]
