@@ -3,6 +3,10 @@ import numpy as np
 import scipy as sp
 import uuid
 
+__all__ = ['Tensor', 'contract', 'distance', 'matrix_to_tensor',
+        'tensor_to_matrix', 'random_tensor', 'tensor_product', 'tensor_svd',
+        'truncated_svd', 'unique_label', 'zeros_tensor']
+
 class Tensor():
     """
     A single tensor containing a numpy array and a list of labels.
@@ -51,6 +55,16 @@ class Tensor():
                 "shape = " + str(self.shape) +
                 ", labels = " + str(self.labels))# + "\n" +
                 #"Tensor data = \n" + str(self.data))
+
+    def __eq__(self, other):
+        if isinstance(other, Tensor):
+            return (np.array_equal(self.data, other.data) 
+                    and self.labels == other.labels)
+        else:
+            return False
+
+    def __neq__(self, other):
+        return not self.__eq__(other)
 
     #Define functions for getting and setting labels
     def get_labels(self):
