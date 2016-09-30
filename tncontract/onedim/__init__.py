@@ -4,7 +4,7 @@ onedimensional
 
 Subpackage for one dimensional tensor networks
 """
-from tncontract.onedim.one_dimension import *
+from tncontract.onedim.onedim_core import *
 import tncontract.onedim.mps_methods
 
 
