@@ -1,7 +1,7 @@
 import numpy as np
 
 
-import tncontract.onedimensional as od
+import tncontract.onedim as od
 
 
 class SquareLatticeTensorNetwork():

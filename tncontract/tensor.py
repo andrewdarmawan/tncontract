@@ -3,6 +3,7 @@ import numpy as np
 import scipy as sp
 import uuid
 
+
 class Tensor():
     """
     A single tensor containing a numpy array and a list of labels.
