@@ -5,7 +5,8 @@ import uuid
 
 __all__ = ['Tensor', 'contract', 'distance', 'matrix_to_tensor',
         'tensor_to_matrix', 'random_tensor', 'tensor_product', 'tensor_svd',
-        'truncated_svd', 'unique_label', 'zeros_tensor']
+        'truncated_svd', 'unique_label', 'zeros_tensor', 'prime_label',
+        'unprime_label', 'prime_level']
 
 class Tensor():
     """
@@ -102,8 +103,7 @@ class Tensor():
 
     def prime_label(self, labels):
         """
-        Add suffix "_p" to any label of the form "label" or "label_p_p..._p"
-        for all `label` in `labels`
+        Add a prime (') to all `label` in `labels`
 
         See also
         -------
@@ -112,41 +112,36 @@ class Tensor():
         if not isinstance(labels, list):
             labels=[labels]
         for i, label in enumerate(self.labels):
-            for unprimedlabel in labels:
-                if label.startswith(unprimedlabel):
-                    primes = label[len(unprimedlabel):]
-                    if primes == '_p'*int(len(primes)/2):
-                        self.labels[i] += '_p'
+            for noprime_label in labels:
+                if noprime_label(label) == noprime_label:
+                    self.labels[i] = prime_label(self.labels[i])
 
     def unprime_label(self, labels):
         """
-        Remove the last "_p" from any label of the form "label_p_p.._p"
-        for all `label` in `labels`
+        Remove the last prime (') from all `label` in `labels`
 
         Examples
         --------
-        >>> t = Tensor(np.array([1,0]), labels=['idx'])
-        >>> t.prime_label('idx')
+        >>> t = Tensor(np.array([1,0]), labels=["idx"])
+        >>> t.prime_label("idx")
         >>> print(t)
-        Tensor object: shape = (2,), labels = ['idx_p']
-        >>> t.prime_label('idx')
+        Tensor object: shape = (2,), labels = ["idx'"]
+        >>> t.prime_label("idx")
         >>> print(t)
-        Tensor object: shape = (2,), labels = ['idx_p_p']
-        >>> t.unprime_label('idx')
+        Tensor object: shape = (2,), labels = ["idx''"]
+        >>> t.unprime_label("idx")
         >>> print(t)
-        Tensor object: shape = (2,), labels = ['idx_p']
-        >>> t.unprime_label('idx')
+        Tensor object: shape = (2,), labels = ["idx'"]
+        >>> t.unprime_label("idx")
         >>> print(t)
-        Tensor object: shape = (2,), labels = ['idx']
+        Tensor object: shape = (2,), labels = ["idx"]
         """
         if not isinstance(labels, list):
             labels=[labels]
         for i, label in enumerate(self.labels):
-            for unprimedlabel in labels:
-                if label.startswith(unprimedlabel):
-                    primes = label[len(unprimedlabel):]
-                    if primes == '_p'*int(len(primes)/2):
-                        self.labels[i]=label[:-2]
+            for noprime_label in labels:
+                if noprime_label(label) == noprime_label:
+                    self.labels[i] = unprime_label(self.labels[i])
 
     def contract_internal(self, label1, label2, index1=0, index2=0):
         """By default will contract the first index with label1 with the 
@@ -282,6 +277,69 @@ class Tensor():
     @property
     def shape(self):
         return self.data.shape
+
+
+class PrimedLabel(str):
+    """Wrapper class for priming string-like labels"""
+
+    def __new__(cls, value, parent=None):
+        return str.__new__(cls, value)
+
+    def __init__(self, label, parent=None):
+        self._parent = parent
+        try:
+            self._origin = parent.origin
+        except AttributeError:
+            self._origin = parent
+
+    @property
+    def origin(self):
+        """Return origin label"""
+        return self._origin
+
+    @property
+    def parent(self):
+        """Return parent label"""
+        return self._parent
+
+    @property
+    def parents(self):
+        """Return number of parents for label"""
+        tmp = self
+        level = 0
+        while hasattr(tmp, "parent"):
+            if tmp.parent is not None:
+                tmp = tmp.parent
+                level += 1
+            else:
+                break
+        return level
+
+def prime_label(label, prime="'"):
+    """Put a prime on a label object"""
+    return PrimedLabel(label+prime, parent=label)
+
+def unprime_label(label):
+    """Remove one prime from label object"""
+    try:
+        return label.parent
+    except AttributeError:
+        return label
+
+def noprime_label(label):
+    """Remove all primes from a label object"""
+    try:
+        return label.origin
+    except AttributeError:
+        return label
+
+def prime_level(label):
+    """Return number of primes on label object"""
+    try:
+        return label.parents
+    except AttributeError:
+        return 0
+
 
 def unique_label():
     """Generate a long, random string that is very likely to be unique."""
