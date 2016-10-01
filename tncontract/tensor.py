@@ -287,20 +287,19 @@ class PrimedLabel(str):
 
     def __init__(self, label, parent=None):
         self._parent = parent
-        try:
-            self._origin = parent.origin
-        except AttributeError:
-            self._origin = parent
-
-    @property
-    def origin(self):
-        """Return origin label"""
-        return self._origin
 
     @property
     def parent(self):
         """Return parent label"""
         return self._parent
+
+    @property
+    def origin(self):
+        """Return origin label"""
+        origin = self
+        while hasattr(origin, "parent"):
+            origin = origin.parent
+        return origin
 
     @property
     def parents(self):
@@ -319,12 +318,16 @@ def prime_label(label, prime="'"):
     """Put a prime on a label object"""
     return PrimedLabel(label+prime, parent=label)
 
-def unprime_label(label):
+def unprime_label(label, prime="'"):
     """Remove one prime from label object"""
     try:
-        return label.parent
+        parent = label.parent
     except AttributeError:
-        return label
+        raise ValueError("label is not primed")
+    if parent+prime == label:
+        return parent
+    else:
+        raise ValueError("label is not primed with \"" + prime + "\"")
 
 def noprime_label(label):
     """Remove all primes from a label object"""
