@@ -11,6 +11,7 @@ import numpy as np
 import qutip as qt
 
 import tncontract as tn
+import tncontract.onedim as onedim
 
 
 def qobj_to_tensor(qobj, labels=None, trim_dummy=True):
@@ -132,7 +133,6 @@ def qobjlist_to_mpo(qobjlist):
             # wrong dims (not a ket, bra or operator)
             raise ValueError("qobj element not a ket/bra/operator")
 
-        nsys = len(qobj.dims[0])
         t = qobj_to_tensor(qobj, trim_dummy=False)
 
         # Add left and right indices with bonddim one
@@ -140,10 +140,10 @@ def qobjlist_to_mpo(qobjlist):
         t.add_dummy_index('right', -1)
 
         # Break up many-body operators by SVDing
-        tmp_mpo = tn.tensor_to_mpo(t)
+        tmp_mpo = onedim.tensor_to_mpo(t)
 
         tensors = np.concatenate((tensors, tmp_mpo.data))
-    return tn.MatrixProductOperator(tensors, left_label='left',
+    return onedim.MatrixProductOperator(tensors, left_label='left',
         right_label='right', physin_label='physin', physout_label='physout')
 
 
@@ -162,5 +162,5 @@ def qobjlist_to_mps(qobjlist):
         t.remove_all_dummy_indices(labels=[mpo.physin_label])
         # Change physical label to the standard choice 'phys'
         t.replace_label(mpo.physout_label, 'phys')
-    return tn.MatrixProductState(tensors, left_label='left',
+    return onedim.MatrixProductState(tensors, left_label='left',
         right_label='right', phys_label='phys')

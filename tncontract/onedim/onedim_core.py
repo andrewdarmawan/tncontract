@@ -61,7 +61,8 @@ class OneDimensionalTensorNetwork():
         self.left_label=self.right_label
         self.right_label=temp
 
-    def swap_gate(self, i, chi=0, threshold=1e-15):
+    def swap_gate(self, i, chi=0, threshold=1e-15, 
+            absorb_singular_values='right'):
         """
         Apply a swap gate swapping all "physical" (i.e., non-"left" and
         non-"right") indices for site i and i+1 of a
@@ -76,6 +77,9 @@ class OneDimensionalTensorNetwork():
         threshold : float
             Lower bound on the magnitude of singular values to keep. Singular
             values less than or equal to this value will be truncated.
+        absorb_singular_values : str, optional
+            Absorb singular values to the left or to the right when restoring
+            MPS by SVD
 
         Notes
         -----
@@ -91,7 +95,8 @@ class OneDimensionalTensorNetwork():
         A.prime_label(A_phys_labels)
         t = tsr.contract(A, B, self.right_label, self.left_label)
         U, V, _ = tsr.truncated_svd(t, [self.left_label] + B_phys_labels,
-                chi=chi, threshold=threshold)
+                chi=chi, threshold=threshold,
+                absorb_singular_values=absorb_singular_values)
         U.replace_label('svd_in', self.right_label)
         self[i] = U
         V.unprime_label(A_phys_labels)
@@ -800,6 +805,10 @@ def tensor_to_mps(tensor, phys_labels=None, mps_phys_label='phys',
     threshold : float
         Lower bound on the magnitude of singular values to keep. Singular
         values less than or equal to this value will be truncated.
+
+    Notes
+    -----
+    The resulting MPS is left-canonised.
     """
     if phys_labels is None:
         phys_labels =[x for x in tensor.labels if x not in
@@ -810,7 +819,8 @@ def tensor_to_mps(tensor, phys_labels=None, mps_phys_label='phys',
     mps = []
     for k in range(nsites-1):
         U, V, _ = tsr.truncated_svd(V, [left_label]*(left_label in V.labels)
-                +[phys_labels[k]], chi=chi, threshold=threshold)
+                +[phys_labels[k]], chi=chi, threshold=threshold,
+                absorb_singular_values='right')
         U.replace_label('svd_in', right_label)
         U.replace_label(phys_labels[k], mps_phys_label)
         mps.append(U)

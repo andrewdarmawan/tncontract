@@ -5,6 +5,9 @@ onedim_utils
 Module with various functions for MPS/MPOs.
 """
 
+__all__ = ['init_mps_random', 'onebody_sum_mpo', 'expvals_mps']
+
+
 import numpy as np
 
 
@@ -97,6 +100,7 @@ def onebody_sum_mpo(terms, output_label=None):
 
 
 def expvals_mps(mps, oplist, output_label=None, canonised=None):
+    # TODO: Why canonised gives strange results?
     """
     Return single site expectation values <op>_i for all i
 
