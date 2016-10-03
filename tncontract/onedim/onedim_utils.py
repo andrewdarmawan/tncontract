@@ -13,7 +13,7 @@ import numpy as np
 
 
 from tncontract import tensor as tnc
-from tncontract import onedim as onedim
+# from tncontract import onedim as onedim
 
 
 def init_mps_random(nsites, physdim, bonddim=1, left_label='left',
@@ -43,7 +43,7 @@ def init_mps_random(nsites, physdim, bonddim=1, left_label='left',
     bonddim = [1] + bonddim + [1]
     tensors = [tnc.Tensor(np.random.rand(physdim[i], bonddim[i], bonddim[i+1]),
         [phys_label, left_label, right_label]) for i in range(nsites)]
-    return onedim.MatrixProductState(tensors, left_label=left_label,
+    return tnc.onedim.MatrixProductState(tensors, left_label=left_label,
             right_label=right_label, phys_label=phys_label)
 
 
@@ -71,7 +71,7 @@ def init_mps_allzero(nsites, physdim, left_label='left',
             right_label])
         tensors.append(t)
 
-    return onedim.MatrixProductState(tensors, left_label=left_label,
+    return tnc.onedim.MatrixProductState(tensors, left_label=left_label,
         right_label=right_label, phys_label=phys_label)
 
 
@@ -102,7 +102,7 @@ def init_mps_logical(nsites, basis_state, physdim, left_label='left',
             right_label])
         tensors.append(t)
 
-    return onedim.MatrixProductState(tensors, left_label=left_label,
+    return tnc.onedim.MatrixProductState(tensors, left_label=left_label,
         right_label=right_label, phys_label=phys_label)
 
 
@@ -156,7 +156,7 @@ def onebody_sum_mpo(terms, output_label=None):
                     B[k,l,:,:] = [[k==l, 0], [term[k, l], k==l]]
             tensors.append(tnc.Tensor(B, ['physout', 'physin', 
                 'left', 'right']))
-    return onedim.MatrixProductOperator(tensors, left_label='left',
+    return tnc.onedim.MatrixProductOperator(tensors, left_label='left',
         right_label='right', physin_label='physin', physout_label='physout')
 
 
