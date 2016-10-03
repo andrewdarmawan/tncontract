@@ -1,12 +1,13 @@
-import warnings
-import numpy as np
-import scipy as sp
-
 __all__ = ['Tensor', 'contract', 'distance', 'matrix_to_tensor',
         'tensor_to_matrix', 'random_tensor', 'tensor_product', 'tensor_svd',
         'truncated_svd', 'zeros_tensor']
 
+import warnings
+import numpy as np
+import scipy as sp
+
 from tncontract import label as lbl
+
 
 class Tensor():
     """
@@ -38,11 +39,10 @@ class Tensor():
     labels : list
         A list of strings which label the axes of data. `label[i]` is the label
         for the `i`-1th axis of data.
-    
     """
     def __init__(self, data, labels=[], base_label="i"):
         self.data=np.array(data)
-        
+
         if len(labels)==0:
             self.assign_labels(base_label=base_label)
         else:
@@ -66,6 +66,36 @@ class Tensor():
 
     def __neq__(self, other):
         return not self.__eq__(other)
+
+    def __mul__(self, other):
+        """
+        Multiplcation with Tensor on left (i.e. `self*other`).
+        Returns a copy of `self` with `data` attribute multiplied by
+        `other`.
+        """
+        try:
+            out = self.copy()
+            out.data = out.data*other
+            return out
+        except TypeError:
+            raise TypeError("unsupported operand type(s) *: for '"
+                    +self.__class__.__name__+"' and '"
+                    +other.__class__.__name__+"'")
+
+    def __rmul__(self, other):
+        """
+        Multiplcation with Tensor on right (i.e. `other*self`).
+        Returns a copy of `self` with `data` attribute multiplied by
+        `other`.
+        """
+        try:
+            out = self.copy()
+            out.data = other*out.data
+            return out
+        except TypeError:
+            raise TypeError("unsupported operand type(s) *: for '"
+                    +self.__class__.__name__+"' and '"
+                    +other.__class__.__name__+"'")
 
     #Define functions for getting and setting labels
     def get_labels(self):
@@ -374,31 +404,27 @@ def distance(tensor1, tensor2):
     else:
         raise ValueError("Input tensors have different labels.")
 
-def tensor_to_matrix(tensor, output_labels):
+def tensor_to_matrix(tensor, row_labels):
     """
-    Convert a tensor to a matrix regarding output_labels as output (row index)
-    and the remaining indices as input (column index).
+    Convert a tensor to a matrix regarding row_labels as row index (output)
+    and the remaining indices as column index (input).
     """
     t = tensor.copy()
-    # Move labels in output_labels first and reshape accordingly
-    total_output_dimension=1
-    for i,label in enumerate(output_labels):
+    # Move labels in row_labels first and reshape accordingly
+    total_row_dimension=1
+    for i,label in enumerate(row_labels):
         t.move_index(label, i)
-        total_output_dimension*=t.data.shape[i]
+        total_row_dimension*=t.data.shape[i]
 
-    total_input_dimension=int(np.product(t.data.shape)/total_output_dimension)
-    return np.reshape(t.data,(total_output_dimension, total_input_dimension))
+    total_column_dimension=int(np.product(t.data.shape)/total_row_dimension)
+    return np.reshape(t.data,(total_row_dimension, total_column_dimension))
 
-def matrix_to_tensor(matrix, output_dims, input_dims, output_labels,
-        input_labels):
+def matrix_to_tensor(matrix, shape, labels=[]):
     """
-    Convert a matrix to a tensor. The row index is divided into indices
-    with dimensions and labels specified in output_dims and output_labels,
-    respectively, and similarly the column index is divided into indices as
-    specified by input_dims and input_labels.
+    Convert a matrix to a tensor by reshaping to `shape` and giving labels
+    specifid by `labels`
     """
-    return Tensor(np.reshape(matrix, tuple(output_dims)+tuple(input_dims)), 
-            output_labels+input_labels)
+    return Tensor(np.reshape(matrix, shape), labels)
 
 def tensor_svd(tensor, row_labels, svd_label="svd_"):
     """

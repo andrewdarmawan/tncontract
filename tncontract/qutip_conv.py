@@ -1,4 +1,7 @@
 """
+qutip_conv
+==========
+
 QuTiP / tncontract conversions.
 
 Functionality for converting between `qutip.Qobj` and `Tensor`.
@@ -48,7 +51,7 @@ def qobj_to_tensor(qobj, labels=None, trim_dummy=True):
     else:
         output_labels = labels[:nsys]
         input_labels = labels[nsys:]
-    t = tn.matrix_to_tensor(data, output_dims, input_dims, output_labels,
+    t = tn.matrix_to_tensor(data, output_dims+input_dims, output_labels+
             input_labels)
     if trim_dummy:
         t.remove_all_dummy_indices()
