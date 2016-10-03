@@ -6,11 +6,11 @@ A simple tensor-network library.
 
 Available subpackages
 ---------------------
-onedimensional
+onedim
     Special purpose classes, methods and function for one dimensional
     tensor networs
 
-twodimensional
+twodim
     Special purpose classes, methods and function for two dimensional
     tensor networs
 """
