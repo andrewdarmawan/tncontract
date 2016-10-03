@@ -5,7 +5,8 @@ label
 Module for string-like labels
 """
 
-__all__ = ['prime_label', 'unprime_label', 'prime_level', 'unique_label']
+__all__ = ['prime_label', 'unprime_label', 'noprime_label', 'prime_level',
+        'unique_label']
 
 
 import uuid

@@ -142,8 +142,8 @@ class Tensor():
         if not isinstance(labels, list):
             labels=[labels]
         for i, label in enumerate(self.labels):
-            for noprime_label in labels:
-                if noprime_label(label) == noprime_label:
+            for noprime in labels:
+                if lbl.noprime_label(label) == noprime:
                     self.labels[i] = lbl.prime_label(self.labels[i])
 
     def unprime_label(self, labels):
@@ -169,8 +169,8 @@ class Tensor():
         if not isinstance(labels, list):
             labels=[labels]
         for i, label in enumerate(self.labels):
-            for noprime_label in labels:
-                if noprime_label(label) == noprime_label:
+            for noprime in labels:
+                if lbl.noprime_label(label) == noprime:
                     self.labels[i] = lbl.unprime_label(self.labels[i])
 
     def contract_internal(self, label1, label2, index1=0, index2=0):
