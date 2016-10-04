@@ -196,6 +196,11 @@ class MatrixProductState(OneDimensionalTensorNetwork):
             normalised (have norm=1). Has no effect if only a segment of the 
             MPS is to be left canonised (resulting state will have the same
             norm as input).
+        qr_decomposition : bool
+            True specifies that a QR decomposition is performed rather than an
+            SVD (which may improve performance). No truncation of singular
+            values is possible with a QR decomposition, thus `chi` and
+            `threshold` arguments are ignored.
         """
         N=len(self)
         if end==-1:
