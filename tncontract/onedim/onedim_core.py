@@ -158,7 +158,7 @@ class MatrixProductState(OneDimensionalTensorNetwork):
                 self.right_label, self.phys_label)
 
     def left_canonise(self, start=0, end=-1, chi=0, threshold=10**-14, 
-            normalise=False):
+            normalise=False, qr_decomposition=False):
         """
         Perform left canonisation of MPS. 
         
@@ -201,53 +201,54 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         if end==-1:
             end=N
 
-        #At each step will divide by a constant so that the largest singular 
-        #value of S is 1. Will store the product of these constants in `norm`
-        norm=1
-        for i in range(start,end):
-            if i==N-1:
-                #The final SVD has no right index, so S and V are just scalars.
-                #S is the norm of the state. 
-                if normalise==True and start==0: #Whole chain is canonised
-                    self[i].data=self[i].data/np.linalg.norm(self[i].data)
+        if not qr_decomposition:
+            #At each step will divide by a constant so that the largest singular 
+            #value of S is 1. Will store the product of these constants in `norm`
+            norm=1
+            for i in range(start,end):
+                if i==N-1:
+                    #The final SVD has no right index, so S and V are just scalars.
+                    #S is the norm of the state. 
+                    if normalise==True and start==0: #Whole chain is canonised
+                        self[i].data=self[i].data/np.linalg.norm(self[i].data)
+                    else:
+                        self[i].data=self[i].data*norm
+                    return
                 else:
-                    self[i].data=self[i].data*norm
-                return
-            else:
-                svd_label=unique_label()
-                U,S,V = tsr.tensor_svd(self[i], [self.phys_label, 
-                    self.left_label], svd_label=svd_label)
+                    svd_label=unique_label()
+                    U,S,V = tsr.tensor_svd(self[i], [self.phys_label, 
+                        self.left_label], svd_label=svd_label)
 
-            #Truncate to threshold and to specified chi
-            singular_values=np.diag(S.data)
-            largest_singular_value=singular_values[0]
-            #Normalise S
-            singular_values=singular_values/largest_singular_value
-            norm*=largest_singular_value
+                #Truncate to threshold and to specified chi
+                singular_values=np.diag(S.data)
+                largest_singular_value=singular_values[0]
+                #Normalise S
+                singular_values=singular_values/largest_singular_value
+                norm*=largest_singular_value
 
-            singular_values_to_keep = singular_values[singular_values > 
-                    threshold]
-            if chi:
-                singular_values_to_keep = singular_values_to_keep[:chi]
-            S.data=np.diag(singular_values_to_keep)
-            #Truncate corresponding singular index of U and V
-            U.data=U.data[:,:,0:len(singular_values_to_keep)]
-            V.data=V.data[0:len(singular_values_to_keep)]
+                singular_values_to_keep = singular_values[singular_values > 
+                        threshold]
+                if chi:
+                    singular_values_to_keep = singular_values_to_keep[:chi]
+                S.data=np.diag(singular_values_to_keep)
+                #Truncate corresponding singular index of U and V
+                U.data=U.data[:,:,0:len(singular_values_to_keep)]
+                V.data=V.data[0:len(singular_values_to_keep)]
 
-            U.replace_label(svd_label+"in", self.right_label)
-            self[i]=U
-            self[i+1]=tsr.contract(V, self[i+1], self.right_label, 
-                    self.left_label)
-            self[i+1]=tsr.contract(S, self[i+1], [svd_label+"in"], 
-                    [svd_label+"out"])
-            self[i+1].replace_label(svd_label+"out", self.left_label)
+                U.replace_label(svd_label+"in", self.right_label)
+                self[i]=U
+                self[i+1]=tsr.contract(V, self[i+1], self.right_label, 
+                        self.left_label)
+                self[i+1]=tsr.contract(S, self[i+1], [svd_label+"in"], 
+                        [svd_label+"out"])
+                self[i+1].replace_label(svd_label+"out", self.left_label)
 
-            #Reabsorb normalisation factors into next tensor
-            #Note if i==N-1 (end of chain), this will not be reached 
-            #and normalisation factors will be taken care of in the earlier 
-            #block.
-            if i==end-1:
-                self[i+1].data*=norm
+                #Reabsorb normalisation factors into next tensor
+                #Note if i==N-1 (end of chain), this will not be reached 
+                #and normalisation factors will be taken care of in the earlier 
+                #block.
+                if i==end-1:
+                    self[i+1].data*=norm
 
     def right_canonise(self, start=0, end=-1, chi=0, threshold=10**-14, 
             normalise=False):

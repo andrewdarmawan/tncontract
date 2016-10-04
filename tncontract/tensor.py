@@ -438,24 +438,16 @@ def tensor_svd(tensor, row_labels, svd_label="svd_"):
     v are unitary and s is diagonal with positive entries. These three
     matrices are then reshaped into tensors U, S, and V as described below.
 
-    Examples
-    --------
-    >>> a=random_tensor(2,3,4, labels = ["i0", "i1", "i2"])
-    >>> U,S,V = tensor_svd(a, ["i0", "i2"])
-    >>> print(U)
-    Tensor object: shape = (2, 4, 3), labels = ['i0', 'i2', 'svdin']
-    >>> print(V)
-    Tensor object: shape = (3, 3), labels = ['svdout', 'i1']
-    >>> print(S)
-    Tensor object: shape = (3, 3), labels = ['svdout', 'svdin']
-    
-    Recombining the three tensors obtained from SVD, yeilds a tensor very close
-    to the original.
-
-    >>> temp=tn.contract(S, V, "svdin", "svdout")
-    >>> b=tn.contract(U, temp, "svdin", "svdout")
-    >>> tn.distance(a,b)
-    1.922161284937472e-15
+    Parameters
+    ----------
+    tensor : Tensor
+        The tensor on which the SVD will be performed.
+    row_labels : list
+        List of labels specifying the indices of `tensor` which will form the
+        rows of the matrix on which the SVD will be performed.
+    svd_label : str
+        Base label for the indices that are contracted with `S`, the tensor of
+        singular values. 
 
     Returns
     -------
@@ -475,6 +467,120 @@ def tensor_svd(tensor, row_labels, svd_label="svd_"):
         are contracted with with the `svd_label`+"in" label of U and the
         `svd_label`+"out" of V respectively.
 
+    Examples
+    --------
+    >>> a=random_tensor(2,3,4, labels = ["i0", "i1", "i2"])
+    >>> U,S,V = tensor_svd(a, ["i0", "i2"])
+    >>> print(U)
+    Tensor object: shape = (2, 4, 3), labels = ['i0', 'i2', 'svdin']
+    >>> print(V)
+    Tensor object: shape = (3, 3), labels = ['svdout', 'i1']
+    >>> print(S)
+    Tensor object: shape = (3, 3), labels = ['svdout', 'svdin']
+    
+    Recombining the three tensors obtained from SVD, yeilds a tensor very close
+    to the original.
+
+    >>> temp=tn.contract(S, V, "svdin", "svdout")
+    >>> b=tn.contract(U, temp, "svdin", "svdout")
+    >>> tn.distance(a,b)
+    1.922161284937472e-15
+    """
+
+    t=tensor.copy()
+
+    #Move labels in row_labels to the beginning of list, and reshape data 
+    #accordingly
+    total_input_dimension=1
+    for i,label in enumerate(row_labels):
+        t.move_index(label, i)
+        total_input_dimension*=t.data.shape[i]
+
+    column_labels=[x for x in t.labels if x not in row_labels]
+
+    old_shape=t.data.shape
+    total_output_dimension=int(np.product(t.data.shape)/total_input_dimension)
+    data_matrix=np.reshape(t.data,(total_input_dimension, 
+        total_output_dimension))
+
+    try:
+        u,s,v=np.linalg.svd(data_matrix, full_matrices=False)
+    except np.linalg.LinAlgError:
+        warnings.warn(('numpy.linalg.svd failed, trying scipy.linalg.svd with'+
+                ' lapack_driver="gesvd"'))
+        u,s,v=sp.linalg.svd(data_matrix, full_matrices=False, 
+                lapack_driver='gesvd')
+
+    #New shape original index labels as well as svd index
+    U_shape=list(old_shape[0:len(row_labels)])
+    U_shape.append(u.shape[1])
+    U=Tensor(data=np.reshape(u, U_shape), labels=row_labels+[svd_label+"in"])
+    V_shape=list(old_shape)[len(row_labels):]
+    V_shape.insert(0,v.shape[0])
+    V=Tensor(data=np.reshape(v, V_shape), 
+            labels=[svd_label+"out"]+column_labels)
+
+    S=Tensor(data=np.diag(s), labels=[svd_label+"out", svd_label+"in"])
+
+    return U, S, V
+
+def tensor_qr(tensor, row_labels, qr_label="qr_"):
+    """
+    Compute the QR decomposition of `tensor` after reshaping it into a matrix.
+    Indices with labels in `row_labels` are fused to form a single index
+    corresponding to the rows of the matrix (typically the left index of a
+    matrix). The remaining indices are fused to form the column indices. A QR
+    decomposition is performed on this matrix, yielding two matrices q,r, where
+    q and is a rectangular matrix with orthonormal columns and r is upper
+    triangular v are unitary and s is diagonal with positive entries. These two
+    matrices are then reshaped into tensors Q and R, splitting rows indices of
+    Q into multiple indices and the column indices of R into multiple indices
+    as described below.
+
+    Parameters
+    ----------
+    tensor : Tensor
+        The tensor on which the QR decomposition will be performed.
+    row_labels : list
+        List of labels specifying the indices of `tensor` which will form the
+        rows of the matrix on which the QR will be performed.
+    svd_label : str
+        Base label for the indices that are contracted between `Q` and `R`.
+
+    Returns
+    -------
+    Q : Tensor
+        Tensor obtained by reshaping the matrix u obtained from QR
+        decomposition.  Has indices labelled by `row_labels` corresponding to
+        the indices labelled `row_labels` of `tensor` and has one index
+        labelled `qr_label`+"in" which connects to `R`.
+    R : Tensor
+        Tensor obtained by reshaping the matrix r obtained by QR decomposition.
+        Indices correspond to the indices of `tensor` that aren't in
+        `row_labels`. Has one index labelled `qr_label`+"out" which connects
+        to `Q`.
+
+    Examples
+    --------
+
+    >>> from tncontract.tensor import *
+    >>> t=random_tensor(2,3,4)
+    >>> print(t)
+    Tensor object: shape = (2, 3, 4), labels = ['i0', 'i1', 'i2']
+    >>> Q,R = tensor_qr(t, ["i0", "i2"])
+    >>> print(Q)
+    Tensor object: shape = (2, 4, 3), labels = ['i0', 'i2', 'qr_in']
+    >>> print(R)
+    Tensor object: shape = (3, 3), labels = ['qr_out', 'i1']
+
+    Recombining the two tensors obtained from `tensor_qr`, yeilds a tensor very
+    close to the original
+
+    >>> x=contract(Q, R, "qr_in", "qr_out")
+    >>> print(x)
+    Tensor object: shape = (2, 4, 3), labels = ['i0', 'i2', 'i1']
+    >>> distance(x,t)
+    9.7619164946377426e-16
     """
     t=tensor.copy()
 
@@ -492,29 +598,18 @@ def tensor_svd(tensor, row_labels, svd_label="svd_"):
     data_matrix=np.reshape(t.data,(total_input_dimension, 
         total_output_dimension))
 
-    #u,s,v=np.linalg.svd(data_matrix, full_matrices=False)
-    try:
-        u,s,v=np.linalg.svd(data_matrix, full_matrices=False)
-    except np.linalg.LinAlgError:
-        warnings.warn(('numpy.linalg.svd failed, trying scipy.linalg.svd with'+
-                ' lapack_driver="gesvd"'))
-        u,s,v=sp.linalg.svd(data_matrix, full_matrices=False, 
-                lapack_driver='gesvd')
-
-    #Define tensors according to svd 
-    n_input_indices=len(row_labels)
+    q,r = np.linalg.qr(data_matrix, mode="reduced")
 
     #New shape original index labels as well as svd index
-    U_shape=list(old_shape[0:n_input_indices])
-    U_shape.append(u.shape[1])
-    U=Tensor(data=np.reshape(u, U_shape), labels=row_labels+[svd_label+"in"])
-    V_shape=list(old_shape)[n_input_indices:]
-    V_shape.insert(0,v.shape[0])
-    V=Tensor(data=np.reshape(v, V_shape), labels=[svd_label+"out"]+column_labels)
+    Q_shape=list(old_shape[0:len(row_labels)])
+    Q_shape.append(q.shape[1])
+    Q=Tensor(data=np.reshape(q, Q_shape), labels=row_labels+[qr_label+"in"])
+    R_shape=list(old_shape)[len(row_labels):]
+    R_shape.insert(0,r.shape[0])
+    R=Tensor(data=np.reshape(r, R_shape), labels=[qr_label+"out"]+
+            column_labels)
 
-    S=Tensor(data=np.diag(s), labels=[svd_label+"out", svd_label+"in"])
-
-    return U, S, V
+    return Q,R
 
 def truncated_svd(tensor, row_labels, chi=0, threshold=10**-15, 
         absorb_singular_values="right"):
