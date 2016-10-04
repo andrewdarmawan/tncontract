@@ -1,5 +1,18 @@
+"""
+square_lattice
+==========
+
+Core module for square lattice tensor networks
+"""
+
+__all__ = ['SquareLatticeTensorNetwork', 'SquareLatticePEPS', 'column_to_mpo']
+
+
 import numpy as np
-import tncontract.one_dimension as od
+
+
+import tncontract.onedim as od
+
 
 class SquareLatticeTensorNetwork():
     """Base class for square lattices, e.g. square-lattice PEPS and PEPO.
