@@ -5,11 +5,16 @@ onedim_utils
 Module with various functions for MPS/MPOs.
 """
 
+__all__ = ['init_mps_random', 'init_mps_allzero', 'init_mps_logical',
+        'onebody_sum_mpo', 'expvals_mps']
+
+
 import numpy as np
 
 
-from tncontract import tensor as tsr
-from tncontract import onedim as od
+from tncontract import tensor as tnc
+from tncontract.onedim import onedim_core as onedim
+# from tncontract import onedim as onedim
 
 
 def init_mps_random(nsites, physdim, bonddim=1, left_label='left',
@@ -37,10 +42,70 @@ def init_mps_random(nsites, physdim, bonddim=1, left_label='left',
     if not np.iterable(bonddim):
         bonddim = [bonddim]*(nsites-1)
     bonddim = [1] + bonddim + [1]
-    tensors = [tsr.Tensor(np.random.rand(physdim[i], bonddim[i], bonddim[i+1]),
+    tensors = [tnc.Tensor(np.random.rand(physdim[i], bonddim[i], bonddim[i+1]),
         [phys_label, left_label, right_label]) for i in range(nsites)]
-    return od.MatrixProductState(tensors, left_label=left_label,
+    return onedim.MatrixProductState(tensors, left_label=left_label,
             right_label=right_label, phys_label=phys_label)
+
+
+def init_mps_allzero(nsites, physdim, left_label='left',
+        right_label='right', phys_label='phys'):
+    """
+    Create an MPS with `nsites` sites in the "all zero" state |00..0>.
+
+    Parameters
+    ----------
+    nsites : int
+    physdim : int or list of ints
+    left_label : str
+    right_label : str
+    phys_label : str
+    """
+    if not np.iterable(physdim):
+        physdim = [physdim]*nsites
+
+    tensors = []
+    for j in range(nsites):
+        t = np.zeros(physdim[j])
+        t[0] = 1.0
+        t = tnc.Tensor(t.reshape(physdim[j], 1, 1), [phys_label, left_label,
+            right_label])
+        tensors.append(t)
+
+    return onedim.MatrixProductState(tensors, left_label=left_label,
+        right_label=right_label, phys_label=phys_label)
+
+
+def init_mps_logical(nsites, basis_state, physdim, left_label='left',
+        right_label='right', phys_label='phys'):
+    """
+    Create an MPS with `nsites` sites in the logical basis state |ijk..l>.
+
+    Parameters
+    ----------
+    nsites : int
+    basis_state : int or list of ints
+        Site `i` will be in the state |`basis_state[i]`> (or simply
+        |`basis_state`> if a single int is provided).
+    physdim : int or list of ints
+    left_label : str
+    right_label : str
+    phys_label : str
+    """
+    if not np.iterable(physdim):
+        physdim = [physdim]*nsites
+
+    tensors = []
+    for j in range(nsites):
+        t = np.zeros(physdim[j])
+        t[basis_state[j]] = 1.0
+        t = tnc.Tensor(t.reshape(physdim[j], 1, 1), [phys_label, left_label,
+            right_label])
+        tensors.append(t)
+
+    return onedim.MatrixProductState(tensors, left_label=left_label,
+        right_label=right_label, phys_label=phys_label)
+
 
 
 def onebody_sum_mpo(terms, output_label=None):
@@ -78,25 +143,26 @@ def onebody_sum_mpo(terms, output_label=None):
             for k in range(term.shape[0]):
                 for l in range(term.shape[1]):
                     B[k,l,:] = [term[k, l], k==l]
-            tensors.append(tsr.Tensor(B, ['physout', 'physin', 'right']))
+            tensors.append(tnc.Tensor(B, ['physout', 'physin', 'right']))
         elif i==len(terms)-1:
             B = np.zeros(shape=term.shape+[2], dtype=complex)
             for k in range(term.shape[0]):
                 for l in range(term.shape[1]):
                     B[k,l,:] = [k==l, term[k, l]]
-            tensors.append(tsr.Tensor(B, ['physout', 'physin', 'left']))
+            tensors.append(tnc.Tensor(B, ['physout', 'physin', 'left']))
         else:
             B = np.zeros(shape=term.shape+[2,2], dtype=complex)
             for k in range(term.shape[0]):
                 for l in range(term.shape[1]):
                     B[k,l,:,:] = [[k==l, 0], [term[k, l], k==l]]
-            tensors.append(tsr.Tensor(B, ['physout', 'physin', 
+            tensors.append(tnc.Tensor(B, ['physout', 'physin', 
                 'left', 'right']))
-    return od.MatrixProductOperator(tensors, left_label='left',
+    return onedim.MatrixProductOperator(tensors, left_label='left',
         right_label='right', physin_label='physin', physout_label='physout')
 
 
 def expvals_mps(mps, oplist, output_label=None, canonised=None):
+    # TODO: Why canonised gives strange results?
     """
     Return single site expectation values <op>_i for all i
 
@@ -146,8 +212,8 @@ def expvals_mps(mps, oplist, output_label=None, canonised=None):
             in_label = [x for x in op.labels if x is not out_label][0]
         Ad = A.copy()
         Ad.conjugate()
-        exp = tsr.contract(A, op, mps.phys_label, in_label)
-        exp = tsr.contract(Ad, exp, mps.phys_label, out_label)
+        exp = tnc.contract(A, op, mps.phys_label, in_label)
+        exp = tnc.contract(Ad, exp, mps.phys_label, out_label)
         exp.contract_internal(mps.left_label, mps.left_label, index1=0,
                 index2=1)
         exp.contract_internal(mps.right_label, mps.right_label, index1=0,
