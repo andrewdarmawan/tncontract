@@ -201,7 +201,29 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         if end==-1:
             end=N
 
-        if not qr_decomposition:
+        if qr_decomposition:
+            for i in range(start,end):
+                if i==N-1:
+                    #The final QR has no right index, so R are just
+                    #scalars. S is the norm of the state. 
+                    if normalise==True and start==0: #Whole chain is canonised
+                        self[i].data=self[i].data/np.linalg.norm(self[i].data)
+                    return
+                else:
+                    qr_label=unique_label()
+                    Q,R = tsr.tensor_qr(self[i], [self.phys_label, 
+                        self.left_label], qr_label=qr_label)
+
+                #Replace tensor at site i with Q
+                Q.replace_label(qr_label+"in", self.right_label)
+                self[i]=Q
+
+                #Absorb R into next tensor
+                self[i+1]=tsr.contract(R, self[i+1], self.right_label, 
+                        self.left_label)
+                self[i+1].replace_label(qr_label+"out", self.left_label)
+
+        else:
             #At each step will divide by a constant so that the largest singular 
             #value of S is 1. Will store the product of these constants in `norm`
             norm=1
