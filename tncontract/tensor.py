@@ -492,14 +492,21 @@ def tensor_svd(tensor, row_labels, svd_label="svd_"):
     data_matrix=np.reshape(t.data,(total_input_dimension, 
         total_output_dimension))
 
-    #u,s,v=np.linalg.svd(data_matrix, full_matrices=False)
     try:
         u,s,v=np.linalg.svd(data_matrix, full_matrices=False)
     except np.linalg.LinAlgError:
+        # Try with different lapack driver
         warnings.warn(('numpy.linalg.svd failed, trying scipy.linalg.svd with'+
                 ' lapack_driver="gesvd"'))
-        u,s,v=sp.linalg.svd(data_matrix, full_matrices=False, 
+        u,s,v=sp.linalg.svd(data_matrix, full_matrices=False,
                 lapack_driver='gesvd')
+    except ValueError:
+        # Check for inf's and nan's:
+        print("tensor_svd failed. Matrix contains inf's: "
+                + str(np.isinf(data_matrix).any()) 
+                + ". Matrix contains nan's: "
+                + str(np.isnan(data_matrix).any()))
+        raise # re-raise the exception
 
     #Define tensors according to svd 
     n_input_indices=len(row_labels)
