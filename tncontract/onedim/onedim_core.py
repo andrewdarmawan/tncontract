@@ -18,6 +18,7 @@ import numpy as np
 
 
 from tncontract import tensor as tsr
+from tncontract.label import unique_label
 
 
 class OneDimensionalTensorNetwork():
@@ -213,7 +214,7 @@ class MatrixProductState(OneDimensionalTensorNetwork):
                     self[i].data=self[i].data*norm
                 return
             else:
-                svd_label=tsr.unique_label()
+                svd_label=unique_label()
                 U,S,V = tsr.tensor_svd(self[i], [self.phys_label, 
                     self.left_label], svd_label=svd_label)
 
