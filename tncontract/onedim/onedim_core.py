@@ -278,15 +278,15 @@ class MatrixProductState(OneDimensionalTensorNetwork):
                     self[i+1].data*=norm
 
     def right_canonise(self, start=0, end=-1, chi=0, threshold=10**-14, 
-            normalise=False):
+            normalise=False, qr_decomposition=False):
         """Perform right canonisation of MPS. Identical to `left_canonise`
         except that process is mirrored (i.e. canonisation is performed from
         right to left). `start` and `end` specify the interval to be canonised.
 
         Notes
         -----
-        The first tensor to be canonised is `end`-1 and the
-        final tensor to be canonised is `start`""" 
+        The first tensor to be canonised is `end`-1 and the final tensor to be
+        canonised is `start`""" 
 
         self.reverse()
         N=len(self)
@@ -382,7 +382,7 @@ class MatrixProductState(OneDimensionalTensorNetwork):
     def svd_compress(self, chi=0, threshold=10**-15, normalise=False):
         """Simply right canonise the left canonical form according to 
         Schollwock"""
-        self.left_canonise(threshold=threshold, normalise=normalise)
+        self.left_canonise(normalise=normalise, qr_decomposition=True)
         self.right_canonise(chi=chi, threshold=threshold, normalise=normalise)
 
     def variational_compress(self, chi, max_iter=10):
