@@ -131,24 +131,37 @@ class Tensor():
             if label in old_labels:
                 self.labels[i]=new_labels[old_labels.index(label)]
 
-    def prime_label(self, labels):
+    def prime_label(self, labels=None):
         """
         Add a prime (') to all `label` in `labels`
+
+        Parameters
+        ----------
+        labels : str or list of str, optional
+            Labels to prime. If None all labels of the tensor will be primed.
 
         See also
         -------
         unprime_label
         """
-        if not isinstance(labels, list):
+        if labels is None:
+            labels = self.labels
+        elif not isinstance(labels, list):
             labels=[labels]
         for i, label in enumerate(self.labels):
             for noprime in labels:
                 if lbl.noprime_label(label) == noprime:
                     self.labels[i] = lbl.prime_label(self.labels[i])
 
-    def unprime_label(self, labels):
+    def unprime_label(self, labels=None):
         """
         Remove the last prime (') from all `label` in `labels`
+
+        Parameters
+        ----------
+        labels : str or list of str, optional
+            Labels to unprime. If None all labels of the tensor will be 
+            unprimed.
 
         Examples
         --------
@@ -166,7 +179,9 @@ class Tensor():
         >>> print(t)
         Tensor object: shape = (2,), labels = ["idx"]
         """
-        if not isinstance(labels, list):
+        if labels is None:
+            labels = self.labels
+        elif not isinstance(labels, list):
             labels=[labels]
         for i, label in enumerate(self.labels):
             for noprime in labels:

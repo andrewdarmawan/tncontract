@@ -6,7 +6,7 @@ Module with various functions for MPS/MPOs.
 """
 
 __all__ = ['init_mps_random', 'init_mps_allzero', 'init_mps_logical',
-        'onebody_sum_mpo', 'expvals_mps']
+        'onebody_sum_mpo', 'expvals_mps', 'ptrace_mps']
 
 
 import numpy as np
@@ -228,5 +228,62 @@ def expvals_mps(mps, oplist, output_label=None, canonised=None):
         expvals = expvals[::-1]
 
     return expvals
+
+def ptrace_mps(mps, sites=None, canonised=None):
+    # TODO: Why canonised gives strange results?
+    """
+    Return single site reduced density matrix rho_i for all i in sites.
+
+    Parameters
+    ----------
+    mps : MatrixProductState
+    sites : int or list of ints, optional
+        Sites for which to compute the reduced density matrix. If None all
+        sites will be returned.
+    canonised : {'left', 'right', None}, optional
+        Flag to specify theat `mps` is already in left or right canonical form.
+
+    Returns
+    ------
+    list
+        List of same length as `mps` with rank-two tensors representing the
+        reduced density matrices.
+
+    Notes
+    -----
+    `mps` will be in left canonical form after the function call.
+    """
+    rho_list = []
+
+    if canonised == 'left':
+        mps.reverse()
+    elif canonised != 'right':
+        mps.right_canonise()
+
+    if sites is None:
+        sites = range(len(mps))
+    if not np.iterable(sites):
+        sites = [sites]
+
+    center = 0
+    for k in sites:
+        # Mover orthogonality center to site k
+        mps.left_canonise(center, k)
+        center = k
+
+        A = mps[center]
+        Ad = A.copy()
+        Ad.conjugate()
+        Ad.prime_label(mps.phys_label)
+
+        rho = tnc.contract(A, Ad, [mps.left_label, mps.right_label],
+                [mps.left_label, mps.right_label])
+        rho_list.append(rho)
+
+    if canonised == 'left':
+        mps.reverse()
+        rho_list = rho_list[::-1]
+
+    return rho_list
 
 

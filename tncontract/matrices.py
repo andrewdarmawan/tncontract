@@ -62,3 +62,11 @@ def identity(dim):
 
     """
     return np.matrix(np.identity(dim))
+
+def basis(dim, i):
+    """
+    dim x 1 column vector with all zeros except a one at row i
+    """
+    vec = np.zeros(dim)
+    vec[i] = 1.0
+    return np.matrix(vec).T

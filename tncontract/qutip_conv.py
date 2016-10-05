@@ -103,6 +103,10 @@ def tensor_to_qobj(tensor, output_labels, input_labels):
     input_dims = []
     t = tensor.copy()
 
+    if not isinstance(output_labels, list):
+        output_labels=[output_labels]
+    if not isinstance(input_labels, list):
+        input_labels=[input_labels]
     # order the indices according to output_labels and input_labels
     for i, label in enumerate(output_labels+input_labels):
         if label is None:
