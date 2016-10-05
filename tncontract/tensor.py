@@ -529,13 +529,12 @@ def tensor_qr(tensor, row_labels, qr_label="qr_"):
     Compute the QR decomposition of `tensor` after reshaping it into a matrix.
     Indices with labels in `row_labels` are fused to form a single index
     corresponding to the rows of the matrix (typically the left index of a
-    matrix). The remaining indices are fused to form the column indices. A QR
+    matrix). The remaining indices are fused to form the column index. A QR
     decomposition is performed on this matrix, yielding two matrices q,r, where
     q and is a rectangular matrix with orthonormal columns and r is upper
-    triangular v are unitary and s is diagonal with positive entries. These two
-    matrices are then reshaped into tensors Q and R, splitting rows indices of
-    Q into multiple indices and the column indices of R into multiple indices
-    as described below.
+    triangular. These two matrices are then reshaped into tensors Q and R,
+    splitting rows indices of Q into multiple indices and the column indices of
+    R into multiple indices as described below.
 
     Parameters
     ----------
