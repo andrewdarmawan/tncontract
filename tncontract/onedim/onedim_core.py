@@ -18,6 +18,7 @@ import numpy as np
 
 
 from tncontract import tensor as tsr
+from tncontract.label import unique_label
 
 
 class OneDimensionalTensorNetwork():
@@ -157,7 +158,7 @@ class MatrixProductState(OneDimensionalTensorNetwork):
                 self.right_label, self.phys_label)
 
     def left_canonise(self, start=0, end=-1, chi=0, threshold=10**-14, 
-            normalise=False):
+            normalise=False, qr_decomposition=False):
         """
         Perform left canonisation of MPS. 
         
@@ -195,67 +196,97 @@ class MatrixProductState(OneDimensionalTensorNetwork):
             normalised (have norm=1). Has no effect if only a segment of the 
             MPS is to be left canonised (resulting state will have the same
             norm as input).
+        qr_decomposition : bool
+            True specifies that a QR decomposition is performed rather than an
+            SVD (which may improve performance). No truncation of singular
+            values is possible with a QR decomposition, thus `chi` and
+            `threshold` arguments are ignored.
         """
         N=len(self)
         if end==-1:
             end=N
 
-        #At each step will divide by a constant so that the largest singular 
-        #value of S is 1. Will store the product of these constants in `norm`
-        norm=1
-        for i in range(start,end):
-            if i==N-1:
-                #The final SVD has no right index, so S and V are just scalars.
-                #S is the norm of the state. 
-                if normalise==True and start==0: #Whole chain is canonised
-                    self[i].data=self[i].data/np.linalg.norm(self[i].data)
+        if qr_decomposition:
+            for i in range(start,end):
+                if i==N-1:
+                    #The final QR has no right index, so R are just
+                    #scalars. S is the norm of the state. 
+                    if normalise==True and start==0: #Whole chain is canonised
+                        self[i].data=self[i].data/np.linalg.norm(self[i].data)
+                    return
                 else:
-                    self[i].data=self[i].data*norm
-                return
-            else:
-                U,S,V = tsr.tensor_svd(self[i], [self.phys_label, 
-                    self.left_label])
+                    qr_label=unique_label()
+                    Q,R = tsr.tensor_qr(self[i], [self.phys_label, 
+                        self.left_label], qr_label=qr_label)
 
-            #Truncate to threshold and to specified chi
-            singular_values=np.diag(S.data)
-            largest_singular_value=singular_values[0]
-            #Normalise S
-            singular_values=singular_values/largest_singular_value
-            norm*=largest_singular_value
+                #Replace tensor at site i with Q
+                Q.replace_label(qr_label+"in", self.right_label)
+                self[i]=Q
 
-            singular_values_to_keep = singular_values[singular_values > 
-                    threshold]
-            if chi:
-                singular_values_to_keep = singular_values_to_keep[:chi]
-            S.data=np.diag(singular_values_to_keep)
-            #Truncate corresponding singular index of U and V
-            U.data=U.data[:,:,0:len(singular_values_to_keep)]
-            V.data=V.data[0:len(singular_values_to_keep)]
+                #Absorb R into next tensor
+                self[i+1]=tsr.contract(R, self[i+1], self.right_label, 
+                        self.left_label)
+                self[i+1].replace_label(qr_label+"out", self.left_label)
 
-            U.replace_label("svd_in", self.right_label)
-            self[i]=U
-            self[i+1]=tsr.contract(V, self[i+1], self.right_label, 
-                    self.left_label)
-            self[i+1]=tsr.contract(S, self[i+1], ["svd_in"], ["svd_out"])
-            self[i+1].replace_label("svd_out", self.left_label)
+        else:
+            #At each step will divide by a constant so that the largest singular 
+            #value of S is 1. Will store the product of these constants in `norm`
+            norm=1
+            for i in range(start,end):
+                if i==N-1:
+                    #The final SVD has no right index, so S and V are just scalars.
+                    #S is the norm of the state. 
+                    if normalise==True and start==0: #Whole chain is canonised
+                        self[i].data=self[i].data/np.linalg.norm(self[i].data)
+                    else:
+                        self[i].data=self[i].data*norm
+                    return
+                else:
+                    svd_label=unique_label()
+                    U,S,V = tsr.tensor_svd(self[i], [self.phys_label, 
+                        self.left_label], svd_label=svd_label)
 
-            #Reabsorb normalisation factors into next tensor
-            #Note if i==N-1 (end of chain), this will not be reached 
-            #and normalisation factors will be taken care of in the earlier 
-            #block.
-            if i==end-1:
-                self[i+1].data*=norm
+                #Truncate to threshold and to specified chi
+                singular_values=np.diag(S.data)
+                largest_singular_value=singular_values[0]
+                #Normalise S
+                singular_values=singular_values/largest_singular_value
+                norm*=largest_singular_value
+
+                singular_values_to_keep = singular_values[singular_values > 
+                        threshold]
+                if chi:
+                    singular_values_to_keep = singular_values_to_keep[:chi]
+                S.data=np.diag(singular_values_to_keep)
+                #Truncate corresponding singular index of U and V
+                U.data=U.data[:,:,0:len(singular_values_to_keep)]
+                V.data=V.data[0:len(singular_values_to_keep)]
+
+                U.replace_label(svd_label+"in", self.right_label)
+                self[i]=U
+                self[i+1]=tsr.contract(V, self[i+1], self.right_label, 
+                        self.left_label)
+                self[i+1]=tsr.contract(S, self[i+1], [svd_label+"in"], 
+                        [svd_label+"out"])
+                self[i+1].replace_label(svd_label+"out", self.left_label)
+
+                #Reabsorb normalisation factors into next tensor
+                #Note if i==N-1 (end of chain), this will not be reached 
+                #and normalisation factors will be taken care of in the earlier 
+                #block.
+                if i==end-1:
+                    self[i+1].data*=norm
 
     def right_canonise(self, start=0, end=-1, chi=0, threshold=10**-14, 
-            normalise=False):
+            normalise=False, qr_decomposition=False):
         """Perform right canonisation of MPS. Identical to `left_canonise`
         except that process is mirrored (i.e. canonisation is performed from
         right to left). `start` and `end` specify the interval to be canonised.
 
         Notes
         -----
-        The first tensor to be canonised is `end`-1 and the
-        final tensor to be canonised is `start`""" 
+        The first tensor to be canonised is `end`-1 and the final tensor to be
+        canonised is `start`""" 
 
         self.reverse()
         N=len(self)
@@ -351,8 +382,11 @@ class MatrixProductState(OneDimensionalTensorNetwork):
     def svd_compress(self, chi=0, threshold=10**-15, normalise=False):
         """Simply right canonise the left canonical form according to 
         Schollwock"""
-        self.left_canonise(threshold=threshold, normalise=normalise)
+        self.left_canonise(normalise=normalise, qr_decomposition=True)
         self.right_canonise(chi=chi, threshold=threshold, normalise=normalise)
+
+    def variational_compress(self, chi, max_iter=10):
+        pass
 
     def physdim(self, site):
         """Return physical index dimesion for site"""
@@ -525,30 +559,28 @@ def contract_virtual_indices(array_1d, start=0, end=None,
 
 def left_canonical_form_mps(orig_mps, chi=0, threshold=10**-14, 
         normalise=False):
-    """Computes left canonical form of an MPS using algorithm in 
-    Schollwock 2011, 
-    by taking successive SVDs.
-    Compression is usually not done at this stage, but it can by specifying 
-    the optional chi argument.
-    Setting chi=0 means no compression."""
-    """Possible to speed up using a QR rather than SVD decomposition"""
+    """
+    Computes left canonical form of an MPS
+
+    See also
+    --------
+    Tensor.left_canonise()
+    """
     mps=orig_mps.copy()
     mps.left_canonise(chi=chi, threshold=threshold, normalise=normalise)
+    return mps
+
+def right_canonical_form_mps(orig_mps, chi=0, threshold=10**-14, 
+        normalise=False):
+    """Computes left canonical form of an MPS"""
+
+    mps=orig_mps.copy()
+    mps.right_canonise(chi=chi, threshold=threshold, normalise=normalise)
     return mps
 
 def reverse_mps(mps):
     return MatrixProductState([x.copy() for x in reversed(mps)], 
             mps.right_label, mps.left_label, mps.phys_label)
-
-def right_canonical_form_mps(orig_mps, chi=0, threshold=10**-14, 
-        normalise=False):
-    """Identical to left canonical form but starting from right"""
-    #TODO replace with call to right canonise method
-    #mps=[x.copy() for x in orig_mps] #Dont want to modify the original mps
-    mps=reverse_mps(orig_mps)
-    mps=left_canonical_form_mps(mps, chi=chi, threshold=threshold, 
-            normalise=normalise)
-    return reverse_mps(mps)
 
 def check_canonical_form_mps(mps, threshold=10**-14, print_output=True):
     mps.check_canonical_form(threshold=threshold,
