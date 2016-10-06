@@ -109,7 +109,7 @@ class OneDimensionalTensorNetwork():
         V.replace_label('svd_out', self.left_label)
         self[i+1] = V
 
-    def replace_label(old_labels, new_labels):
+    def replace_labels(old_labels, new_labels):
         """Run `Tensor.replace_label` method on every tensor in `self` then
         replace `self.left_label` and `self.right_label` appropriately."""
 
@@ -130,7 +130,7 @@ class OneDimensionalTensorNetwork():
         """Replace `self.left_label` with "left"+`suffix` and 
         `self.right_label` with "right"+`suffix`."""
 
-        self.replace_label([self.left_label, self.right_label], ["left",
+        self.replace_labels([self.left_label, self.right_label], ["left",
         "right"])
 
     def leftdim(self, site):
@@ -325,9 +325,10 @@ class MatrixProductState(OneDimensionalTensorNetwork):
                 threshold=threshold, normalise=normalise)
         self.reverse()
 
-    def replace_label(old_labels, new_labels):
+    def replace_labels(self, old_labels, new_labels):
         """Run `Tensor.replace_label` method on every tensor in `self` then
-        replace `self.left_label` and `self.right_label` appropriately."""
+        replace `self.left_label`, `self.right_label` and `self.phys_label` 
+        appropriately."""
 
         if not isinstance(old_labels, list):
             old_labels=[old_labels]
@@ -344,33 +345,13 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         if self.phys_label in old_labels:
             self.phys_label = new_labels[old_labels.index(self.phys_label)]
 
-    def replace_left_right_phys_labels(self, new_left_label=None, 
-            new_right_label=None, new_phys_label=None):
-        """
-        Replace left, right, phys labels in every tensor, and update the 
-        MatrixProductState attributes left_label, right_label and phys_label. 
-        If new label is None, the label will not be replaced. 
-        """
-        old_labels=[self.left_label, self.right_label, self.phys_label]
-        new_labels=[new_left_label, new_right_label, new_phys_label]
-        #Replace None entries with old label (i.e. don't replace)
-        for i, x in enumerate(new_labels):
-            if x==None:
-                new_labels[i]=old_labels[i]
-        for tensor in self.data:
-            tensor.replace_label(old_labels, new_labels)
-
-        self.left_label=new_left_label
-        self.right_label=new_right_label
-        self.phys_label=new_phys_label
-
     def standard_labels(self, suffix=""):
         """
         Overwrite self.labels, self.left_label, self.right_label, 
         self.phys_label with standard labels "left", "right", "phys"
         """
-        self.replace_left_right_phys_labels(new_left_label="left"+suffix, 
-                new_right_label="right"+suffix, new_phys_label="phys"+suffix)
+        self.replace_labels([self.left_label, self.right_label,
+            self.phys_label], ["left"+suffix, "right"+suffix, "phys"+suffix])
 
     def check_canonical_form(self, threshold=10**-14, print_output=True):
         """Determines which tensors in the MPS are left canonised, and which 
@@ -831,9 +812,9 @@ def ladder(array1, array2, label1, label2, start=0, end=None, complex_conjugate_
                 [mps_ket.left_label, mps_ket.phys_label])
 
     #Restore labels of mps_ket
-    mps_ket.replace_left_right_phys_labels(new_left_label=mps_ket_old_labels[0]
-            , new_right_label=mps_ket_old_labels[1],
-            new_phys_label=mps_ket_old_labels[2])
+   # mps_ket.replace_label(mps_ket_old_labels[0]
+   #         , mps_ket_old_labels[1],
+   #         mps_ket_old_labels[2])
 
     left_boundary.remove_all_dummy_indices()
     if return_whole_tensor:
@@ -868,9 +849,9 @@ def inner_product_mps(mps_bra, mps_ket, complex_conjugate_bra=True,
                 [mps_ket.left_label, mps_ket.phys_label])
 
     #Restore labels of mps_ket
-    mps_ket.replace_left_right_phys_labels(new_left_label=mps_ket_old_labels[0]
-            , new_right_label=mps_ket_old_labels[1],
-            new_phys_label=mps_ket_old_labels[2])
+    mps_ket.replace_labels(["left", "right", "phys"], [mps_ket_old_labels[0]
+            , mps_ket_old_labels[1],
+            mps_ket_old_labels[2]])
 
     left_boundary.remove_all_dummy_indices()
     if return_whole_tensor:
