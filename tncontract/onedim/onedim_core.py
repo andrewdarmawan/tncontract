@@ -62,6 +62,11 @@ class OneDimensionalTensorNetwork():
         self.left_label=self.right_label
         self.right_label=temp
 
+    def complex_conjugate(self):
+        """Will complex conjugate every entry of every tensor in array."""
+        for x in self.data: 
+            x.conjugate()
+
     def swap_gate(self, i, chi=0, threshold=1e-15, 
             absorb_singular_values='right'):
         """
@@ -386,7 +391,9 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         self.right_canonise(chi=chi, threshold=threshold, normalise=normalise)
 
     def variational_compress(self, chi, max_iter=10):
-        pass
+        orig_mps=self.copy()
+        self.svd_compress(chi=chi)
+        #MPS is now in left canonical form
 
     def physdim(self, site):
         """Return physical index dimesion for site"""
@@ -749,9 +756,41 @@ def mps_complex_conjugate(mps):
         x.conjugate()
     return new_mps
 
-def inner_product_one_dimension(array1, array2, label1, label2):
-    """"""
-    pass
+def inner_product_one_dimension(array1, array2, label1, label2, start=0, end=None, complex_conjugate_array1=True):
+    """
+        They must have the same physical index dimensions"""
+    if complex_conjugate_array1:
+        array1_cc=mps_complex_conjugate(array1)
+    else:
+        #Just copy without taking complex conjugate
+        mps_bra_cc=mps_bra.copy()
+
+    #Temporarily relabel so no conflicts 
+    mps_ket_old_labels=[mps_ket.left_label, mps_ket.right_label, 
+            mps_ket.phys_label]
+    mps_ket.standard_labels()
+    #Suffix to distinguish from mps_ket labels
+    mps_bra_cc.standard_labels(suffix="_cc") 
+
+    left_boundary=tsr.contract(mps_bra_cc[0], mps_ket[0], 
+            mps_bra_cc.phys_label, mps_ket.phys_label)
+    for i in range(1,len(mps_ket)):
+        left_boundary=tsr.contract(left_boundary, mps_bra_cc[i], 
+                mps_bra_cc.right_label, mps_bra_cc.left_label)
+        left_boundary=tsr.contract(left_boundary, mps_ket[i], 
+                [mps_ket.right_label, mps_bra_cc.phys_label], 
+                [mps_ket.left_label, mps_ket.phys_label])
+
+    #Restore labels of mps_ket
+    mps_ket.replace_left_right_phys_labels(new_left_label=mps_ket_old_labels[0]
+            , new_right_label=mps_ket_old_labels[1],
+            new_phys_label=mps_ket_old_labels[2])
+
+    left_boundary.remove_all_dummy_indices()
+    if return_whole_tensor:
+        return left_boundary
+    else:
+        return left_boundary.data
 
 def inner_product_mps(mps_bra, mps_ket, complex_conjugate_bra=True, 
         return_whole_tensor=False):
