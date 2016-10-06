@@ -9,10 +9,10 @@ __all__ = ['MatrixProductState', 'MatrixProductOperator',
         'OneDimensionalTensorNetwork', 'check_canonical_form_mps',
         'contract_mps_mpo', 'contract_multi_index_tensor_with_one_dim_array',
         'contract_virtual_indices', 'frob_distance_squared',
-        'inner_product_mps', 'inner_product_one_dimension',
-        'left_canonical_form_mps', 'mps_complex_conjugate', 'reverse_mps',
-        'right_canonical_form_mps', 'svd_compress_mps',
-        'variational_compress_mps', 'tensor_to_mpo', 'tensor_to_mps']
+        'inner_product_mps', 'ladder', 'left_canonical_form_mps',
+        'mps_complex_conjugate', 'reverse_mps', 'right_canonical_form_mps',
+        'svd_compress_mps', 'variational_compress_mps', 'tensor_to_mpo',
+        'tensor_to_mps']
 
 import numpy as np
 
@@ -108,6 +108,17 @@ class OneDimensionalTensorNetwork():
         V.unprime_label(A_phys_labels)
         V.replace_label('svd_out', self.left_label)
         self[i+1] = V
+
+    def replace_label(old_labels, new_labels):
+        """Run `Tensor.replace_label` method on every tensor in `self` then
+        replace `self.left_label` and `self.right_label` appropriately."""
+        for x in self.data:
+            x.replace_label(old_labels, new_labels)
+
+        if self.left_label in old_labels:
+            self.left_label = new_labels[old_labels.index(self.left_label)]
+        if self.right_label in old_labels:
+            self.right_label = new_labels[old_labels.index(self.right_label)]
 
     def leftdim(self, site):
         """Return left index dimesion for site"""
@@ -756,14 +767,16 @@ def mps_complex_conjugate(mps):
         x.conjugate()
     return new_mps
 
-def inner_product_one_dimension(array1, array2, label1, label2, start=0, end=None, complex_conjugate_array1=True):
-    """
-        They must have the same physical index dimensions"""
+def ladder(array1, array2, label1, label2, start=0, end=None, complex_conjugate_array1=True):
+    """They must have the same physical index dimensions"""
     if complex_conjugate_array1:
-        array1_cc=mps_complex_conjugate(array1)
-    else:
-        #Just copy without taking complex conjugate
-        mps_bra_cc=mps_bra.copy()
+        a1=array1.copy
+        a1.complex_conjugate()
+
+    a2=array2.copy()
+    #else:
+    #    #Just copy without taking complex conjugate
+    #    mps_bra_cc=mps_bra.copy()
 
     #Temporarily relabel so no conflicts 
     mps_ket_old_labels=[mps_ket.left_label, mps_ket.right_label, 
