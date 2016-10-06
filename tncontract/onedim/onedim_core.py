@@ -385,8 +385,13 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         self.left_canonise(normalise=normalise, qr_decomposition=True)
         self.right_canonise(chi=chi, threshold=threshold, normalise=normalise)
 
-    def variational_compress(self, chi, max_iter=10):
-        pass
+    def variational_compress(self, chi, max_iter=10, initial_guess=None):
+        if initial_guess != None:
+            mps=self.copy()
+            mps.svd_compress(chi=chi)
+        else:
+            mps=initial_guess
+
 
     def physdim(self, site):
         """Return physical index dimesion for site"""

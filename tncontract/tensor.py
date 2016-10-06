@@ -402,7 +402,7 @@ def distance(tensor1, tensor2):
     if t1.labels == t2.labels:
         return np.linalg.norm(t1.data - t2.data)
     else:
-        raise ValueError("Input tensors have different labels.")
+        raise ValueError("Input tensors must have the same labels.")
 
 def tensor_to_matrix(tensor, row_labels):
     """
