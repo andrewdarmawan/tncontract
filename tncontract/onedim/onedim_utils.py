@@ -161,7 +161,7 @@ def onebody_sum_mpo(terms, output_label=None):
         right_label='right', physin_label='physin', physout_label='physout')
 
 
-def expvals_mps(mps, oplist, output_label=None, canonised=None):
+def expvals_mps(mps, oplist=[], sites=None, output_label=None, canonised=None):
     # TODO: Why canonised gives strange results?
     """
     Return single site expectation values <op>_i for all i
@@ -172,6 +172,9 @@ def expvals_mps(mps, oplist, output_label=None, canonised=None):
     oplist : list or Tensor
         List of rank-two tensors representing the operators at each site.
         If a single `Tensor` is given this will be used for all sites.
+    sites : int or list of ints, optional
+        Sites for which to compute expectation values. If None all
+        sites will be returned.
     output_label : str, optional
         Specify the label corresponding to the output index. Must be the same
         for each element of `terms`. If not specified the first index is taken 
@@ -188,8 +191,14 @@ def expvals_mps(mps, oplist, output_label=None, canonised=None):
     -----
     `mps` will be in left canonical form after the function call.
     """
-    N = len(mps)
+    if sites is None:
+        sites = range(len(mps))
+    if not np.iterable(sites):
+        sites = [sites]
+
+    N = len(sites)
     expvals = np.zeros(N, dtype=complex)
+
     if not np.iterable(oplist):
         oplist_new = [oplist]*N
     else:
@@ -201,9 +210,15 @@ def expvals_mps(mps, oplist, output_label=None, canonised=None):
     elif canonised != 'right':
         mps.right_canonise()
 
-    for k, op in enumerate(oplist_new):
+    center = 0
+    for i, site in enumerate(sites):
+        # Mover orthogonality center to site k
+        mps.left_canonise(center, site)
+        center = site
+
         # compute exp value for site k
-        A = mps[k]
+        op = oplist_new[i]
+        A = mps[site]
         if output_label is None:
             out_label = op.labels[0]
             in_label = op.labels[1]
@@ -218,9 +233,7 @@ def expvals_mps(mps, oplist, output_label=None, canonised=None):
                 index2=1)
         exp.contract_internal(mps.right_label, mps.right_label, index1=0,
                 index2=1)
-        expvals[k] = exp.data
-        # move orthogonality center along MPS
-        mps.left_canonise(k, k+1)
+        expvals[i] = exp.data
 
     if canonised == 'left':
         mps.reverse()
@@ -266,10 +279,10 @@ def ptrace_mps(mps, sites=None, canonised=None):
         sites = [sites]
 
     center = 0
-    for k in sites:
+    for site in sites:
         # Mover orthogonality center to site k
-        mps.left_canonise(center, k)
-        center = k
+        mps.left_canonise(center, site)
+        center = site
 
         A = mps[center]
         Ad = A.copy()

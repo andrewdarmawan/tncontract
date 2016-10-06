@@ -320,10 +320,35 @@ class Tensor():
         """
         return tensor_to_matrix(self, row_labels)
 
+    def pad_index(self, label, inc, before=False):
+        """
+        Increase the dimension of first index with `label` by `inc` by padding
+        with zeros.
+
+        By default zeros are appended after the last edge of the axis in
+        question, e.g., [1,2,3] -> [1,2,3,0..0]. If `before=True` the zeros
+        will be padded before the first edge of the index instead,
+        e.g., [1,2,3] -> [0,..,0,1,2,3].
+
+        See also
+        --------
+        numpy.pad
+        """
+        if before:
+            npad = ((inc, 0),)
+        else:
+            npad = ((0, inc),)
+        index = self.labels.index(label)
+        npad = ((0, 0),)*(index) + npad + ((0,0),)*(self.rank-index-1)
+        self.data = np.pad(self.data, npad, mode='constant', constant_values=0)
+
     @property
     def shape(self):
         return self.data.shape
 
+    @property
+    def rank(self):
+        return len(self.shape)
 
 #Tensor constructors
 def random_tensor(*args, labels=[], base_label="i"):
