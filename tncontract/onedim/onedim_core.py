@@ -9,7 +9,7 @@ __all__ = ['MatrixProductState', 'MatrixProductOperator',
         'OneDimensionalTensorNetwork', 'check_canonical_form_mps',
         'contract_mps_mpo', 'contract_multi_index_tensor_with_one_dim_array',
         'contract_virtual_indices', 'frob_distance_squared',
-        'inner_product_mps', 'ladder', 'left_canonical_form_mps',
+        'inner_product_mps', 'ladder_contract', 'left_canonical_form_mps',
         'mps_complex_conjugate', 'reverse_mps', 'right_canonical_form_mps',
         'svd_compress_mps', 'variational_compress_mps', 'tensor_to_mpo',
         'tensor_to_mps']
@@ -782,45 +782,40 @@ def mps_complex_conjugate(mps):
         x.conjugate()
     return new_mps
 
-def ladder(array1, array2, label1, label2, start=0, end=None, complex_conjugate_array1=True):
-    """They must have the same physical index dimensions"""
-    if complex_conjugate_array1:
-        a1=array1.copy
-        a1.complex_conjugate()
+def ladder_contract(array1, array2, label1, label2, start=0, end=None,
+        complex_conjugate_array1=True): 
+    """They must have the same physical index dimensions""" 
 
+    a1=array1.copy()
     a2=array2.copy()
 
+    if complex_conjugate_array1: 
+        a1.complex_conjugate()
 
-    #else:
-    #    #Just copy without taking complex conjugate
-    #    mps_bra_cc=mps_bra.copy()
+    #Relabel so no conflicts with other labels in array1, array2
+    phys_label1=unique_label()
+    phys_label2=unique_label()
+    a1.replace_labels(label1, phys_label1)
+    a2.replace_labels(label1, phys_label2)
+    a1.standard_labels(suffix="_b")
+    a2.standard_labels(suffix="_t")
 
-    #Temporarily relabel so no conflicts 
-    mps_ket_old_labels=[mps_ket.left_label, mps_ket.right_label, 
-            mps_ket.phys_label]
-    mps_ket.standard_labels()
-    #Suffix to distinguish from mps_ket labels
-    mps_bra_cc.standard_labels(suffix="_cc") 
+    #If no end specified, will contract to end
+    if end==None:
+        end=min(a1.nsites, a2.nsites)
 
-    left_boundary=tsr.contract(mps_bra_cc[0], mps_ket[0], 
-            mps_bra_cc.phys_label, mps_ket.phys_label)
-    for i in range(1,len(mps_ket)):
-        left_boundary=tsr.contract(left_boundary, mps_bra_cc[i], 
-                mps_bra_cc.right_label, mps_bra_cc.left_label)
-        left_boundary=tsr.contract(left_boundary, mps_ket[i], 
-                [mps_ket.right_label, mps_bra_cc.phys_label], 
-                [mps_ket.left_label, mps_ket.phys_label])
+    if start==0:
+        C=tsr.contract(a1[0], a2[0], phys_label1, phys_label2)
+        for i in range(1, end):
+            C=tsr.contract(C, a1[i], a1.right_label, a1.left_label)
+            C=tsr.contract(C, a2[i], [a2.right_label, phys_label1], 
+                [a2.left_label, phys_label2])
 
-    #Restore labels of mps_ket
-   # mps_ket.replace_label(mps_ket_old_labels[0]
-   #         , mps_ket_old_labels[1],
-   #         mps_ket_old_labels[2])
+        C.remove_all_dummy_indices()
 
-    left_boundary.remove_all_dummy_indices()
-    if return_whole_tensor:
-        return left_boundary
-    else:
-        return left_boundary.data
+        return C
+
+    #TODO, if start!=0 but end=None and tensors same length
 
 def inner_product_mps(mps_bra, mps_ket, complex_conjugate_bra=True, 
         return_whole_tensor=False):
