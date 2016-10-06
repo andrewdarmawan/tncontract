@@ -325,6 +325,25 @@ class MatrixProductState(OneDimensionalTensorNetwork):
                 threshold=threshold, normalise=normalise)
         self.reverse()
 
+    def replace_label(old_labels, new_labels):
+        """Run `Tensor.replace_label` method on every tensor in `self` then
+        replace `self.left_label` and `self.right_label` appropriately."""
+
+        if not isinstance(old_labels, list):
+            old_labels=[old_labels]
+        if not isinstance(new_labels, list):
+            new_labels=[new_labels]
+
+        for x in self.data:
+            x.replace_label(old_labels, new_labels)
+
+        if self.left_label in old_labels:
+            self.left_label = new_labels[old_labels.index(self.left_label)]
+        if self.right_label in old_labels:
+            self.right_label = new_labels[old_labels.index(self.right_label)]
+        if self.phys_label in old_labels:
+            self.phys_label = new_labels[old_labels.index(self.phys_label)]
+
     def replace_left_right_phys_labels(self, new_left_label=None, 
             new_right_label=None, new_phys_label=None):
         """
