@@ -232,6 +232,7 @@ class Tensor():
             #Reinsert label at position p
             new_labels.insert(p,label)
             self.labels=new_labels
+
     def sort_labels(self):
         self.consolidate_indices()
 
@@ -312,12 +313,12 @@ class Tensor():
         index = self.labels.index(label)
         return self.data.shape[index]
 
-    def to_matrix(self, output_labels):
+    def to_matrix(self, row_labels):
         """
-        Convert tensor to a matrix regarding output_labels as output 
-        (row index) and the remaining indices as input (column index).
+        Convert tensor to a matrix regarding row_labels as row index 
+        (output) and the remaining indices as column index (input).
         """
-        return tensor_to_matrix(self, output_labels)
+        return tensor_to_matrix(self, row_labels)
 
     @property
     def shape(self):
@@ -520,19 +521,21 @@ def tensor_svd(tensor, row_labels, svd_label="svd_"):
 
     try:
         u,s,v=np.linalg.svd(data_matrix, full_matrices=False)
-    except np.linalg.LinAlgError:
+    except (np.linalg.LinAlgError, ValueError) as e:
         # Try with different lapack driver
+        print(str(e))
         warnings.warn(('numpy.linalg.svd failed, trying scipy.linalg.svd with'+
                 ' lapack_driver="gesvd"'))
-        u,s,v=sp.linalg.svd(data_matrix, full_matrices=False,
-                lapack_driver='gesvd')
-    except ValueError:
-        # Check for inf's and nan's:
-        print("tensor_svd failed. Matrix contains inf's: "
-                + str(np.isinf(data_matrix).any()) 
-                + ". Matrix contains nan's: "
-                + str(np.isnan(data_matrix).any()))
-        raise # re-raise the exception
+        try:
+            u,s,v=sp.linalg.svd(data_matrix, full_matrices=False,
+                    lapack_driver='gesvd')
+        except ValueError:
+            # Check for inf's and nan's:
+            print("tensor_svd failed. Matrix contains inf's: "
+                    + str(np.isinf(data_matrix).any()) 
+                    + ". Matrix contains nan's: "
+                    + str(np.isnan(data_matrix).any()))
+            raise # re-raise the exception
 
     #New shape original index labels as well as svd index
     U_shape=list(old_shape[0:len(row_labels)])
