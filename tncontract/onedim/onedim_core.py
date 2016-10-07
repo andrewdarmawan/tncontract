@@ -130,8 +130,8 @@ class OneDimensionalTensorNetwork():
         """Replace `self.left_label` with "left"+`suffix` and 
         `self.right_label` with "right"+`suffix`."""
 
-        self.replace_labels([self.left_label, self.right_label], ["left",
-        "right"])
+        self.replace_labels([self.left_label, self.right_label], ["left"+suffix,
+        "right"+suffix])
 
     def leftdim(self, site):
         """Return left index dimesion for site"""
