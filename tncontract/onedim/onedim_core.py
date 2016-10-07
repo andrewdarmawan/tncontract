@@ -881,6 +881,7 @@ def ladder_contract(array1, array2, label1, label2, start=0, end=None,
             a2.left_label], [right_output_label+"1", right_output_label+"2", 
                 left_output_label+"1", left_output_label+"2"])
         C.remove_all_dummy_indices()
+
     if return_intermediate_contractions:
         return intermediate_contractions
     else:
@@ -888,41 +889,11 @@ def ladder_contract(array1, array2, label1, label2, start=0, end=None,
 
 def inner_product_mps(mps_bra, mps_ket, complex_conjugate_bra=True, 
         return_whole_tensor=False):
-    """Inner product of two mps.
-    They must have the same physical index dimensions"""
-    if complex_conjugate_bra:
-        mps_bra_cc=mps_complex_conjugate(mps_bra)
-    else:
-        #Just copy without taking complex conjugate
-        mps_bra_cc=mps_bra.copy()
-
-    #Temporarily relabel so no conflicts 
-    mps_ket_old_labels=[mps_ket.left_label, mps_ket.right_label, 
-            mps_ket.phys_label]
-    mps_ket.standard_labels()
-    #Suffix to distinguish from mps_ket labels
-    mps_bra_cc.standard_labels(suffix="_cc") 
-
-    left_boundary=tsr.contract(mps_bra_cc[0], mps_ket[0], 
-            mps_bra_cc.phys_label, mps_ket.phys_label)
-    for i in range(1,len(mps_ket)):
-        left_boundary=tsr.contract(left_boundary, mps_bra_cc[i], 
-                mps_bra_cc.right_label, mps_bra_cc.left_label)
-        left_boundary=tsr.contract(left_boundary, mps_ket[i], 
-                [mps_ket.right_label, mps_bra_cc.phys_label], 
-                [mps_ket.left_label, mps_ket.phys_label])
-
-    #Restore labels of mps_ket
-    mps_ket.replace_labels(["left", "right", "phys"], [mps_ket_old_labels[0]
-            , mps_ket_old_labels[1],
-            mps_ket_old_labels[2]])
-
-    left_boundary.remove_all_dummy_indices()
-    if return_whole_tensor:
-        return left_boundary
-    else:
-        return left_boundary.data
-
+    """Compute the inner product of two MatrixProductState objects."""
+    t=ladder_contract(mps_bra, mps_ket, mps_bra.phys_label, mps_ket.phys_label,
+            complex_conjugate_array1=complex_conjugate_bra)
+    return t.data
+    
 def frob_distance_squared(mps1, mps2):
     ip=inner_product_mps
     return ip(mps1, mps1) + ip(mps2, mps2) - 2*np.real(ip(mps1, mps2))
