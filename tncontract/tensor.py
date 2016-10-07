@@ -304,6 +304,20 @@ class Tensor():
         """
         return tensor_to_matrix(self, output_labels)
 
+    def contract(self, *args, **kwargs):
+        """
+        A method that calls the function `contract`, passing `self` as the
+        first argument.
+        
+        See also
+        --------
+        contract (function)
+
+        """
+        t=contract(self, *args, **kwargs)
+        self.data=t.data
+        self.labels=t.labels
+
     @property
     def shape(self):
         return self.data.shape
