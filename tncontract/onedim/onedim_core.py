@@ -791,9 +791,16 @@ def mps_complex_conjugate(mps):
 
 def ladder_contract(array1, array2, label1, label2, start=0, end=None,
         complex_conjugate_array1=False, left_output_label="left",
-        right_output_label="right"): 
+        right_output_label="right", return_intermediate_contractions=False): 
     """A general function for contracting pairs of 1D arrays
     They must have the same physical index dimensions""" 
+
+    #If no end specified, will contract to end
+    if end==None:
+        end=min(array1.nsites, array2.nsites)-1 #index of the last site
+
+    if end < start:
+        raise ValueError("Badly defined interval (end before start).")
 
     a1=array1.copy()
     a2=array2.copy()
@@ -805,42 +812,79 @@ def ladder_contract(array1, array2, label1, label2, start=0, end=None,
     #labels in array1, array2
     a1.unique_virtual_labels()
     a2.unique_virtual_labels()
-    rung_label1=unique_label()
-    rung_label2=unique_label()
-    a1.replace_labels(label1, rung_label1)
-    a2.replace_labels(label2, rung_label2)
+    rung_label=unique_label()
+    a1.replace_labels(label1, rung_label)
+    a2.replace_labels(label2, rung_label)
 
-    #If no end specified, will contract to end
-    if end==None:
-        end=min(a1.nsites, a2.nsites)-1 #index of the last site
-
+    intermediate_contractions=[]
     if start==0: #Start contraction from left
-        C=tsr.contract(a1[0], a2[0], rung_label1, rung_label2)
-        for i in range(1, end+1):
-            C.contract(a1[i], a1.right_label, a1.left_label)
-            C.contract(a2[i], [a2.right_label, rung_label1], 
-                    [a2.left_label, rung_label2])
+        for i in range(0, end+1):
+            if i==0:
+                C=tsr.contract(a1[0], a2[0], rung_label, rung_label)
+            else:
+                C.contract(a1[i], a1.right_label, a1.left_label)
+                C.contract(a2[i], [a2.right_label, rung_label], 
+                        [a2.left_label, rung_label])
+
+            if return_intermediate_contractions:
+                t=C.copy()
+                t.replace_label([a1.right_label, a2.right_label], 
+                        [right_output_label+"1", right_output_label+"2"])
+                t.remove_all_dummy_indices()
+                intermediate_contractions.append(t)
 
         C.replace_label([a1.right_label, a2.right_label], 
                 [right_output_label+"1", right_output_label+"2"])
         C.remove_all_dummy_indices()
-        return C
 
     elif end==a1.nsites-1 and end==a2.nsites-1: #Contract from the right
-        C=tsr.contract(a1[end], a2[end], rung_label1, rung_label2)
-        for i in range(end-2, start, -1):
-            print(i)
-            C.contract(a1[i], a1.left_label, a1.right_label)
-            C.contract(a2[i], [a2.left_label, rung_label1], 
-                    [a2.right_label, rung_label2])
+        for i in range(end, start-1, -1):
+            if i==end:
+                C=tsr.contract(a1[end], a2[end], rung_label, rung_label)
+            else:
+                C.contract(a1[i], a1.left_label, a1.right_label)
+                C.contract(a2[i], [a2.left_label, rung_label], 
+                        [a2.right_label, rung_label])
+
+            if return_intermediate_contractions:
+                t=C.copy()
+                t.replace_label([a1.left_label, a2.left_label], 
+                        [left_output_label+"1", left_output_label+"2"])
+                t.remove_all_dummy_indices()
+                intermediate_contractions.insert(0,t)
 
         C.replace_label([a1.left_label, a2.left_label], 
                 [left_output_label+"1", left_output_label+"2"])
         C.remove_all_dummy_indices()
-        return C
 
-    else: #TODO Contract in pairs first then together
-        pass
+    else: 
+        #When an interval does not contain a boundary, contract in pairs first
+        #then together
+        for i in range(start, end+1):
+            t=tsr.contract(a1[i], a2[i], rung_label, rung_label)
+            if i==start:
+                C=t
+            else:
+                C.contract(t, [a1.right_label, a2.right_label], 
+                        [a1.left_label, a2.left_label])
+
+            if return_intermediate_contractions:
+                t=C.copy()
+                t.replace_label([a1.right_label, a2.right_label, a1.left_label, 
+                    a2.left_label], [right_output_label+"1", 
+                        right_output_label+"2", left_output_label+"1", 
+                        left_output_label+"2"])
+                t.remove_all_dummy_indices()
+                intermediate_contractions.append(t)
+
+        C.replace_label([a1.right_label, a2.right_label, a1.left_label, 
+            a2.left_label], [right_output_label+"1", right_output_label+"2", 
+                left_output_label+"1", left_output_label+"2"])
+        C.remove_all_dummy_indices()
+    if return_intermediate_contractions:
+        return intermediate_contractions
+    else:
+        return C
 
 def inner_product_mps(mps_bra, mps_ket, complex_conjugate_bra=True, 
         return_whole_tensor=False):
