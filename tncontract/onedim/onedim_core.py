@@ -792,8 +792,25 @@ def mps_complex_conjugate(mps):
 def ladder_contract(array1, array2, label1, label2, start=0, end=None,
         complex_conjugate_array1=False, left_output_label="left",
         right_output_label="right", return_intermediate_contractions=False): 
-    """A general function for contracting pairs of 1D arrays
-    They must have the same physical index dimensions""" 
+    """
+    Contract two one-dimensional tensor networks. The index labelled
+    `label1` of the jth tensor in `array1` is contracted with the index
+    labelled `label2` of the jth tensor in `array2` (for all j), and the
+    virtual indices of all tensors are contracted. This results in a ladder
+    when representing the contraction graphically. 
+
+    Parameters
+    ----------
+
+    array1 : OneDimensionalTensorNetwork
+    array2 : OneDimensionalTensorNetwork
+        The one dimensional networks to be contracted.
+
+    label1 : str
+    label2 : str
+        The index labelled `label1` is contracted with the index labelled
+        `label2` for every site in array.
+    """
 
     #If no end specified, will contract to end
     if end==None:
