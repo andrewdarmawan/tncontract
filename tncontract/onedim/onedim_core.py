@@ -790,8 +790,10 @@ def mps_complex_conjugate(mps):
     return new_mps
 
 def ladder_contract(array1, array2, label1, label2, start=0, end=None,
-        complex_conjugate_array1=True): 
-    """They must have the same physical index dimensions""" 
+        complex_conjugate_array1=False, left_output_label="left",
+        right_output_label="right"): 
+    """A general function for contracting pairs of 1D arrays
+    They must have the same physical index dimensions""" 
 
     a1=array1.copy()
     a2=array2.copy()
@@ -799,35 +801,46 @@ def ladder_contract(array1, array2, label1, label2, start=0, end=None,
     if complex_conjugate_array1: 
         a1.complex_conjugate()
 
-    #Relabel so no conflicts with other labels in array1, array2
-    #rung_label1=unique_label()
-    #rung_label2=unique_label()
-    #left_label1=unique_label()
-    #left_label2=unique_label()
-    #right_label1=unique_label()
-    #right_label2=unique_label()
-    #a1.replace_labels([a1.left_label, a1.right_label, label1], [left_label1,
-    #    right_label1, label1])
-    #a2.replace_labels(label1, rung_label2)
-    #a1.standard_labels(suffix="_b")
-    #a2.standard_labels(suffix="_t")
+    #Give all contracted indices unique labels so no conflicts with other 
+    #labels in array1, array2
+    a1.unique_virtual_labels()
+    a2.unique_virtual_labels()
+    rung_label1=unique_label()
+    rung_label2=unique_label()
+    a1.replace_labels(label1, rung_label1)
+    a2.replace_labels(label2, rung_label2)
 
-    ##If no end specified, will contract to end
-    #if end==None:
-    #    end=min(a1.nsites, a2.nsites)
+    #If no end specified, will contract to end
+    if end==None:
+        end=min(a1.nsites, a2.nsites)-1 #index of the last site
 
-    #if start==0:
-    #    C=tsr.contract(a1[0], a2[0], phys_label1, phys_label2)
-    #    for i in range(1, end):
-    #        C.contract(a1[i], a1.right_label, a1.left_label)
-    #        C.contract(a2[i], [a2.right_label, phys_label1], 
-    #                [a2.left_label, phys_label2])
+    if start==0: #Start contraction from left
+        C=tsr.contract(a1[0], a2[0], rung_label1, rung_label2)
+        for i in range(1, end+1):
+            C.contract(a1[i], a1.right_label, a1.left_label)
+            C.contract(a2[i], [a2.right_label, rung_label1], 
+                    [a2.left_label, rung_label2])
 
-    #    C.remove_all_dummy_indices()
+        C.replace_label([a1.right_label, a2.right_label], 
+                [right_output_label+"1", right_output_label+"2"])
+        C.remove_all_dummy_indices()
+        return C
 
-    #    return C
+    elif end==a1.nsites-1 and end==a2.nsites-1: #Contract from the right
+        C=tsr.contract(a1[end], a2[end], rung_label1, rung_label2)
+        for i in range(end-2, start, -1):
+            print(i)
+            C.contract(a1[i], a1.left_label, a1.right_label)
+            C.contract(a2[i], [a2.left_label, rung_label1], 
+                    [a2.right_label, rung_label2])
 
-    #TODO, if start!=0 but end=None and tensors same length
+        C.replace_label([a1.left_label, a2.left_label], 
+                [left_output_label+"1", left_output_label+"2"])
+        C.remove_all_dummy_indices()
+        return C
+
+    else: #TODO Contract in pairs first then together
+        pass
 
 def inner_product_mps(mps_bra, mps_ket, complex_conjugate_bra=True, 
         return_whole_tensor=False):
