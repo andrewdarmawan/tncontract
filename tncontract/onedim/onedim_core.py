@@ -793,11 +793,11 @@ def ladder_contract(array1, array2, label1, label2, start=0, end=None,
         complex_conjugate_array1=False, left_output_label="left",
         right_output_label="right", return_intermediate_contractions=False): 
     """
-    Contract two one-dimensional tensor networks. The index labelled
-    `label1` of the jth tensor in `array1` is contracted with the index
-    labelled `label2` of the jth tensor in `array2` (for all j), and the
-    virtual indices of all tensors are contracted. This results in a ladder
-    when representing the contraction graphically. 
+    Contract two one-dimensional tensor networks. The index labelled `label1`
+    of the jth tensor in `array1` is contracted with the index labelled
+    `label2` of the jth tensor in `array2` (for all j), and all virtual indices
+    are contracted.  The contraction pattern resembles a ladder when
+    represented graphically. 
 
     Parameters
     ----------
@@ -810,6 +810,58 @@ def ladder_contract(array1, array2, label1, label2, start=0, end=None,
     label2 : str
         The index labelled `label1` is contracted with the index labelled
         `label2` for every site in array.
+
+    start : int
+    end : int
+        The endpoints of the interval to be contracted. The leftmost tensors
+        involved in the contraction are `array1[start]` and `array2[start]`,
+        while the rightmost tensors are `array2[end]` and `array2[end]`. 
+
+    complex_conjugate_array1 : bool
+        Whether the complex conjugate of `array1` will be used, rather than
+        `array1` itself. This is useful if, for instance, the two arrays are
+        matrix product states and the inner product is to be taken (Note that
+        inner_product_mps could be used in this case). 
+
+    right_output_label : str
+        Base label assighned to right-going indices. Right-going indices will
+        be assigned labels `right_output_label`+"1" and
+        `right_output_label`+"2" corresponding, respectively, to `array1` and
+        `array2`.
+
+    left_output_label : str
+        Base label assighned to left-going indices. Left-going indices will
+        be assigned labels `left_output_label`+"1" and
+        `left_output_label`+"2" corresponding, respectively, to `array1` and
+        `array2`.
+
+    return_intermediate_contractions : bool
+        If true, a list of tensors is returned. If the contraction is performed
+        from left to right (see Notes below), the i-th entry contains the
+        contraction up to the i-th contracted pair. If contraction is performed
+        from right to left, this order is reversed (so the last entry
+        corresponds to the contraction of the right-most pair tensors, which
+        are first to be contracted).
+
+    Returns
+    -------
+    tensor : Tensor
+       Tensor obtained by contracting the two arrays. The tensor may have left
+       indices, right indices, both or neither depending on the interval
+       specified. 
+
+    intermediate_contractions : list 
+        If `return_intermediate_contractions` is true a list
+        `intermediate_contractions` is returned containing a list of tensors
+        corresponding to contraction up to a particular column.  See 
+
+    Notes
+    -----
+    If the interval specified contains the left boundary, contraction is
+    performed from left to right. If not and if interval contains right
+    boundary, contraction is performed from right to left. If the interval
+    does not contain either boundary, contraction is performed from left to
+    right.
     """
 
     #If no end specified, will contract to end
@@ -909,7 +961,10 @@ def inner_product_mps(mps_bra, mps_ket, complex_conjugate_bra=True,
     """Compute the inner product of two MatrixProductState objects."""
     t=ladder_contract(mps_bra, mps_ket, mps_bra.phys_label, mps_ket.phys_label,
             complex_conjugate_array1=complex_conjugate_bra)
-    return t.data
+    if return_whole_tensor:
+        return t
+    else:
+        return t.data
     
 def frob_distance_squared(mps1, mps2):
     ip=inner_product_mps
