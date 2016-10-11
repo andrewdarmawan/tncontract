@@ -629,6 +629,11 @@ def tensor_qr(tensor, row_labels, qr_label="qr_"):
 
     return Q,R
 
+def tensor_lq(tensor, row_labels, lq_label="lq_"):
+    col_indices = [x for x in tensor.labels if x not in row_labels]
+    print(col_indices)
+    pass
+
 def truncated_svd(tensor, row_labels, chi=0, threshold=10**-15, 
         absorb_singular_values="right"):
     """
