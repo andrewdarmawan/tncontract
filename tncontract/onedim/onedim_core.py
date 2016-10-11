@@ -428,6 +428,22 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         else:
             mps=initial_guess
 
+        #Generate some unique labels to avoid conflicts
+        right_label=unique_label()
+        qr_label=unique_label()
+
+        left_contractions = ladder_contract(mps, self, mps.phys_label,
+                self.phys_label, return_intermediate_contractions=True,
+                right_output_label=right_label)
+
+        for i in range(self.nsites-1, -1, -1):
+            if i==self.nsites-1:
+                updated_tensor=tsr.contract(self[i], left_contractions[i-1],
+                self.left_label, right_label+"2")
+                updated_tensor.replace_label(right_label+"1", self.left_label)
+                Q, R = tsr.tensor_qr(updated_tensor, self.phys_label,
+                        qr_label=qr_label)
+
     def physdim(self, site):
         """Return physical index dimesion for site"""
         return self.data[site].index_dimension(self.phys_label)

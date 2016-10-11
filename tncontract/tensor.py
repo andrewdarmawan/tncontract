@@ -597,6 +597,11 @@ def tensor_qr(tensor, row_labels, qr_label="qr_"):
     """
     t=tensor.copy()
 
+    if not isinstance(row_labels, list):
+        #If row_labels is not a list, convert to list with a single entry
+        #"row_labels"
+        row_labels=[row_labels]
+
     #Move labels in row_labels to the beginning of list, and reshape data 
     #accordingly
     total_input_dimension=1
