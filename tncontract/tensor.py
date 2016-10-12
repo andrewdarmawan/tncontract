@@ -249,6 +249,14 @@ class Tensor():
         if not isinstance(labels, list):
             labels=[labels]
 
+        #Remove duplicates
+        unique_labels=[]
+        for label in labels:
+            if label not in unique_labels:
+                unique_labels.append(label)
+        labels=unique_labels
+
+
         #indices for occurences of label
         n_indices_to_move=sum([self.labels.count(label) for label in labels])
         if position + n_indices_to_move > len(self.labels):
@@ -634,16 +642,20 @@ def tensor_qr(tensor, row_labels, qr_label="qr_"):
 
     #Move labels in row_labels to the beginning of list, and reshape data 
     #accordingly
-    total_input_dimension=1
-    for i,label in enumerate(row_labels):
-        t.move_index(label, i)
-        total_input_dimension*=t.data.shape[i]
+    t.move_indices(row_labels, 0)
+
+    #Compute the combined dimension of the row indices
+    row_dimension=1
+    for i,label in enumerate(t.labels):
+        if label not in row_labels:
+            break
+        row_dimension*=t.data.shape[i]
 
     column_labels=[x for x in t.labels if x not in row_labels]
 
     old_shape=t.data.shape
-    total_output_dimension=int(np.product(t.data.shape)/total_input_dimension)
-    data_matrix=np.reshape(t.data,(total_input_dimension, 
+    total_output_dimension=int(np.product(t.data.shape)/row_dimension)
+    data_matrix=np.reshape(t.data,(row_dimension, 
         total_output_dimension))
 
     q,r = np.linalg.qr(data_matrix, mode="reduced")
