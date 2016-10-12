@@ -557,13 +557,13 @@ def tensor_qr(tensor, row_labels, qr_label="qr_"):
     row_labels : list
         List of labels specifying the indices of `tensor` which will form the
         rows of the matrix on which the QR will be performed.
-    svd_label : str
+    qr_label : str
         Base label for the indices that are contracted between `Q` and `R`.
 
     Returns
     -------
     Q : Tensor
-        Tensor obtained by reshaping the matrix u obtained from QR
+        Tensor obtained by reshaping the matrix q obtained from QR
         decomposition.  Has indices labelled by `row_labels` corresponding to
         the indices labelled `row_labels` of `tensor` and has one index
         labelled `qr_label`+"in" which connects to `R`.
@@ -630,9 +630,58 @@ def tensor_qr(tensor, row_labels, qr_label="qr_"):
     return Q,R
 
 def tensor_lq(tensor, row_labels, lq_label="lq_"):
-    col_indices = [x for x in tensor.labels if x not in row_labels]
-    print(col_indices)
-    pass
+    """
+    Compute the LQ decomposition of `tensor` after reshaping it into a matrix.
+    Indices with labels in `row_labels` are fused to form a single index
+    corresponding to the rows of the matrix (typically the left index of a
+    matrix). The remaining indices are fused to form the column index. An LR
+    decomposition is performed on this matrix, yielding two matrices l,q, where
+    q and is a rectangular matrix with orthonormal rows and l is upper
+    triangular. These two matrices are then reshaped into tensors L and Q, as
+    described below.  Note that the LQ decomposition is actually identical to
+    the QR decomposition after a relabelling of indices. 
+
+    Parameters
+    ----------
+    tensor : Tensor
+        The tensor on which the LQ decomposition will be performed.
+    row_labels : list
+        List of labels specifying the indices of `tensor` which will form the
+        rows of the matrix on which the LQ decomposition will be performed.
+    lq_label : str
+        Base label for the indices that are contracted between `L` and `Q`.
+
+    Returns
+    -------
+    Q : Tensor
+        Tensor obtained by reshaping the matrix q obtained by LQ decomposition.
+        Indices correspond to the indices of `tensor` that aren't in
+        `row_labels`. Has one index labelled `lq_label`+"out" which connects
+        to `L`.
+    L : Tensor
+        Tensor obtained by reshaping the matrix l obtained from LQ
+        decomposition.  Has indices labelled by `row_labels` corresponding to
+        the indices labelled `row_labels` of `tensor` and has one index
+        labelled `lq_label`+"in" which connects to `Q`.
+
+    See Also
+    --------
+    tensor_qr
+    
+    """
+
+
+    col_labels = [x for x in tensor.labels if x not in row_labels]
+
+    temp_label=lbl.unique_label()
+    #Note the LQ is essentially equivalent to a QR decomposition, only labels
+    #are renamed
+    Q,L = tensor_qr(tensor, col_labels, qr_label=temp_label)
+    Q.replace_label(temp_label+"in", lq_label+"out")
+    L.replace_label(temp_label+"out", lq_label+"in")
+
+    return L,Q
+
 
 def truncated_svd(tensor, row_labels, chi=0, threshold=10**-15, 
         absorb_singular_values="right"):
