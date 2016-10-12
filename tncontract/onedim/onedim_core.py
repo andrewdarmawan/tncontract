@@ -816,18 +816,17 @@ def ladder_contract(array1, array2, label1, label2, start=0, end=None,
         complex_conjugate_array1=False, left_output_label="left",
         right_output_label="right", return_intermediate_contractions=False): 
     """
-    Contract two one-dimensional tensor networks. The index labelled `label1`
-    of the jth tensor in `array1` is contracted with the index labelled
-    `label2` of the jth tensor in `array2` (for all j), and all virtual indices
-    are contracted.  The contraction pattern resembles a ladder when
-    represented graphically. 
+    Contract two one-dimensional tensor networks. Indices labelled `label1` in
+    `array1` and indices labelled `label2` in `array2` are contracted pairwise.
+    , and all virtual indices are contracted.  The contraction pattern
+    resembles a ladder when represented graphically. 
 
     Parameters
     ----------
 
     array1 : OneDimensionalTensorNetwork
     array2 : OneDimensionalTensorNetwork
-        The one dimensional networks to be contracted.
+        The one-dimensional networks to be contracted.
 
     label1 : str
     label2 : str
@@ -847,14 +846,14 @@ def ladder_contract(array1, array2, label1, label2, start=0, end=None,
         inner_product_mps could be used in this case). 
 
     right_output_label : str
-        Base label assighned to right-going indices. Right-going indices will
-        be assigned labels `right_output_label`+"1" and
-        `right_output_label`+"2" corresponding, respectively, to `array1` and
-        `array2`.
+        Base label assighned to right-going indices of output tensor.
+        Right-going indices will be assigned labels `right_output_label`+"1"
+        and `right_output_label`+"2" corresponding, respectively, to `array1`
+        and `array2`.
 
     left_output_label : str
-        Base label assighned to left-going indices. Left-going indices will
-        be assigned labels `left_output_label`+"1" and
+        Base label assighned to left-going indices of output tensor. Left-going
+        indices will be assigned labels `left_output_label`+"1" and
         `left_output_label`+"2" corresponding, respectively, to `array1` and
         `array2`.
 
@@ -876,7 +875,7 @@ def ladder_contract(array1, array2, label1, label2, start=0, end=None,
     intermediate_contractions : list 
         If `return_intermediate_contractions` is true a list
         `intermediate_contractions` is returned containing a list of tensors
-        corresponding to contraction up to a particular column.  See 
+        corresponding to contraction up to a particular column.
 
     Notes
     -----
