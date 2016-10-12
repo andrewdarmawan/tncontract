@@ -438,12 +438,18 @@ class MatrixProductState(OneDimensionalTensorNetwork):
 
         for i in range(self.nsites-1, -1, -1):
             if i==self.nsites-1:
+
                 updated_tensor=tsr.contract(self[i], left_contractions[i-1],
                 self.left_label, right_label+"2")
-                updated_tensor.replace_label(right_label+"1", mps.left_label)
+                updated_tensor.replace_label([right_label+"1", self.phys_label]
+                        , [mps.left_label, mps.phys_label])
+
                 L, Q = tsr.tensor_lq(updated_tensor, self.phys_label,
                         lq_label=lq_label)
-                #mps[i]=updated_tensor
+                Q.replace_label(lq_label+"out", mps.left_label)
+
+            #mps[i-1]=tsr.contract(mps[i-1], L, mps.right_label, lq_label+"in")
+            #mps[i]=Q
 
     def physdim(self, site):
         """Return physical index dimesion for site"""
