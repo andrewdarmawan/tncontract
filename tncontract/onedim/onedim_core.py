@@ -430,26 +430,47 @@ class MatrixProductState(OneDimensionalTensorNetwork):
 
         #Generate some unique labels to avoid conflicts
         right_label=unique_label()
+        left_label=unique_label()
         lq_label=unique_label()
+        #Give mps unique labels
+        mps.replace_labels([mps.left_label, mps.right_label, mps.phys_label], 
+                [unique_label(), unique_label(), unique_label()])
 
         left_contractions = ladder_contract(mps, self, mps.phys_label,
                 self.phys_label, return_intermediate_contractions=True,
                 right_output_label=right_label)
 
         for i in range(self.nsites-1, -1, -1):
+            print(i)
+            updated_tensor=tsr.contract(self[i], left_contractions[i-1],
+            self.left_label, right_label+"2")
+            if i!=self.nsites-1:
+                updated_tensor=tsr.contract(updated_tensor, right_contraction,
+                        self.right_label, self.left_label)
+                updated_tensor.replace_label(left_label, mps.right_label)
+                print(updated_tensor)
+                print(mps.right_label)
+            #updated_tensor=tsr.contract(self[i], left_contractions[i-1],
+            #self.left_label, right_label+"2")
+            updated_tensor.replace_label([right_label+"1", self.phys_label]
+                    , [mps.left_label, mps.phys_label])
+            print(updated_tensor)
+
+            print(mps.left_label)
+            print(updated_tensor.index_dimension(mps.left_label))
+            L, Q = tsr.tensor_lq(updated_tensor, mps.left_label,
+                    lq_label=lq_label)
+            Q.replace_label(lq_label+"out", mps.left_label)
+            L.replace_label(lq_label+"in", mps.right_label)
+            mps[i]=Q
+            mps[i-1]=tsr.contract(mps[i-1], L, mps.right_label, 
+                    mps.left_label)
             if i==self.nsites-1:
-
-                updated_tensor=tsr.contract(self[i], left_contractions[i-1],
-                self.left_label, right_label+"2")
-                updated_tensor.replace_label([right_label+"1", self.phys_label]
-                        , [mps.left_label, mps.phys_label])
-
-                L, Q = tsr.tensor_lq(updated_tensor, self.phys_label,
-                        lq_label=lq_label)
-                Q.replace_label(lq_label+"out", mps.left_label)
+                right_contraction=tsr.contract(mps[i], self[i], mps.phys_label,
+                        self.phys_label)
+                right_contraction.replace_label(mps.left_label, left_label)
 
             #mps[i-1]=tsr.contract(mps[i-1], L, mps.right_label, lq_label+"in")
-            #mps[i]=Q
 
     def physdim(self, site):
         """Return physical index dimesion for site"""

@@ -224,13 +224,12 @@ class Tensor():
         """Creates a copy of the tensor that does not point to the original"""
         """Never use A=B in python as modifying A will modify B"""
         return Tensor(data=self.data.copy(), labels=self.labels.copy())
-
+    
     def move_index(self, label, position):
         """Change the order of the indices by moving the first index with label
         to position, possibly shifting other indices forward or back in the 
         process. """
         index = self.labels.index(label)
-
         #Move label in list
         self.labels.pop(index)
         self.labels.insert(position, label)
@@ -241,6 +240,30 @@ class Tensor():
             self.data=np.rollaxis(self.data,index,position)
         else:
             self.data=np.rollaxis(self.data,index,position+1)
+
+    def move_indices(self, label, position):
+        """Move all indices labelled `label` to consecutive positions starting
+        at `position`."""
+
+        #indices for occurences of label
+        if position + self.labels.count(label) > len(self.labels):
+            raise ValueError("Specified position too far right.")
+
+        indices=[i for i,x in enumerate(self.labels) if x==label ]
+
+        for i in range(self.labels.count(label)):
+            #Move label to end of list
+            self.move_index(label, len(self.labels)-1)
+
+        #All indices labelled "label" are at the end of the array
+        #Now put put them in desired place
+        for j in range(self.labels.count(label)):
+            old_index=len(self.labels)-len(indices)+j
+            #Move label in list
+            self.labels.pop(old_index)
+            self.labels.insert(position, label)
+            #Reshape accordingly
+            self.data=np.rollaxis(self.data, old_index, position+j)
 
     def conjugate(self):
         self.data=self.data.conjugate()
