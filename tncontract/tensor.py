@@ -241,27 +241,34 @@ class Tensor():
         else:
             self.data=np.rollaxis(self.data,index,position+1)
 
-    def move_indices(self, label, position):
-        """Move all indices labelled `label` to consecutive positions starting
-        at `position`."""
+    def move_indices(self, labels, position):
+        """Move indices with labels in `labels` to consecutive positions
+        starting at `position`. The relative order of the moved indices is
+        preserved. """
+
+        if not isinstance(labels, list):
+            labels=[labels]
 
         #indices for occurences of label
-        if position + self.labels.count(label) > len(self.labels):
+        n_indices_to_move=sum([self.labels.count(label) for label in labels])
+        if position + n_indices_to_move > len(self.labels):
             raise ValueError("Specified position too far right.")
 
-        indices=[i for i,x in enumerate(self.labels) if x==label ]
+        #indices=[i for i,x in enumerate(self.labels) if x==label ]
 
-        for i in range(self.labels.count(label)):
-            #Move label to end of list
-            self.move_index(label, len(self.labels)-1)
+        for label in labels:
+            for i in range(self.labels.count(label)):
+                #Move label to end of list
+                self.move_index(label, len(self.labels)-1)
 
         #All indices labelled "label" are at the end of the array
         #Now put put them in desired place
-        for j in range(self.labels.count(label)):
-            old_index=len(self.labels)-len(indices)+j
+        for j in range(n_indices_to_move):
+            old_index=len(self.labels)-n_indices_to_move+j
+            label=self.labels[old_index]
             #Move label in list
             self.labels.pop(old_index)
-            self.labels.insert(position, label)
+            self.labels.insert(position+j, label)
             #Reshape accordingly
             self.data=np.rollaxis(self.data, old_index, position+j)
 
