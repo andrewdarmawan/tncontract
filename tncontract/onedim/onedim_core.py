@@ -438,12 +438,12 @@ class MatrixProductState(OneDimensionalTensorNetwork):
 
         left_contractions = ladder_contract(mps, self, mps.phys_label,
                 self.phys_label, return_intermediate_contractions=True,
-                right_output_label=right_label)
+                right_output_label=right_label, complex_conjugate_array1=True)
 
         for i in range(self.nsites-1, 0, -1):
-        #TODO write separate function for single sweep
+            #TODO write separate function for single sweep
             updated_tensor=tsr.contract(self[i], left_contractions[i-1],
-            self.left_label, right_label+"2")
+                self.left_label, right_label+"2")
             if i!=self.nsites-1:
                 updated_tensor=tsr.contract(updated_tensor, right_contraction,
                         self.right_label, self.left_label)
@@ -460,13 +460,13 @@ class MatrixProductState(OneDimensionalTensorNetwork):
             mps[i-1]=tsr.contract(mps[i-1], L, mps.right_label, 
                     mps.left_label)
             if i==self.nsites-1:
-                right_contraction=tsr.contract(mps[i], self[i], mps.phys_label,
-                        self.phys_label)
+                right_contraction=tsr.contract(tsr.conjugate(mps[i]), 
+                        self[i], mps.phys_label, self.phys_label)
                 right_contraction.remove_all_dummy_indices(
                         labels=[mps.right_label, self.right_label])
             else:
-                right_contraction.contract(mps[i], mps.left_label,
-                        mps.right_label)
+                right_contraction.contract(tsr.conjugate(mps[i]), 
+                        mps.left_label, mps.right_label)
                 right_contraction.contract(self[i], [mps.phys_label,
                     self.left_label], [self.phys_label, self.right_label])
 
@@ -556,7 +556,6 @@ class MatrixProductState(OneDimensionalTensorNetwork):
                 left_label=self.left_label, right_label=self.right_label,
                 chi=chi, threshold=threshold)
         self.data[firstsite:firstsite+nsites] = mps.data
-
 
 class MatrixProductOperator(OneDimensionalTensorNetwork):
     #TODO currently assumes open boundaries

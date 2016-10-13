@@ -778,4 +778,10 @@ def truncated_svd(tensor, row_labels, chi=0, threshold=10**-15,
         V_new=contract(sqrtS, V, ["svd_in"], ["svd_out"])
     return U_new, V_new, truncated_evals
 
+def conjugate(tensor):
+    """Return complex conjugate of `tensor`"""
+    t=tensor.copy()
+    t.conjugate()
+    return t
+
 
