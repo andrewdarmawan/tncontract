@@ -256,7 +256,6 @@ class Tensor():
                 unique_labels.append(label)
         labels=unique_labels
 
-
         #indices for occurences of label
         n_indices_to_move=sum([self.labels.count(label) for label in labels])
         if position + n_indices_to_move > len(self.labels):

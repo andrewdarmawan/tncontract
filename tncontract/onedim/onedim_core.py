@@ -440,24 +440,18 @@ class MatrixProductState(OneDimensionalTensorNetwork):
                 self.phys_label, return_intermediate_contractions=True,
                 right_output_label=right_label)
 
-        for i in range(self.nsites-1, -1, -1):
-            print(i)
+        for i in range(self.nsites-1, 0, -1):
+        #TODO write separate function for single sweep
             updated_tensor=tsr.contract(self[i], left_contractions[i-1],
             self.left_label, right_label+"2")
             if i!=self.nsites-1:
                 updated_tensor=tsr.contract(updated_tensor, right_contraction,
                         self.right_label, self.left_label)
-                updated_tensor.replace_label(left_label, mps.right_label)
-                print(updated_tensor)
-                print(mps.right_label)
+                updated_tensor.replace_label(mps.left_label, mps.right_label)
             #updated_tensor=tsr.contract(self[i], left_contractions[i-1],
             #self.left_label, right_label+"2")
             updated_tensor.replace_label([right_label+"1", self.phys_label]
                     , [mps.left_label, mps.phys_label])
-            print(updated_tensor)
-
-            print(mps.left_label)
-            print(updated_tensor.index_dimension(mps.left_label))
             L, Q = tsr.tensor_lq(updated_tensor, mps.left_label,
                     lq_label=lq_label)
             Q.replace_label(lq_label+"out", mps.left_label)
@@ -468,7 +462,23 @@ class MatrixProductState(OneDimensionalTensorNetwork):
             if i==self.nsites-1:
                 right_contraction=tsr.contract(mps[i], self[i], mps.phys_label,
                         self.phys_label)
-                right_contraction.replace_label(mps.left_label, left_label)
+                right_contraction.remove_all_dummy_indices(
+                        labels=[mps.right_label, self.right_label])
+            else:
+                right_contraction.contract(mps[i], mps.left_label,
+                        mps.right_label)
+                right_contraction.contract(self[i], [mps.phys_label,
+                    self.left_label], [self.phys_label, self.right_label])
+
+            if i==1: #At second last site, compute last tensor
+                updated_tensor=tsr.contract(self[0], right_contraction,
+                        self.right_label, self.left_label)
+                updated_tensor.replace_label([self.phys_label, mps.left_label],
+                        [mps.phys_label, mps.right_label])
+                mps[0]=updated_tensor
+
+                #right_contraction.replace_label(mps.left_label, left_label)
+        return mps
 
             #mps[i-1]=tsr.contract(mps[i-1], L, mps.right_label, lq_label+"in")
 
