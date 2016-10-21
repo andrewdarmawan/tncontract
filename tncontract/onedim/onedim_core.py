@@ -329,7 +329,8 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         if end==-1:
             end=N
         self.left_canonise(start=N-end, end=N-start, chi=chi,
-                threshold=threshold, normalise=normalise)
+                threshold=threshold, normalise=normalise,
+                qr_decomposition=qr_decomposition)
         self.reverse()
 
     def replace_labels(self, old_labels, new_labels):
@@ -428,39 +429,38 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         else:
             mps=initial_guess
 
+        #Norm of state
+        norm=self.norm()
+
         #Give mps1 unique labels
         mps.replace_labels([mps.left_label, mps.right_label, mps.phys_label], 
                 [unique_label(), unique_label(), unique_label()])
 
-        lc_label=unique_label()
-        left_contractions = ladder_contract(mps, self, mps.phys_label,
+        le_label=unique_label()
+        left_environments = ladder_contract(mps, self, mps.phys_label,
                 self.phys_label, return_intermediate_contractions=True,
-                right_output_label=lc_label, complex_conjugate_array1=True)
+                right_output_label=le_label, complex_conjugate_array1=True)
 
-        def variational_sweep(mps1, mps2, left_contractions):
+        def variational_sweep(mps1, mps2, left_environments):
 
-            #Get the base label of left_contractions
-            lc_label=left_contractions[0].labels[0][:-1]
+            #Get the base label of left_environments
+            le_label=left_environments[0].labels[0][:-1]
             #Generate some unique labels to avoid conflicts
-            rc_label=unique_label()
+            re_label=unique_label()
             lq_label=unique_label()
 
-            right_contractions=[]
+            right_environments=[]
             for i in range(mps2.nsites-1, 0, -1):
 
                 #Optimise the tensor at site i by contracting with left and right
-                #contractions
-                print(mps2[i])
-                print(left_contractions[i-1])
-                print(mps2.left_label)
-                print(lc_label)
-                updated_tensor=tsr.contract(mps2[i], left_contractions[i-1],
-                    mps2.left_label, lc_label+"2")
+                #environments
+                updated_tensor=tsr.contract(mps2[i], left_environments[i-1],
+                    mps2.left_label, le_label+"2")
                 if i!=mps2.nsites-1:
-                    updated_tensor=tsr.contract(updated_tensor, right_contraction,
-                            mps2.right_label, rc_label+"2")
-                    updated_tensor.replace_label(rc_label+"1", mps1.right_label)
-                updated_tensor.replace_label([lc_label+"1", mps2.phys_label]
+                    updated_tensor=tsr.contract(updated_tensor, right_environment,
+                            mps2.right_label, re_label+"2")
+                    updated_tensor.replace_label(re_label+"1", mps1.right_label)
+                updated_tensor.replace_label([le_label+"1", mps2.phys_label]
                         , [mps1.left_label, mps1.phys_label])
 
                 #Right canonise the tensor at site i using LQ decomposition
@@ -473,64 +473,39 @@ class MatrixProductState(OneDimensionalTensorNetwork):
                 mps1[i-1]=tsr.contract(mps1[i-1], L, mps1.right_label, 
                         mps1.left_label)
 
-                #Compute next column of right_contraction
+                #Compute next column of right_environment
                 if i==mps2.nsites-1:
-                    right_contraction=tsr.contract(tsr.conjugate(mps1[i]), 
+                    right_environment=tsr.contract(tsr.conjugate(mps1[i]), 
                             mps2[i], mps1.phys_label, self.phys_label)
-                    right_contraction.remove_all_dummy_indices(
+                    right_environment.remove_all_dummy_indices(
                             labels=[mps1.right_label, mps2.right_label])
                 else:
-                    right_contraction.contract(tsr.conjugate(mps1[i]), 
-                            rc_label+"1", mps1.right_label)
-                    right_contraction.contract(mps2[i], [mps1.phys_label,
-                        rc_label+"2"], [self.phys_label, self.right_label])
+                    right_environment.contract(tsr.conjugate(mps1[i]), 
+                            re_label+"1", mps1.right_label)
+                    right_environment.contract(mps2[i], [mps1.phys_label,
+                        re_label+"2"], [self.phys_label, self.right_label])
 
-                right_contraction.replace_label([mps1.left_label,
-                    mps2.left_label], [rc_label+"1", rc_label+"2"])
-                right_contractions.append(right_contraction)
+                right_environment.replace_label([mps1.left_label,
+                    mps2.left_label], [re_label+"1", re_label+"2"])
+                right_environments.append(right_environment.copy())
 
                 #At second last site, compute final tensor
                 if i==1:
-                    updated_tensor=tsr.contract(mps2[0], right_contraction,
-                            mps2.right_label, rc_label+"2")
-                    updated_tensor.replace_label([mps2.phys_label, rc_label+"1"],
+                    updated_tensor=tsr.contract(mps2[0], right_environment,
+                            mps2.right_label, re_label+"2")
+                    updated_tensor.replace_label([mps2.phys_label, re_label+"1"],
                             [mps1.phys_label, mps1.right_label])
                     mps1[0]=updated_tensor
 
 
-            return right_contractions
+            return right_environments
 
-        print("initial dimensions before reversing")
-        print(self[-2])
-        print(self.phys_label)
-        print(mps[-2])
-        print(mps.phys_label)
-
-        #left_contractions = variational_sweep(mps, self, left_contractions)
         for i in range(max_iter):
-            left_contractions = variational_sweep(mps, self, left_contractions)
+            left_environments = variational_sweep(mps, self, left_environments)
             mps.reverse()
             self.reverse()
-            lc_label=left_contractions[0].labels[0][:-1]
-            print("individual tensors")
-            print(mps[i])
-            print(self[i])
-            left_contractions2 = ladder_contract(mps, self, mps.phys_label,
-                self.phys_label, return_intermediate_contractions=True,
-                right_output_label=lc_label, complex_conjugate_array1=True)
-
-
-
-            print("asdfasdf")
-            for i in range(len(left_contractions)):
-                print(mps[i])
-                print(self[i])
-                print(left_contractions[i])
-                print(left_contractions2[i])
-                #print(tsr.distance(left_contractions[i], left_contractions2[i]))
-            print("asdfasdf")
-            print("hello")
-            left_contractions = variational_sweep(mps, self, left_contractions)
+            le_label=left_environments[0].labels[0][:-1]
+            left_environments = variational_sweep(mps, self, left_environments)
             mps.reverse()
             self.reverse()
 
