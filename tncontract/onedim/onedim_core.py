@@ -450,10 +450,10 @@ class MatrixProductState(OneDimensionalTensorNetwork):
 
                 #Optimise the tensor at site i by contracting with left and right
                 #contractions
-               # print(mps2[i])
-               # print(left_contractions[i-1])
-               # print(mps2.left_label)
-               # print(lc_label)
+                print(mps2[i])
+                print(left_contractions[i-1])
+                print(mps2.left_label)
+                print(lc_label)
                 updated_tensor=tsr.contract(mps2[i], left_contractions[i-1],
                     mps2.left_label, lc_label+"2")
                 if i!=mps2.nsites-1:
@@ -500,25 +500,39 @@ class MatrixProductState(OneDimensionalTensorNetwork):
 
             return right_contractions
 
-        left_contractions = variational_sweep(mps, self, left_contractions)
-        #for i in range(max_iter):
-        #    left_contractions = variational_sweep(mps, self, left_contractions)
-        #    mps.reverse()
-        #    self.reverse()
-        #    lc_label=left_contractions[0].labels[0][:-1]
-        #    left_contractions2 = ladder_contract(mps, self, mps.phys_label,
-        #        self.phys_label, return_intermediate_contractions=True,
-        #        right_output_label=lc_label, complex_conjugate_array1=True)
+        print("initial dimensions before reversing")
+        print(self[-2])
+        print(self.phys_label)
+        print(mps[-2])
+        print(mps.phys_label)
+
+        #left_contractions = variational_sweep(mps, self, left_contractions)
+        for i in range(max_iter):
+            left_contractions = variational_sweep(mps, self, left_contractions)
+            mps.reverse()
+            self.reverse()
+            lc_label=left_contractions[0].labels[0][:-1]
+            print("individual tensors")
+            print(mps[i])
+            print(self[i])
+            left_contractions2 = ladder_contract(mps, self, mps.phys_label,
+                self.phys_label, return_intermediate_contractions=True,
+                right_output_label=lc_label, complex_conjugate_array1=True)
 
 
 
-        #    print("asdfasdf")
-        #    for i in range(len(left_contractions)):
-        #        print(tsr.distance(left_contractions[i], left_contractions2[i]))
-        #    print("asdfasdf")
-        #    left_contractions = variational_sweep(mps, self, left_contractions)
-        #    mps.reverse()
-        #    self.reverse()
+            print("asdfasdf")
+            for i in range(len(left_contractions)):
+                print(mps[i])
+                print(self[i])
+                print(left_contractions[i])
+                print(left_contractions2[i])
+                #print(tsr.distance(left_contractions[i], left_contractions2[i]))
+            print("asdfasdf")
+            print("hello")
+            left_contractions = variational_sweep(mps, self, left_contractions)
+            mps.reverse()
+            self.reverse()
 
         return mps
 
