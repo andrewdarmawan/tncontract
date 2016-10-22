@@ -359,6 +359,11 @@ class Tensor():
     def shape(self):
         return self.data.shape
 
+    def norm(self):
+        """Return the frobenius norm of the tensor, equivalent to taking the
+        sum of absolute values squared of every element. """
+        return np.linalg.norm(self.data)
+
 
 #Tensor constructors
 def random_tensor(*args, labels=[], base_label="i"):

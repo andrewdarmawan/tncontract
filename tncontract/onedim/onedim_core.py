@@ -473,6 +473,10 @@ class MatrixProductState(OneDimensionalTensorNetwork):
                 mps1[i-1]=tsr.contract(mps1[i-1], L, mps1.right_label, 
                         mps1.left_label)
 
+                #Compute norm of mps
+                #Taking advantage of canonical form
+                norm_mps=norm
+
                 #Compute next column of right_environment
                 if i==mps2.nsites-1:
                     right_environment=tsr.contract(tsr.conjugate(mps1[i]), 
