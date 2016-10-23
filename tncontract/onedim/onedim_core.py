@@ -416,18 +416,32 @@ class MatrixProductState(OneDimensionalTensorNetwork):
                             str(first_site_not_right_canonised))
         return (first_site_not_left_canonised, first_site_not_right_canonised)
 
-    def svd_compress(self, chi=0, threshold=10**-15, normalise=False):
-        """Simply right canonise the left canonical form according to 
-        Schollwock"""
+    def svd_compress(self, chi=0, threshold=10**-15, normalise=False,
+            reverse=False):
+        """Compress a MPS to a given bond dimension `chi` or to a minimum
+        singular value `threshold` according to U. Schollwock, Ann. Phys. 326
+        (2011) 96-192. This is achieved by performing two successive
+        canonisations. If `reverse` is False, canonisation is first performed
+        from left to right (with QR decomposition) then the resulting state is
+        canonised from right to left (using SVD decomposition). The resulting
+        MPS is in left canonical form. If `reverse` is True this is mirrored,
+        resulting in a state in right canonical form. """
+        if reverse:
+            self.reverse()
         self.left_canonise(normalise=normalise, qr_decomposition=True)
         self.right_canonise(chi=chi, threshold=threshold, normalise=normalise)
+        if reverse:
+            self.reverse()
 
-    def variational_compress(self, chi, max_iter=10, initial_guess=None):
+    def variational_compress(self, chi, max_iter=10, initial_guess=None,
+            tolerance=1e-15):
         if initial_guess == None:
             mps=self.copy()
-            mps.svd_compress(chi=chi)
+            mps.svd_compress(chi=chi, reverse=True)
         else:
             mps=initial_guess
+            #Put state in right canonical form
+            mps.right_canonise(qr_decomposition=True)
 
         #Norm of state
         norm=self.norm()
@@ -442,6 +456,7 @@ class MatrixProductState(OneDimensionalTensorNetwork):
                 right_output_label=le_label, complex_conjugate_array1=True)
 
         def variational_sweep(mps1, mps2, left_environments):
+            """Expects mps1 to be in right canonical form."""
 
             #Get the base label of left_environments
             le_label=left_environments[0].labels[0][:-1]
@@ -450,6 +465,7 @@ class MatrixProductState(OneDimensionalTensorNetwork):
             lq_label=unique_label()
 
             right_environments=[]
+            norms=[mps1[-1].norm()]
             for i in range(mps2.nsites-1, 0, -1):
 
                 #Optimise the tensor at site i by contracting with left and right
@@ -475,7 +491,7 @@ class MatrixProductState(OneDimensionalTensorNetwork):
 
                 #Compute norm of mps
                 #Taking advantage of canonical form
-                norm_mps=norm
+                norms.append(mps1[i-1].norm())
 
                 #Compute next column of right_environment
                 if i==mps2.nsites-1:
@@ -501,19 +517,28 @@ class MatrixProductState(OneDimensionalTensorNetwork):
                             [mps1.phys_label, mps1.right_label])
                     mps1[0]=updated_tensor
 
-
-            return right_environments
+            return right_environments, np.array(norms)
 
         for i in range(max_iter):
-            left_environments = variational_sweep(mps, self, left_environments)
+            left_environments, norms1 = variational_sweep(mps, self, 
+                    left_environments)
             mps.reverse()
             self.reverse()
             le_label=left_environments[0].labels[0][:-1]
-            left_environments = variational_sweep(mps, self, left_environments)
+            left_environments, norms2 = variational_sweep(mps, self, 
+                    left_environments)
             mps.reverse()
             self.reverse()
-
-        return mps
+            #Compute differences between norms of successive updates in second
+            #sweep. As shown in U. Schollwock, Ann. Phys. 326 (2011) 96-192,
+            #these quantities are equivalent to the differences between the
+            #frobenius norms between the target state and the variational
+            #state.
+            if np.all(np.abs(norms2[1:]-norms2[:-1]) < tolerance):
+                self=mps
+                break
+            elif i==max_iter-1: #Has reached the last iteration
+                raise RuntimeError("variational_compress did not converge.")
 
     def physdim(self, site):
         """Return physical index dimesion for site"""
