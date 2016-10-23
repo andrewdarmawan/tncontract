@@ -193,7 +193,7 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         return MatrixProductState([x.copy() for x in self], self.left_label, 
                 self.right_label, self.phys_label)
 
-    def left_canonise(self, start=0, end=-1, chi=0, threshold=10**-14, 
+    def left_canonise(self, start=0, end=-1, chi=0, threshold=1e-14, 
             normalise=False, qr_decomposition=False):
         """
         Perform left canonisation of MPS. 
@@ -313,7 +313,7 @@ class MatrixProductState(OneDimensionalTensorNetwork):
                 if i==end-1:
                     self[i+1].data*=norm
 
-    def right_canonise(self, start=0, end=-1, chi=0, threshold=10**-14, 
+    def right_canonise(self, start=0, end=-1, chi=0, threshold=1e-14, 
             normalise=False, qr_decomposition=False):
         """Perform right canonisation of MPS. Identical to `left_canonise`
         except that process is mirrored (i.e. canonisation is performed from
@@ -361,7 +361,7 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         self.replace_labels([self.left_label, self.right_label,
             self.phys_label], ["left"+suffix, "right"+suffix, "phys"+suffix])
 
-    def check_canonical_form(self, threshold=10**-14, print_output=True):
+    def check_canonical_form(self, threshold=1e-14, print_output=True):
         """Determines which tensors in the MPS are left canonised, and which 
         are right canonised. Returns the index of the first tensor (starting 
         from left) that is not left canonised, and the first tensor (starting 
@@ -416,7 +416,7 @@ class MatrixProductState(OneDimensionalTensorNetwork):
                             str(first_site_not_right_canonised))
         return (first_site_not_left_canonised, first_site_not_right_canonised)
 
-    def svd_compress(self, chi=0, threshold=10**-15, normalise=False,
+    def svd_compress(self, chi=0, threshold=1e-15, normalise=False,
             reverse=False):
         """Compress a MPS to a given bond dimension `chi` or to a minimum
         singular value `threshold` according to U. Schollwock, Ann. Phys. 326
@@ -708,7 +708,7 @@ def contract_virtual_indices(array_1d, start=0, end=None,
         C.contract_internal(array_1d.right_label, array_1d.left_label) 
     return C
 
-def left_canonical_form_mps(orig_mps, chi=0, threshold=10**-14, 
+def left_canonical_form_mps(orig_mps, chi=0, threshold=1e-14, 
         normalise=False):
     """
     Computes left canonical form of an MPS
@@ -721,7 +721,7 @@ def left_canonical_form_mps(orig_mps, chi=0, threshold=10**-14,
     mps.left_canonise(chi=chi, threshold=threshold, normalise=normalise)
     return mps
 
-def right_canonical_form_mps(orig_mps, chi=0, threshold=10**-14, 
+def right_canonical_form_mps(orig_mps, chi=0, threshold=1e-14, 
         normalise=False):
     """Computes left canonical form of an MPS"""
 
@@ -733,11 +733,11 @@ def reverse_mps(mps):
     return MatrixProductState([x.copy() for x in reversed(mps)], 
             mps.right_label, mps.left_label, mps.phys_label)
 
-def check_canonical_form_mps(mps, threshold=10**-14, print_output=True):
+def check_canonical_form_mps(mps, threshold=1e-14, print_output=True):
     mps.check_canonical_form(threshold=threshold,
             print_output=print_output)
     
-def svd_compress_mps(orig_mps, chi, threshold=10**-15, normalise=False):
+def svd_compress_mps(orig_mps, chi, threshold=1e-15, normalise=False):
     """Simply right canonise the left canonical form according to Schollwock"""
     mps=left_canonical_form_mps(orig_mps, threshold=threshold, 
             normalise=normalise)
@@ -755,7 +755,7 @@ def variational_compress_mps(mps, chi, max_iter=20):
     n=len(mps)
 
     #Start with a good guess for the new mps, using the canonical form
-    new_mps=svd_compress_mps(mps, chi, threshold=10**-15, normalise=False)
+    new_mps=svd_compress_mps(mps, chi, threshold=1e-15, normalise=False)
 
     #Loop along the chain from left to right, optimizing each tensor 
     for k in range(max_iter):
