@@ -729,7 +729,7 @@ def tensor_lq(tensor, row_labels, lq_label="lq_"):
     return L,Q
 
 
-def truncated_svd(tensor, row_labels, chi=0, threshold=10**-15, 
+def truncated_svd(tensor, row_labels, chi=0, threshold=1e-15, 
         absorb_singular_values="right"):
     """
     Will perform svd of a tensor, as in tensor_svd, and provide approximate
