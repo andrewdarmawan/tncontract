@@ -376,27 +376,75 @@ def zeros_tensor(*args, labels=[], dtype=np.float, base_label="i"):
     return Tensor(np.zeros(*args, dtype=dtype), labels=labels,
             base_label=base_label)
 
-def contract(tensor1, tensor2, label_list1, label_list2, index_list1=None, 
+def contract(tensor1, tensor2, labels1, labels2, index_list1=None, 
         index_list2=None):
-    """Contract two different tensors according to the specified labels"""
-    """Indices to contract are specified by label_list1 and label_list2"""
-    """Will find all the indices of tensor1 data with label label_list1[0],"""
-    """then append indices with label given by "label_list1[1] etc."""
+    """
+    Contract the indices of `tensor1` specified in `labels1` with the indices
+    of `tensor2` specified in `labels2`. 
+    
+    This is an intuitive wrapper for numpy's `tensordot` function.  A pairwise
+    tensor contraction is specified by a pair of tensors `tensor1` and
+    `tensor2` say, a set of index labels `labels1` from `tensor1`, and a set of
+    index labels `labels2` from `tensor2`. All indices of `tensor1` with label
+    in `labels1` are fused (preserving order) into a single label, and likewise
+    for `tensor2`, then these two fused indices are contracted. 
 
-    #If the input label_list is not a list, convert to list with one entry
-    if not isinstance(label_list1, list):
-        label_list1=[label_list1]
-    if not isinstance(label_list2, list):
-        label_list2=[label_list2]
+    Parameters
+    ----------
+    tensor1, tensor2 : Tensor
+        The two tensors to be contracted.
+
+    labels1, labels2 : str or list
+        The indices of `tensor1` and `tensor2` to be contracted. Can either be
+        a single label, or a list of labels. 
+
+    Examples
+    --------
+    Define a random 2x2 tensor with index labels "spam" and "eggs" and a random
+    2x3x2x4 tensor with index labels 'i0', 'i1', etc. 
+
+    >>> A = random_tensor(2, 2, labels = ["spam", "eggs"])
+    >>> B = random_tensor(2, 3, 2, 4)
+    >>> print(B)
+    Tensor object: shape = (2, 3, 2, 4), labels = ['i0', 'i1', 'i2', 'i3']
+    
+    Contract the "spam" index of tensor A with the "i2" index of tensor B.
+    >>> C = contract(A, B, "spam", "i2")
+    >>> print(C)
+    Tensor object: shape = (2, 2, 3, 4), labels = ['eggs', 'i0', 'i1', 'i3']
+
+    Contract the "spam" and "eggs" indices of tensor A with the "i0" and "i2"
+    indices of tensor B.
+
+    >>> D = contract(A, B, ["spam", "eggs"], ["i0", "i2"])
+    >>> print(D)
+    Tensor object: shape = (3, 4), labels = ['i1', 'i3']
+
+    Returns
+    -------
+    C : Tensor
+        The result of the tensor contraction. Regarding the `data` and `labels`
+        attributes of this tensor, `C` will have all of the uncontracted
+        indices of `tensor1` and `tensor2`, with the indices of `tensor1`
+        always coming before those of `tensor2`, and their internal order
+        preserved. 
+
+    """
+
+    #If the input labels is not a list, convert to list with one entry
+    if not isinstance(labels1, list):
+        labels1=[labels1]
+    if not isinstance(labels2, list):
+        labels2=[labels2]
 
     tensor1_indices=[]
-    for label in label_list1:
+    for label in labels1:
         #Append all indices to tensor1_indices with label
         tensor1_indices.extend([i for i,x in enumerate(tensor1.labels) 
             if x==label])
 
     tensor2_indices=[]
-    for label in label_list2:
+    for label in labels2:
         #Append all indices to tensor1_indices with label
         tensor2_indices.extend([i for i,x in enumerate(tensor2.labels) 
             if x==label])
