@@ -418,14 +418,15 @@ class MatrixProductState(OneDimensionalTensorNetwork):
 
     def svd_compress(self, chi=0, threshold=1e-15, normalise=False,
             reverse=False):
-        """Compress a MPS to a given bond dimension `chi` or to a minimum
-        singular value `threshold` according to U. Schollwock, Ann. Phys. 326
-        (2011) 96-192. This is achieved by performing two successive
-        canonisations. If `reverse` is False, canonisation is first performed
-        from left to right (with QR decomposition) then the resulting state is
-        canonised from right to left (using SVD decomposition). The resulting
-        MPS is in left canonical form. If `reverse` is True this is mirrored,
-        resulting in a state in right canonical form. """
+        """Compress MPS to a given bond dimension `chi` or to a minimum
+        singular value `threshold` using SVD compression as described in U.
+        Schollwock, Ann. Phys. 326 (2011) 96-192. This is achieved by
+        performing two successive canonisations. If `reverse` is False,
+        canonisation is first performed from left to right (with QR
+        decomposition) then the resulting state is canonised from right to left
+        (using SVD decomposition). The resulting MPS is in left canonical form.
+        If `reverse` is True this is mirrored, resulting in a state in right
+        canonical form. """
         if reverse:
             self.reverse()
         self.left_canonise(normalise=normalise, qr_decomposition=True)
@@ -435,6 +436,40 @@ class MatrixProductState(OneDimensionalTensorNetwork):
 
     def variational_compress(self, chi, max_iter=10, initial_guess=None,
             tolerance=1e-15):
+        """Compress MPS to a given bond dimension `chi` or to the same bond
+        dimensions as an optional input MPS `initial_guess` using an iterative
+        compression procedure described in U. Schollwock, Ann. Phys. 326 (2011)
+        96-192. The algorithm will start from an initial guess for the target
+        MPS, either computed with the `svd_compress` method or, if supplied,
+        with the `initial_guess` keyword argument.  It will sweep over the
+        chain, successively optimising individual tensors until convergence.
+        The output MPS will be in right canonical form. Should be more
+        accurate, albeit slower, than `svd_compress` method. 
+        
+        Parameters
+        ----------
+
+        chi : int
+            Bond dimension of resulting MPS.
+
+        max_iter : int
+            Maximum number of full updates to perform, where a full update
+            consists of a sweep from  right to left, then left to right. If
+            convergence is not reached after `max_iter` full updates, an error
+            will be returned.
+
+        initial_guess : MatrixProductState
+            Starting point for variational algorithm. Output MPS will have the
+            same bond dimension as `initial_guess`. If not provided, an SVD
+            compression of the input MPS will be computed and used as the
+            starting point. 
+
+        tolerance : float
+            After a full update is completed, the difference in norm with the
+            target state for the last two sweeps is computed. The algorithm
+            will be regarded as having converged and will stop if this
+            difference is less than `tolerance`.
+        """
         if initial_guess == None:
             mps=self.copy()
             mps.svd_compress(chi=chi, reverse=True)
@@ -456,7 +491,9 @@ class MatrixProductState(OneDimensionalTensorNetwork):
                 right_output_label=le_label, complex_conjugate_array1=True)
 
         def variational_sweep(mps1, mps2, left_environments):
-            """Expects mps1 to be in right canonical form."""
+            """Iteratively update mps1, to minimise frobenius distance to mps2
+            by sweeping from right to left. Expects mps1 to be in right
+            canonical form."""
 
             #Get the base label of left_environments
             le_label=left_environments[0].labels[0][:-1]
