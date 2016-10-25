@@ -505,14 +505,15 @@ class MatrixProductState(OneDimensionalTensorNetwork):
             norms=[mps1[-1].norm()]
             for i in range(mps2.nsites-1, 0, -1):
 
-                #Optimise the tensor at site i by contracting with left and right
-                #environments
+                #Optimise the tensor at site i by contracting with left and 
+                #right environments
                 updated_tensor=tsr.contract(mps2[i], left_environments[i-1],
                     mps2.left_label, le_label+"2")
                 if i!=mps2.nsites-1:
-                    updated_tensor=tsr.contract(updated_tensor, right_environment,
-                            mps2.right_label, re_label+"2")
-                    updated_tensor.replace_label(re_label+"1", mps1.right_label)
+                    updated_tensor=tsr.contract(updated_tensor, 
+                            right_environment, mps2.right_label, re_label+"2")
+                    updated_tensor.replace_label(re_label+"1", 
+                            mps1.right_label)
                 updated_tensor.replace_label([le_label+"1", mps2.phys_label]
                         , [mps1.left_label, mps1.phys_label])
 
@@ -550,7 +551,8 @@ class MatrixProductState(OneDimensionalTensorNetwork):
                 if i==1:
                     updated_tensor=tsr.contract(mps2[0], right_environment,
                             mps2.right_label, re_label+"2")
-                    updated_tensor.replace_label([mps2.phys_label, re_label+"1"],
+                    updated_tensor.replace_label([mps2.phys_label, 
+                        re_label+"1"],
                             [mps1.phys_label, mps1.right_label])
                     mps1[0]=updated_tensor
 
