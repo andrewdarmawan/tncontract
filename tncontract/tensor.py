@@ -384,7 +384,7 @@ def contract(tensor1, tensor2, labels1, labels2, index_list1=None,
     
     This is an intuitive wrapper for numpy's `tensordot` function.  A pairwise
     tensor contraction is specified by a pair of tensors `tensor1` and
-    `tensor2` say, a set of index labels `labels1` from `tensor1`, and a set of
+    `tensor2`, a set of index labels `labels1` from `tensor1`, and a set of
     index labels `labels2` from `tensor2`. All indices of `tensor1` with label
     in `labels1` are fused (preserving order) into a single label, and likewise
     for `tensor2`, then these two fused indices are contracted. 

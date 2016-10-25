@@ -90,7 +90,7 @@ class SquareLatticeTensorNetwork():
         return C
 
     def mps_contract(self, chi, compression_type="svd", normalise=False, 
-            until_column=-1):
+            until_column=-1, max_iter=10, tolerance=1e-14):
         """Approximately contract a square lattice tensor network using MPS 
         evolution and compression. Will contract from left to right.
         If normalise is set to True, the normalise argument to 
@@ -110,8 +110,8 @@ class SquareLatticeTensorNetwork():
                 compressed_mps = od.svd_compress_mps(mps_to_compress, chi, 
                         normalise=normalise)
             elif compression_type=="variational":
-                compressed_mps = od.variational_compress_mps(mps_to_compress, 
-                        chi, max_iter=10)
+                compressed_mps = mps_to_compress.variational_compress(
+                        chi, max_iter=max_iter, tolerance=tolerance)
 
             if col == until_column:
                 return compressed_mps

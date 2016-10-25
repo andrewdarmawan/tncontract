@@ -574,8 +574,10 @@ class MatrixProductState(OneDimensionalTensorNetwork):
             #frobenius norms between the target state and the variational
             #state.
             if np.all(np.abs(norms2[1:]-norms2[:-1]) < tolerance):
-                self=mps
-                break
+                mps.replace_labels([mps.left_label, mps.right_label,
+                    mps.phys_label], [self.left_label, self.right_label,
+                        self.phys_label])
+                return mps
             elif i==max_iter-1: #Has reached the last iteration
                 raise RuntimeError("variational_compress did not converge.")
 
@@ -785,10 +787,8 @@ def svd_compress_mps(orig_mps, chi, threshold=1e-15, normalise=False):
 
 def variational_compress_mps(mps, chi, max_iter=10, initial_guess=None,
         tolerance=1e-15):
-    new_mps=mps.copy()
-    new_mps.variational_compress(chi, max_iter=max_iter,
+    return mps.variational_compress(chi, max_iter=max_iter,
             initial_guess=initial_guess, tolerance=tolerance)
-    return new_mps
    
 def mps_complex_conjugate(mps):
     """Will take complex conjugate of every entry of every tensor in mps, 
