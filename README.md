@@ -11,22 +11,22 @@ $ python setup.py install
 
 ##Code Examples
 
-Here are some simple examples showing how to define and contract tensors in tncontract. To specify a Tensor object, the user gives each index a label which is persistent, i.e. it will refer to the same index after the tensor has been contracted with other tensors. Here we define a 2x2 tensor and assign labels "spam" and "eggs" to, respectively, the first and second indices of the tensor.
+Here are some simple examples showing how to define and contract tensors in tncontract. To define a Tensor object, the user provides an array-like object with multiple indices (axes) as well as a label for each index. These labels are persistent, i.e. they will refer to the same indices after the tensor has been contracted with other tensors. Here we define a 2x2 tensor and assign labels "spam" and "eggs" to, respectively, the first and second indices of the tensor.
 ```python
 >>> A = Tensor([[1, 2], [3, 4]], labels = ["spam", "eggs"])
 >>> print(A)
 Tensor object: shape = (2, 2), labels = ['spam', 'eggs']
 ```
-The data is stored as a numpy array
+The data is stored as a numpy array.
 ```python
 >>> A.data
 array([[1, 2],
        [3, 4]])
 ```
 
-Here we define a 2x3x2x4 tensor with random entries. As labels are not specified, they will be assigned automatically using the convention "i0", "i1", "i2", ...
+Here we define a 2x3x2x4 tensor with random entries with index labels given by "i0", "i1", "i2" and "i3".
 ```python 
->>> B = random_tensor(2, 3, 2, 4)
+>>> B = random_tensor(2, 3, 2, 4, labels = ['i0', 'i1', 'i2', 'i3'])
 >>> print(B)
 Tensor object: shape = (2, 3, 2, 4), labels = ['i0', 'i1', 'i2', 'i3']
 ```
@@ -38,8 +38,9 @@ To perform a simple, pairwise tensor contraction we specify a pair of tensors an
 >>> print(C)
 Tensor object: shape = (2, 2, 3, 4), labels = ['eggs', 'i0', 'i1', 'i3']
 ```
+The indices of the resulting tensor C are the uncontracted indices of tensors A and B. You can see that their labels have been preserved. 
 
-We can simultaneously contract multiple indices. For instance, to contract the "spam" index of A with the "i0" index of B and at the same time contract the "eggs" index of A with the "i2" index of B we would run.
+We can simultaneously contract multiple indices. For instance, to contract the "spam" index of A with the "i0" index of B and at the same time contract the "eggs" index of A with the "i2" index of B we would use
 ```python
 >>> D = contract(A, B, ["spam", "eggs"], ["i0", "i2"])
 >>> print(D)
