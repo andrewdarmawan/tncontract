@@ -1,7 +1,7 @@
 # tncontract
 **tncontract** is an open-source tensor-network library for Python. The goal of tncontract is to provide a simple and intuitive framework for writing tensor-network algorithms. The tncontract library uses the powerful NumPy library as a numerical backend. It can easily interface with many other Python libraries, and has built-in conversions for the popular quantum library: QuTiP. Currently, tncontract includes many algorithms for one-dimensional and two-dimensional tensor networks. While far from complete, it is under active development with new features being constantly added.
 
-#Installation
+##Installation
 
 tncontract requires recent versions of Python, NumPy, and SciPy. To install tncontract, download the source code using the link above, then in the root directory of the package run
 
@@ -11,7 +11,7 @@ $ python setup.py install
 
 ##Code Examples
 
-Here are some simple examples showing how to define and contract tensors in tncontract. To define a Tensor object, the user provides an array-like object with multiple indices (axes) as well as a label for each index. These labels are persistent, i.e. they will refer to the same indices after the tensor has been contracted with other tensors. Here we define a 2x2 tensor and assign labels "spam" and "eggs" to, respectively, the first and second indices of the tensor.
+Here are some simple examples showing how to define and contract tensors in tncontract. To define a Tensor object, the user provides an array-like object and a label for each index (axis) of the array. These labels are persistent, i.e. they will refer to the same indices after the tensor has been contracted with other tensors. Here we define a 2x2 tensor and assign labels "spam" and "eggs" to, respectively, the first and second indices of the tensor.
 ```python
 >>> A = Tensor([[1, 2], [3, 4]], labels = ["spam", "eggs"])
 >>> print(A)
@@ -24,7 +24,7 @@ array([[1, 2],
        [3, 4]])
 ```
 
-Here we define a 2x3x2x4 tensor with random entries with index labels given by "i0", "i1", "i2" and "i3".
+Here we define a 2x3x2x4 tensor with random entries with index labels given, respectively, by "i0", "i1", "i2" and "i3".
 ```python 
 >>> B = random_tensor(2, 3, 2, 4, labels = ['i0', 'i1', 'i2', 'i3'])
 >>> print(B)
