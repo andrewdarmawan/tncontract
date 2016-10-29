@@ -26,7 +26,7 @@ class OneDimensionalTensorNetwork():
     list or 1D numpy array) where each tensor has a left and a right index.
     Need to specify which labels correspond to these using arguments 
     left_label, right_label."""
-    def __init__(self, tensors, left_label, right_label):
+    def __init__(self, tensors, left_label="left", right_label="right"):
         self.left_label=left_label
         self.right_label=right_label
         #Copy input tensors to the data attribute
@@ -171,9 +171,10 @@ class MatrixProductState(OneDimensionalTensorNetwork):
     phys_label. The tensors input will be copied, and will not point in memory
     to the original ones."""
 
-    def __init__(self, tensors, left_label, right_label, phys_label):
-        OneDimensionalTensorNetwork.__init__(self, tensors, left_label, 
-                right_label)
+    def __init__(self, tensors, left_label="left", right_label="right",
+            phys_label="phys"):
+        OneDimensionalTensorNetwork.__init__(self, tensors,
+                left_label=left_label, right_label=right_label)
         self.phys_label=phys_label
 
     def __repr__(self):
@@ -664,8 +665,8 @@ class MatrixProductOperator(OneDimensionalTensorNetwork):
     labels aren't already specified as "left", "right", "physin", "physout" 
     need to specify which labels correspond to these using 
     arguments left_label, right_label, physin_label and physout_label. """
-    def __init__(self, tensors, left_label, right_label, physout_label, 
-            physin_label):
+    def __init__(self, tensors, left_label="left", right_label="right", 
+            physout_label="physout", physin_label="physin"):
         OneDimensionalTensorNetwork.__init__(self, tensors, left_label, 
                 right_label)
         self.physout_label=physout_label
@@ -832,13 +833,13 @@ def ladder_contract(array1, array2, label1, label2, start=0, end=None,
         inner_product_mps could be used in this case). 
 
     right_output_label : str
-        Base label assighned to right-going indices of output tensor.
+        Base label assigned to right-going indices of output tensor.
         Right-going indices will be assigned labels `right_output_label`+"1"
         and `right_output_label`+"2" corresponding, respectively, to `array1`
         and `array2`.
 
     left_output_label : str
-        Base label assighned to left-going indices of output tensor. Left-going
+        Base label assigned to left-going indices of output tensor. Left-going
         indices will be assigned labels `left_output_label`+"1" and
         `left_output_label`+"2" corresponding, respectively, to `array1` and
         `array2`.
