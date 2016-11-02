@@ -586,9 +586,25 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         """Return physical index dimesion for site"""
         return self.data[site].index_dimension(self.phys_label)
 
-    def norm(self):
-        """Return norm of mps"""
-        return np.sqrt(inner_product_mps(self, self))
+    def norm(self, canonical_form=False):
+        """Return norm of mps.
+
+        Parameters
+        ----------
+
+        canonical_form : str
+            If `canonical_form` is "left", the state will be assumed to be in
+            left canonical form, if "right" the state will be assumed to be in
+            right canonical form. In these cases the norm can be read off the 
+            last tensor (much more efficient). 
+        """
+
+        if canonical_form=="left":
+            return np.linalg.norm(self[-1].data)
+        elif canonical_form=="right":
+            return np.linalg.norm(self[0].data)
+        else:
+            return np.sqrt(inner_product_mps(self, self))
 
     def apply_gate(self, gate, firstsite, gate_outputs=None, gate_inputs=None,
             chi=0, threshold=1e-15):
