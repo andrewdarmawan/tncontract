@@ -52,10 +52,30 @@ class Tensor():
         return "Tensor(data=%r, labels=%r)" % (self.data, self.labels)
 
     def __str__(self):
-        return ("Tensor object: "
-                "shape = " + str(self.shape) +
-                ", labels = " + str(self.labels))# + "\n" +
-                #"Tensor data = \n" + str(self.data))
+        array_str=str(self.data)
+        lines=array_str.splitlines()
+        if len(lines) > 20:
+            lines=lines[:20]+["...",
+                    "Printed output of large array was truncated.\nString "
+                    "representation of full data array returned by "
+                    "tensor.data.__str__()."]
+            array_str="\n".join(lines)
+
+
+        #Specify how index information is printed
+        lines=[]
+        for i,label in enumerate(self.labels):
+            lines.append("   "+str(i)+". (dim="+str(self.shape[i])+") "+
+                    str(label)+"\n") 
+        indices_str="".join(lines)
+            
+        return ("Tensor object: \n" + 
+                "Data type: " + str(self.data.dtype) + "\n"  
+                "Number of indices: " + str(len(self.data.shape)) + "\n"
+                    "\nIndex labels:\n" + indices_str +
+                #"shape = " + str(self.shape) +
+                #", labels = " + str(self.labels) + "\n" +(
+                "\nTensor data = \n" + array_str)
 
     def __eq__(self, other):
         if isinstance(other, Tensor):

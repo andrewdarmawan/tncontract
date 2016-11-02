@@ -100,7 +100,7 @@ class SquareLatticeTensorNetwork():
 
         for col in range(ncols-1):
             if col==0:
-                mps_to_compress = column_to_mpo(self, 0, to_mps=True)
+                mps_to_compress = column_to_mpo(self, 0)
             else:
                 column_mpo=column_to_mpo(self, col)
                 mps_to_compress = od.contract_mps_mpo(compressed_mps, 
@@ -117,7 +117,7 @@ class SquareLatticeTensorNetwork():
                 return compressed_mps
 
         #For final column, compute contraction exactly
-        final_column_mps=column_to_mpo(self, ncols-1, to_mps=True)
+        final_column_mps=column_to_mpo(self, ncols-1)
         return od.inner_product_mps(compressed_mps, final_column_mps, 
                 return_whole_tensor=True, complex_conjugate_bra=False)
 
@@ -128,18 +128,15 @@ class SquareLatticePEPS(SquareLatticeTensorNetwork):
                 right_label, down_label, left_label)
         self.phys_label=phys_label
 
-def column_to_mpo(square_tn, col, to_mps=False):
+def column_to_mpo(square_tn, col):
     """
     Will extract column col from square_tn (which is assumed to be a 
     SquareLatticeTensorNetwork object), and convert the column into a
     MatrixProductState object (if first or last column without periodic 
     boundary conditions) or a MatrixProductOperator object. 
-    If to_mps==True and col refers to either the first or last column, 
-    a MatrixProductState object is returned instead .
-    
     """
     new_data=square_tn[:,col].copy()
-    if to_mps and (col==0 or col==square_tn.shape[1]-1):
+    if col==0 or col==square_tn.shape[1]-1:
         if col==0:
             new_mps=od.MatrixProductState(new_data, square_tn.up_label, 
                     square_tn.down_label, square_tn.right_label)

@@ -11,7 +11,7 @@ $ python setup.py install
 
 ##Code Examples
 
-Here are some simple examples showing how to define and contract tensors in tncontract. To define a Tensor object, the user provides an array-like object with multiple indices (axes) as well as a label for each index. These labels are persistent, i.e. they will refer to the same indices after the tensor has been contracted with other tensors. Here we define a 2x2 tensor and assign labels "spam" and "eggs" to, respectively, the first and second indices of the tensor.
+Here are some simple examples showing how to define and contract tensors in tncontract. To define a Tensor object, the user provides an array-like object and a label for each index (axis) of the array. These labels are persistent, i.e. they will refer to the same indices after the tensor has been contracted with other tensors. Here we define a 2x2 tensor and assign labels "spam" and "eggs" to, respectively, the first and second indices of the tensor.
 ```python
 >>> A = Tensor([[1, 2], [3, 4]], labels = ["spam", "eggs"])
 >>> print(A)
@@ -24,7 +24,7 @@ array([[1, 2],
        [3, 4]])
 ```
 
-Here we define a 2x3x2x4 tensor with random entries with index labels given by "i0", "i1", "i2" and "i3".
+Here we define a 2x3x2x4 tensor with random entries with index labels given, respectively, by "i0", "i1", "i2" and "i3".
 ```python 
 >>> B = random_tensor(2, 3, 2, 4, labels = ['i0', 'i1', 'i2', 'i3'])
 >>> print(B)
