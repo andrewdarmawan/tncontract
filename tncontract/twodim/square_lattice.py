@@ -24,7 +24,8 @@ class SquareLatticeTensorNetwork():
     If the state has open boundaries, the edge indices of tensors on the 
     boundary should have dimension 1. If not, the tensors will be put in this 
     form."""
-    def __init__(self, tensors, up_label, right_label, down_label, left_label, 
+    def __init__(self, tensors, up_label="up", right_label="right",
+            down_label="down", left_label="left", 
             copy_data=True):
         self.up_label=up_label
         self.right_label=right_label
@@ -122,8 +123,8 @@ class SquareLatticeTensorNetwork():
                 return_whole_tensor=True, complex_conjugate_bra=False)
 
 class SquareLatticePEPS(SquareLatticeTensorNetwork):
-    def __init__(self, tensors, up_label, right_label, down_label, left_label,
-            phys_label):
+    def __init__(self, tensors, up_label="up", right_label="right",
+            down_label="down", left_label="left", phys_label="phys"):
         SquareLatticeTensorNetwork.__init__(self, tensors, up_label, 
                 right_label, down_label, left_label)
         self.phys_label=phys_label
