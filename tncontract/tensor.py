@@ -396,8 +396,8 @@ def zeros_tensor(*args, labels=[], dtype=np.float, base_label="i"):
     return Tensor(np.zeros(*args, dtype=dtype), labels=labels,
             base_label=base_label)
 
-def contract(tensor1, tensor2, labels1, labels2, index_list1=None, 
-        index_list2=None):
+def contract(tensor1, tensor2, labels1, labels2, index_slice1=None, 
+        index_slice2=None):
     """
     Contract the indices of `tensor1` specified in `labels1` with the indices
     of `tensor2` specified in `labels2`. 
@@ -471,22 +471,22 @@ def contract(tensor1, tensor2, labels1, labels2, index_list1=None,
         
     #Replace the index -1 with the len(tensor1_indeces), 
     #to refer to the last element in the list
-    if index_list1 != None:
-        index_list1=[x if x!=-1 else len(tensor1_indices)-1 for x 
-                in index_list1]
-    if index_list2 != None:
-        index_list2=[x if x!=-1 else len(tensor2_indices)-1 for x 
-                in index_list2]
+    if index_slice1 != None:
+        index_slice1=[x if x!=-1 else len(tensor1_indices)-1 for x 
+                in index_slice1]
+    if index_slice2 != None:
+        index_slice2=[x if x!=-1 else len(tensor2_indices)-1 for x 
+                in index_slice2]
    
     #Select some subset or permutation of these indices if specified
     #If no list is specified, contract all indices with the specified labels
     #If an empty list is specified, no indices will be contracted
-    if index_list1 != None:
+    if index_slice1 != None:
         tensor1_indices=[j for i,j in enumerate(tensor1_indices) 
-                if i in index_list1]
-    if index_list2 != None:
+                if i in index_slice1]
+    if index_slice2 != None:
         tensor2_indices=[j for i,j in enumerate(tensor2_indices) 
-                if i in index_list2]
+                if i in index_slice2]
 
     
     #Contract the two tensors

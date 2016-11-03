@@ -729,11 +729,11 @@ def contract_multi_index_tensor_with_one_dim_array(tensor, array, label1,
     temp_label=0 
     tensor.replace_label(label1, temp_label)
 
-    C=tsr.contract(tensor, array[0], temp_label, label2, index_list1=[0])
+    C=tsr.contract(tensor, array[0], temp_label, label2, index_slice1=[0])
     for i in range(1, len(array)):
         #TODO make this work
         C=tsr.contract(C, array[i], [array.right_label, temp_label], 
-                [array.left_label, label2], index_list1=[0,1])
+                [array.left_label, label2], index_slice1=[0,1])
 
     #Contract boundaries of array
     C.contract_internal(array.right_label, array.left_label)

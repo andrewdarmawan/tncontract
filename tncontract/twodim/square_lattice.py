@@ -99,6 +99,9 @@ class SquareLatticeTensorNetwork():
 
         nrows, ncols = self.shape
 
+        #Divide matrix product state by its norm after each compression
+        #but keep these factors in the variable `norm`
+        norm=1
         for col in range(ncols-1):
             if col==0:
                 mps_to_compress = column_to_mpo(self, 0)
@@ -109,18 +112,33 @@ class SquareLatticeTensorNetwork():
 
             if compression_type=="svd":
                 compressed_mps = od.svd_compress_mps(mps_to_compress, chi, 
-                        normalise=normalise)
+                        normalise=False)
+                #Normalise MPS (although keep normalisation factor in `norm`)
+                mps_norm=compressed_mps.norm(canonical_form="right")
+                compressed_mps[0].data=compressed_mps[0].data/mps_norm
+                norm*=mps_norm
             elif compression_type=="variational":
                 compressed_mps = mps_to_compress.variational_compress(
                         chi, max_iter=max_iter, tolerance=tolerance)
+                #Normalise MPS (although keep normalisation factor in `norm`)
+                mps_norm=compressed_mps.norm(canonical_form="left")
+                compressed_mps[-1].data=compressed_mps[-1].data/mps_norm
+                norm*=mps_norm
 
             if col == until_column:
-                return compressed_mps
+                if normalise==True:
+                    return compressed_mps
+                elif compression_type=="svd":
+                    compressed_mps[0].data*=norm
+                    return compressed_mps
+                elif compression_type=="variational":
+                    compressed_mps[-1].data*=norm
+                    return compressed_mps
 
         #For final column, compute contraction exactly
         final_column_mps=column_to_mpo(self, ncols-1)
         return od.inner_product_mps(compressed_mps, final_column_mps, 
-                return_whole_tensor=True, complex_conjugate_bra=False)
+                return_whole_tensor=True, complex_conjugate_bra=False)*norm
 
 class SquareLatticePEPS(SquareLatticeTensorNetwork):
     def __init__(self, tensors, up_label="up", right_label="right",
