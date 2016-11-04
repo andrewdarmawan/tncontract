@@ -22,10 +22,23 @@ from tncontract.label import unique_label
 
 
 class OneDimensionalTensorNetwork():
-    """A one dimensional tensor network specified by a 1D array of tensors (a 
-    list or 1D numpy array) where each tensor has a left and a right index.
-    Need to specify which labels correspond to these using arguments 
-    left_label, right_label."""
+    """
+    A one-dimensional tensor network. MatrixProductState and
+    MatrixProductOperator are subclasses of this class. 
+
+    An instance of `OneDimensionalTensorNetwork` contains a one-dimensional
+    array of tensors in its `data` attribute. This one dimensional array is
+    specified in the `tensors` argument when initialising the array. Each
+    tensor in `data` requires a left index and a right index. The right index
+    is taken to be contracted with the left index of the next tensor in the
+    array, while the left index is taken to be contracted with the right index
+    of the previous tensor in the array. All left indices are assumed to have
+    the same label, and likewise for the right indices. They are specified in
+    the initialisation of array (by default they are assumed to be "left" and
+    "right" respectively) and will be stored in the attributes `left_label` and
+    `right_label` of the OneDimensionalTensorNetwork instance. 
+    
+    """
     def __init__(self, tensors, left_label="left", right_label="right"):
         self.left_label=left_label
         self.right_label=right_label
