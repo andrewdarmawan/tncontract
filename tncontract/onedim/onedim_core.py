@@ -62,8 +62,7 @@ class OneDimensionalTensorNetwork():
         self.left_label=self.right_label
         self.right_label=temp
 
-    def swap_gate(self, i, chi=0, threshold=1e-15, 
-            absorb_singular_values='right'):
+    def swap_gate(self, i, threshold=1e-15):
         """
         Apply a swap gate swapping all "physical" (i.e., non-"left" and
         non-"right") indices for site i and i+1 of a
@@ -72,15 +71,9 @@ class OneDimensionalTensorNetwork():
         Parameters
         ----------
         i : int
-        chi : int, optional
-            Maximum number of singular values of each tensor to keep after
-            performing singular-value decomposition.
         threshold : float
             Lower bound on the magnitude of singular values to keep. Singular
             values less than or equal to this value will be truncated.
-        absorb_singular_values : str, optional
-            Absorb singular values to the left or to the right when restoring
-            MPS by SVD
 
         Notes
         -----
@@ -96,8 +89,7 @@ class OneDimensionalTensorNetwork():
         A.prime_label(A_phys_labels)
         t = tsr.contract(A, B, self.right_label, self.left_label)
         U, V, _ = tsr.truncated_svd(t, [self.left_label] + B_phys_labels,
-                chi=chi, threshold=threshold,
-                absorb_singular_values=absorb_singular_values)
+                chi=0, threshold=threshold, absorb_singular_values='both')
         U.replace_label('svd_in', self.right_label)
         self[i] = U
         V.unprime_label(A_phys_labels)
@@ -397,7 +389,7 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         return np.sqrt(inner_product_mps(self, self))
 
     def apply_gate(self, gate, firstsite, gate_outputs=None, gate_inputs=None,
-            chi=0, threshold=1e-15):
+            threshold=1e-15):
         """
         Apply Tensor `gate` on sites `firstsite`, `firstsite`+1, ...,
         `firstsite`+`nsites`-1, where `nsites` is the length of gate_inputs.
@@ -423,9 +415,6 @@ class MatrixProductState(OneDimensionalTensorNetwork):
             `firstsite`, the second with `firstsite`+1 etc.
             If `None` the second half of `gate.labels` will be taken as input
             labels.
-        chi : int, optional
-            Maximum number of singular values of each tensor to keep after
-            performing singular-value decomposition.
         threshold : float
             Lower bound on the magnitude of singular values to keep. Singular
             values less than or equal to this value will be truncated.
@@ -460,7 +449,7 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         # split big tensor into MPS form by exact SVD
         mps = tensor_to_mps(t, mps_phys_label=self.phys_label,
                 left_label=self.left_label, right_label=self.right_label,
-                chi=chi, threshold=threshold)
+                chi=0, threshold=threshold)
         self.data[firstsite:firstsite+nsites] = mps.data
 
 

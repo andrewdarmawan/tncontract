@@ -467,7 +467,8 @@ def matrix_to_tensor(matrix, shape, labels=[]):
     """
     return Tensor(np.reshape(matrix, shape), labels)
 
-def tensor_svd(tensor, row_labels, svd_label="svd_"):
+def tensor_svd(tensor, row_labels, svd_label="svd_",
+        absorb_singular_values=None):
     """
     Compute the singular value decomposition of `tensor` after reshaping it 
     into a matrix.
@@ -489,6 +490,10 @@ def tensor_svd(tensor, row_labels, svd_label="svd_"):
     svd_label : str
         Base label for the indices that are contracted with `S`, the tensor of
         singular values. 
+    absorb_singular_values : str, optional
+        If "left", "right" or "both", singular values will be absorbed into
+        U, V, or the square root into both, respectively, and only U and V
+        are returned.
 
     Returns
     -------
@@ -546,9 +551,8 @@ def tensor_svd(tensor, row_labels, svd_label="svd_"):
 
     try:
         u,s,v=np.linalg.svd(data_matrix, full_matrices=False)
-    except (np.linalg.LinAlgError, ValueError) as e:
+    except (np.linalg.LinAlgError, ValueError):
         # Try with different lapack driver
-        print(str(e))
         warnings.warn(('numpy.linalg.svd failed, trying scipy.linalg.svd with'+
                 ' lapack_driver="gesvd"'))
         try:
@@ -573,7 +577,24 @@ def tensor_svd(tensor, row_labels, svd_label="svd_"):
 
     S=Tensor(data=np.diag(s), labels=[svd_label+"out", svd_label+"in"])
 
-    return U, S, V
+    #Absorb singular values S into either V or U
+    #or take the square root of S and absorb into both
+    if absorb_singular_values=="left":
+        U_new=contract(U, S, ["svd_in"], ["svd_out"])
+        V_new=V
+        return U_new, V_new
+    elif absorb_singular_values=="right":
+        V_new=contract(S, V, ["svd_in"], ["svd_out"])
+        U_new=U
+        return U_new, V_new
+    elif absorb_singular_values=="both":
+        sqrtS=S.copy()
+        sqrtS.data=np.sqrt(sqrtS.data)
+        U_new=contract(U, sqrtS, ["svd_in"], ["svd_out"])
+        V_new=contract(sqrtS, V, ["svd_in"], ["svd_out"])
+        return U_new, V_new
+    else:
+        return U, S, V
 
 def tensor_qr(tensor, row_labels, qr_label="qr_"):
     """
