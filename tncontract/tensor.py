@@ -193,6 +193,13 @@ class Tensor():
                 if lbl.noprime_label(label) == noprime:
                     self.labels[i] = lbl.unprime_label(self.labels[i])
 
+    def fuse_indices(self, labels_to_fuse, new_label):
+        indices=[]
+        pass
+
+    def split_index(self, label, new_labels):
+        pass
+
     def contract_internal(self, label1, label2, index1=0, index2=0):
         """By default will contract the first index with label1 with the 
         first index with label2. index1 and index2 can be specified to contract
@@ -699,7 +706,7 @@ def tensor_qr(tensor, row_labels, qr_label="qr_"):
     Recombining the two tensors obtained from `tensor_qr`, yeilds a tensor very
     close to the original
 
-    >>> x=contract(Q, R, "qr_in", "qr_out")
+    >>> x = contract(Q, R, "qr_in", "qr_out")
     >>> print(x)
     Tensor object: shape = (2, 4, 3), labels = ['i0', 'i2', 'i1']
     >>> distance(x,t)
