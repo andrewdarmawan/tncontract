@@ -194,7 +194,8 @@ class Tensor():
                     self.labels[i] = lbl.unprime_label(self.labels[i])
 
     def fuse_indices(self, labels_to_fuse, new_label):
-        indices=[]
+        indices=[i for i,x in enumerate(self.labels) if x in labels_to_fuse]
+        print(indices)
         pass
 
     def split_index(self, label, new_labels):
@@ -254,8 +255,8 @@ class Tensor():
     
     def move_index(self, label, position):
         """Change the order of the indices by moving the first index with label
-        to position, possibly shifting other indices forward or back in the 
-        process. """
+        `label` to position `position`, possibly shifting other indices forward
+        or back in the process. """
         index = self.labels.index(label)
         #Move label in list
         self.labels.pop(index)
@@ -268,7 +269,8 @@ class Tensor():
         else:
             self.data=np.rollaxis(self.data,index,position+1)
 
-    def move_indices(self, labels, position):
+    def move_indices(self, labels, position, 
+            preserve_relative_order=False):
         """Move indices with labels in `labels` to consecutive positions
         starting at `position`. The relative order of the moved indices is
         preserved. """
@@ -276,26 +278,40 @@ class Tensor():
         if not isinstance(labels, list):
             labels=[labels]
 
-        #Remove duplicates
-        unique_labels=[]
-        for label in labels:
-            if label not in unique_labels:
-                unique_labels.append(label)
-        labels=unique_labels
+        if preserve_relative_order:
+            orig_labels=self.labels
+            print(self.labels)
+            n_indices_to_move=0
+            for label in orig_labels:
+                print("orig label")
+                print(label)
+                if label in labels:
+                    print("new label")
+                    print(label)
+                    #Move label to end of list
+                    self.move_index(label, len(self.labels)-1)
+                    n_indices_to_move+=1
+            print(self.labels)
 
-        #indices for occurences of label
-        n_indices_to_move=sum([self.labels.count(label) for label in labels])
+        else:
+            #Remove duplicates
+            unique_labels=[]
+            for label in labels:
+                if label not in unique_labels:
+                    unique_labels.append(label)
+            labels=unique_labels
+
+            n_indices_to_move=0
+            for label in labels:
+                for i in range(self.labels.count(label)):
+                    #Move label to end of list
+                    self.move_index(label, len(self.labels)-1)
+                    n_indices_to_move+=1
+
         if position + n_indices_to_move > len(self.labels):
             raise ValueError("Specified position too far right.")
 
-        #indices=[i for i,x in enumerate(self.labels) if x==label ]
-
-        for label in labels:
-            for i in range(self.labels.count(label)):
-                #Move label to end of list
-                self.move_index(label, len(self.labels)-1)
-
-        #All indices labelled "label" are at the end of the array
+        #All indices to move are at the end of the array
         #Now put put them in desired place
         for j in range(n_indices_to_move):
             old_index=len(self.labels)-n_indices_to_move+j
