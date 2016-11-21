@@ -272,27 +272,64 @@ class Tensor():
     def move_indices(self, labels, position, 
             preserve_relative_order=False):
         """Move indices with labels in `labels` to consecutive positions
-        starting at `position`. The relative order of the moved indices is
-        preserved. """
+        starting at `position`. If `preserve_relative_order`==True, the
+        relative order of the moved indices will be identical to their order in
+        the original tensor. If not, the relative order will be determined by
+        the order in the `labels` argument.
+        
+        Examples
+        --------
+	First initialise a random tensor.
+	>>> from tncontract import random_tensor
+	>>> t=random_tensor(2,3,4,5,6, labels=["a", "b", "c", "b", "d"])
+
+	Now we move the indices labelled "d", "b" and "c" to position 0 (i.e.
+	the beginning). When preserve_relative_order is True, the relative 
+	order of these indices is identical to the original tensor.
+	>>> t.move_indices(["d","b","c"], 0, preserve_relative_order=True)
+	>>> print(t)
+	Tensor object: 
+	Data type: float64
+	Number of indices: 5
+
+	Index labels:
+	   0. (dim=3) b
+	   1. (dim=4) c
+	   2. (dim=5) b
+	   3. (dim=6) d
+	   4. (dim=2) a
+
+	If, on the other hand, preserve_relative_order is False, the order of 
+	the indices is determined by the order in which they appear in the 
+	`labels` argument of `move_indices`. In this case, "d" comes first 
+	then the "b" indices then "c". 
+	>>> t=random_tensor(2,3,4,5,6, labels=["a", "b", "c", "b", "d"])
+	>>> t.move_indices(["d","b","c"], 0, preserve_relative_order=False)
+	>>> print(t)
+	Tensor object: 
+	Data type: float64
+	Number of indices: 5
+
+	Index labels:
+	   0. (dim=6) d
+	   1. (dim=3) b
+	   2. (dim=5) b
+	   3. (dim=4) c
+	   4. (dim=2) a
+  
+        """
 
         if not isinstance(labels, list):
             labels=[labels]
 
         if preserve_relative_order:
-            orig_labels=self.labels
-            print(self.labels)
+            orig_labels=self.labels.copy()
             n_indices_to_move=0
             for label in orig_labels:
-                print("orig label")
-                print(label)
                 if label in labels:
-                    print("new label")
-                    print(label)
                     #Move label to end of list
                     self.move_index(label, len(self.labels)-1)
                     n_indices_to_move+=1
-            print(self.labels)
-
         else:
             #Remove duplicates
             unique_labels=[]
