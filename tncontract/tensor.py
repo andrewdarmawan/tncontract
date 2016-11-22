@@ -117,6 +117,11 @@ class Tensor():
                     +self.__class__.__name__+"' and '"
                     +other.__class__.__name__+"'")
 
+    def __getitem__(self, *args):
+        """Used to allow convenient shorthand for defining tensor
+        contraction."""
+        return ToContract(self, *args)
+
     #Define functions for getting and setting labels
     def get_labels(self):
         return self._labels
@@ -456,6 +461,16 @@ class Tensor():
         sum of absolute values squared of every element. """
         return np.linalg.norm(self.data)
 
+class ToContract():
+    """A simple class that contains a Tensor and a list of indices (labels) of
+    that tensor which are to be contracted with another tensor. Used in
+    __mul__, __rmul__ for convenient tensor contraction."""
+    def __init__(self, tensor, labels):
+        self.tensor=tensor
+        self.labels=labels
+    def __mul__(self, other):
+        return contract(self.tensor, other.tensor, list(self.labels), 
+                list(other.labels))
 
 #Tensor constructors
 def random_tensor(*args, labels=[], base_label="i"):
@@ -505,10 +520,16 @@ def contract(tensor1, tensor2, labels1, labels2, index_slice1=None,
     >>> print(C)
     Tensor object: shape = (2, 2, 3, 4), labels = ['eggs', 'i0', 'i1', 'i3']
 
-    Contract the "spam" and "eggs" indices of tensor A with the "i0" and "i2"
-    indices of tensor B.
+    Contract the "spam" index of tensor A with the "i0" index of tensor B and
+    also contract the "eggs" index of tensor A with the "i2" index of tensor B.
 
     >>> D = contract(A, B, ["spam", "eggs"], ["i0", "i2"])
+    >>> print(D)
+    Tensor object: shape = (3, 4), labels = ['i1', 'i3']
+
+    Note that the following shorthand can be used to perform the same operation
+    described above.
+    >>> D = A["spam", "eggs"]*B["i0", "i2"]
     >>> print(D)
     Tensor object: shape = (3, 4), labels = ['i1', 'i3']
 
