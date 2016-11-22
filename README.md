@@ -46,7 +46,12 @@ We can simultaneously contract multiple indices. For instance, to contract the "
 >>> print(D)
 Tensor object: shape = (3, 4), labels = ['i1', 'i3']
 ```
-
+The following shorthand can be used to perform the same operation.
+```python
+>>> D = A["spam", "eggs"]*B["i0", "i2"]
+>>> print(D)
+Tensor object: shape = (3, 4), labels = ['i1', 'i3']
+```
 The following contracts a pair of indices within the same tensor.
 ```python
 >>> B.contract_internal("i0", "i2")
