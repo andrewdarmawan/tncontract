@@ -193,10 +193,24 @@ class Tensor():
                 if lbl.noprime_label(label) == noprime:
                     self.labels[i] = lbl.unprime_label(self.labels[i])
 
-    def fuse_indices(self, labels_to_fuse, new_label):
-        indices=[i for i,x in enumerate(self.labels) if x in labels_to_fuse]
-        print(indices)
-        pass
+    def fuse_indices(self, indices_to_fuse, new_label,
+            preserve_relative_order=True):
+        indices=[i for i,x in enumerate(self.labels) if x in indices_to_fuse]
+        #Move the indices to fuse to position zero
+        self.move_indices(indices_to_fuse, 0,
+                preserve_relative_order=preserve_relative_order)
+        #Compute the total dimension of the new index
+        total_dim=1
+        for i,x in enumerate(self.labels):
+            if x in indices_to_fuse:
+                total_dim*=self.data.shape[i]
+            else:
+                new_labels = [new_label] + self.labels[i:]
+                new_shape = (total_dim, ) + self.data.shape[i:]
+                break
+
+        self.data=np.reshape(self.data, new_shape)
+        self.labels=new_labels
 
     def split_index(self, label, new_labels):
         pass
@@ -291,7 +305,6 @@ class Tensor():
 	Tensor object: 
 	Data type: float64
 	Number of indices: 5
-
 	Index labels:
 	   0. (dim=3) b
 	   1. (dim=4) c
@@ -309,7 +322,6 @@ class Tensor():
 	Tensor object: 
 	Data type: float64
 	Number of indices: 5
-
 	Index labels:
 	   0. (dim=6) d
 	   1. (dim=3) b
