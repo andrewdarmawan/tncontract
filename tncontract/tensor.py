@@ -200,6 +200,49 @@ class Tensor():
 
     def fuse_indices(self, indices_to_fuse, new_label,
             preserve_relative_order=True):
+        """Fuse multiple indices into a single index. If
+        `preserve_relative_order` is True, the relative order of the fused
+        indices will be preserved. Otherwise, the order will be determined  by
+        the `indices_to_fuse` argument.
+        
+	Examples
+	--------
+	In this example we fuse a pair of indices to a single index, 
+	then split them again.
+	>>> t=random_tensor(2,3,4,5,6, labels=["a","b","c","d","a"])
+	>>> t_orig=t.copy()
+	
+	Fuse indices "b" and "d" to a new index called "new_index".
+	>>> t.fuse_indices(["b","d"], "new_index")
+	>>> print(t)
+	Tensor object: 
+	Data type: float64
+	Number of indices: 4
+	Index labels:
+	   0. (dim=15) new_index
+	   1. (dim=2) a
+	   2. (dim=4) c
+	   3. (dim=6) a
+
+	Split the "new_index" index into two indices "b" and "d" with 
+	dimensions 3 and 5 respectively. 
+	>>> t.split_index("new_index", (3,5), ["b","d"])
+	>>> print(t)
+	Tensor object: 
+	Data type: float64
+	Number of indices: 5
+	Index labels:
+	   0. (dim=3) b
+	   1. (dim=5) d
+	   2. (dim=2) a
+	   3. (dim=4) c
+	   4. (dim=6) a
+
+	The resulting tensor is identical to the original (up to a reordering 
+	of the indices). 
+	>>> distance(t, t_orig)
+	0.0
+        """
         indices=[i for i,x in enumerate(self.labels) if x in indices_to_fuse]
         #Move the indices to fuse to position zero
         self.move_indices(indices_to_fuse, 0,
@@ -217,8 +260,25 @@ class Tensor():
         self.data=np.reshape(self.data, new_shape)
         self.labels=new_labels
 
-    def split_index(self, label, new_labels):
-        pass
+    def split_index(self, label, new_dims, new_labels):
+	"""
+	Split a single index into multiple indices.
+
+	See also
+	--------
+	fuse_indices
+	"""
+        if len(new_dims) != len(new_labels):
+            raise ValueError("Length of new_dims must equal length of "
+                    "new_labels")
+
+        new_dims=tuple(new_dims)
+        i=self.labels.index(label)
+        new_shape=self.data.shape[:i]+new_dims+self.data.shape[i+1:]
+        new_labels=self.labels[:i]+new_labels+self.labels[i+1:]
+
+        self.data=np.reshape(self.data, new_shape)
+        self.labels=new_labels
 
     def contract_internal(self, label1, label2, index1=0, index2=0):
         """By default will contract the first index with label1 with the 
