@@ -52,7 +52,7 @@ class OneDimensionalTensorNetwork():
             if left_label not in x.labels: x.add_dummy_index(left_label)
             if right_label not in x.labels: x.add_dummy_index(right_label)
 
-   #Add container emulation
+   #Container emulation
     def __iter__(self):
         return self.data.__iter__()
     def __len__(self):
@@ -443,8 +443,13 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         canonical form. """
         if reverse:
             self.reverse()
-        self.left_canonise(normalise=normalise, qr_decomposition=True)
-        self.right_canonise(chi=chi, threshold=threshold, normalise=normalise)
+        self.left_canonise(normalise=False, qr_decomposition=True)
+        #Normalise the state temporarily
+        norm=self.norm(canonical_form="left")
+        self[-1].data/=norm
+        self.right_canonise(chi=chi, threshold=threshold, normalise=False)
+        if normalise==False:
+            self[0].data*=norm
         if reverse:
             self.reverse()
 
