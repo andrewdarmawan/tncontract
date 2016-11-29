@@ -24,7 +24,8 @@ class SquareLatticeTensorNetwork():
     If the state has open boundaries, the edge indices of tensors on the 
     boundary should have dimension 1. If not, the tensors will be put in this 
     form."""
-    def __init__(self, tensors, up_label, right_label, down_label, left_label, 
+    def __init__(self, tensors, up_label="up", right_label="right",
+            down_label="down", left_label="left", 
             copy_data=True):
         self.up_label=up_label
         self.right_label=right_label
@@ -90,7 +91,7 @@ class SquareLatticeTensorNetwork():
         return C
 
     def mps_contract(self, chi, compression_type="svd", normalise=False, 
-            until_column=-1):
+            until_column=-1, max_iter=10, tolerance=1e-14):
         """Approximately contract a square lattice tensor network using MPS 
         evolution and compression. Will contract from left to right.
         If normalise is set to True, the normalise argument to 
@@ -98,9 +99,12 @@ class SquareLatticeTensorNetwork():
 
         nrows, ncols = self.shape
 
+        #Divide matrix product state by its norm after each compression
+        #but keep these factors in the variable `norm`
+        norm=1
         for col in range(ncols-1):
             if col==0:
-                mps_to_compress = column_to_mpo(self, 0, to_mps=True)
+                mps_to_compress = column_to_mpo(self, 0)
             else:
                 column_mpo=column_to_mpo(self, col)
                 mps_to_compress = od.contract_mps_mpo(compressed_mps, 
@@ -108,38 +112,50 @@ class SquareLatticeTensorNetwork():
 
             if compression_type=="svd":
                 compressed_mps = od.svd_compress_mps(mps_to_compress, chi, 
-                        normalise=normalise)
+                        normalise=False)
+                #Normalise MPS (although keep normalisation factor in `norm`)
+                mps_norm=compressed_mps.norm(canonical_form="right")
+                compressed_mps[0].data=compressed_mps[0].data/mps_norm
+                norm*=mps_norm
             elif compression_type=="variational":
-                compressed_mps = od.variational_compress_mps(mps_to_compress, 
-                        chi, max_iter=10)
+                compressed_mps = mps_to_compress.variational_compress(
+                        chi, max_iter=max_iter, tolerance=tolerance)
+                #Normalise MPS (although keep normalisation factor in `norm`)
+                mps_norm=compressed_mps.norm(canonical_form="left")
+                compressed_mps[-1].data=compressed_mps[-1].data/mps_norm
+                norm*=mps_norm
 
             if col == until_column:
-                return compressed_mps
+                if normalise==True:
+                    return compressed_mps
+                elif compression_type=="svd":
+                    compressed_mps[0].data*=norm
+                    return compressed_mps
+                elif compression_type=="variational":
+                    compressed_mps[-1].data*=norm
+                    return compressed_mps
 
         #For final column, compute contraction exactly
-        final_column_mps=column_to_mpo(self, ncols-1, to_mps=True)
+        final_column_mps=column_to_mpo(self, ncols-1)
         return od.inner_product_mps(compressed_mps, final_column_mps, 
-                return_whole_tensor=True, complex_conjugate_bra=False)
+                return_whole_tensor=True, complex_conjugate_bra=False)*norm
 
 class SquareLatticePEPS(SquareLatticeTensorNetwork):
-    def __init__(self, tensors, up_label, right_label, down_label, left_label,
-            phys_label):
+    def __init__(self, tensors, up_label="up", right_label="right",
+            down_label="down", left_label="left", phys_label="phys"):
         SquareLatticeTensorNetwork.__init__(self, tensors, up_label, 
                 right_label, down_label, left_label)
         self.phys_label=phys_label
 
-def column_to_mpo(square_tn, col, to_mps=False):
+def column_to_mpo(square_tn, col):
     """
     Will extract column col from square_tn (which is assumed to be a 
     SquareLatticeTensorNetwork object), and convert the column into a
     MatrixProductState object (if first or last column without periodic 
     boundary conditions) or a MatrixProductOperator object. 
-    If to_mps==True and col refers to either the first or last column, 
-    a MatrixProductState object is returned instead .
-    
     """
     new_data=square_tn[:,col].copy()
-    if to_mps and (col==0 or col==square_tn.shape[1]-1):
+    if col==0 or col==square_tn.shape[1]-1:
         if col==0:
             new_mps=od.MatrixProductState(new_data, square_tn.up_label, 
                     square_tn.down_label, square_tn.right_label)

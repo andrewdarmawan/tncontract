@@ -52,10 +52,30 @@ class Tensor():
         return "Tensor(data=%r, labels=%r)" % (self.data, self.labels)
 
     def __str__(self):
-        return ("Tensor object: "
-                "shape = " + str(self.shape) +
-                ", labels = " + str(self.labels))# + "\n" +
-                #"Tensor data = \n" + str(self.data))
+        array_str=str(self.data)
+        lines=array_str.splitlines()
+        if len(lines) > 20:
+            lines=lines[:20]+["...",
+                    "Printed output of large array was truncated.\nString "
+                    "representation of full data array returned by "
+                    "tensor.data.__str__()."]
+            array_str="\n".join(lines)
+
+
+        #Specify how index information is printed
+        lines=[]
+        for i,label in enumerate(self.labels):
+            lines.append("   "+str(i)+". (dim="+str(self.shape[i])+") "+
+                    str(label)+"\n") 
+        indices_str="".join(lines)
+            
+        return ("Tensor object: \n" + 
+                "Data type: " + str(self.data.dtype) + "\n"  
+                "Number of indices: " + str(len(self.data.shape)) + "\n"
+                    "\nIndex labels:\n" + indices_str +
+                #"shape = " + str(self.shape) +
+                #", labels = " + str(self.labels) + "\n" +(
+                "\nTensor data = \n" + array_str)
 
     def __eq__(self, other):
         if isinstance(other, Tensor):
@@ -96,6 +116,11 @@ class Tensor():
             raise TypeError("unsupported operand type(s) *: for '"
                     +self.__class__.__name__+"' and '"
                     +other.__class__.__name__+"'")
+
+    def __getitem__(self, *args):
+        """Used to allow convenient shorthand for defining tensor
+        contraction."""
+        return ToContract(self, *args)
 
     #Define functions for getting and setting labels
     def get_labels(self):
@@ -188,6 +213,88 @@ class Tensor():
                 if lbl.noprime_label(label) == noprime:
                     self.labels[i] = lbl.unprime_label(self.labels[i])
 
+    def fuse_indices(self, indices_to_fuse, new_label,
+            preserve_relative_order=True):
+        """Fuse multiple indices into a single index. If
+        `preserve_relative_order` is True, the relative order of the fused
+        indices will be preserved. Otherwise, the order will be determined  by
+        the `indices_to_fuse` argument.
+        
+        Examples
+        --------
+        In this example we fuse a pair of indices to a single index, 
+        then split them again. We start with a random rank-5 tensor.
+        >>> t=random_tensor(2,3,4,5,6, labels=["a","b","c","d","a"])
+        >>> t_orig=t.copy()
+
+        Fuse indices "b" and "d" to a new index called "new_index".
+        >>> t.fuse_indices(["b","d"], "new_index")
+        >>> print(t)
+        Tensor object: 
+        Data type: float64
+        Number of indices: 4
+        Index labels:
+        0. (dim=15) new_index
+        1. (dim=2) a
+        2. (dim=4) c
+        3. (dim=6) a
+
+        Split the "new_index" index into two indices "b" and "d" with 
+        dimensions 3 and 5 respectively. 
+        >>> t.split_index("new_index", (3,5), ["b","d"])
+        >>> print(t)
+        Tensor object: 
+        Data type: float64
+        Number of indices: 5
+        Index labels:
+        0. (dim=3) b
+        1. (dim=5) d
+        2. (dim=2) a
+        3. (dim=4) c
+        4. (dim=6) a
+
+        The resulting tensor is identical to the original (up to a reordering 
+        of the indices). 
+        >>> distance(t, t_orig)
+        0.0
+        """
+        indices=[i for i,x in enumerate(self.labels) if x in indices_to_fuse]
+        #Move the indices to fuse to position zero
+        self.move_indices(indices_to_fuse, 0,
+                preserve_relative_order=preserve_relative_order)
+        #Compute the total dimension of the new index
+        total_dim=1
+        for i,x in enumerate(self.labels):
+            if x in indices_to_fuse:
+                total_dim*=self.data.shape[i]
+            else:
+                new_labels = [new_label] + self.labels[i:]
+                new_shape = (total_dim, ) + self.data.shape[i:]
+                break
+
+        self.data=np.reshape(self.data, new_shape)
+        self.labels=new_labels
+
+    def split_index(self, label, new_dims, new_labels):
+        """
+        Split a single index into multiple indices.
+
+        See also
+        --------
+        fuse_indices
+        """
+        if len(new_dims) != len(new_labels):
+            raise ValueError("Length of new_dims must equal length of "
+                    "new_labels")
+
+        new_dims=tuple(new_dims)
+        i=self.labels.index(label)
+        new_shape=self.data.shape[:i]+new_dims+self.data.shape[i+1:]
+        new_labels=self.labels[:i]+new_labels+self.labels[i+1:]
+
+        self.data=np.reshape(self.data, new_shape)
+        self.labels=new_labels
+
     def contract_internal(self, label1, label2, index1=0, index2=0):
         """By default will contract the first index with label1 with the 
         first index with label2. index1 and index2 can be specified to contract
@@ -240,13 +347,12 @@ class Tensor():
         """Creates a copy of the tensor that does not point to the original"""
         """Never use A=B in python as modifying A will modify B"""
         return Tensor(data=self.data.copy(), labels=self.labels.copy())
-
+    
     def move_index(self, label, position):
         """Change the order of the indices by moving the first index with label
-        to position, possibly shifting other indices forward or back in the 
-        process. """
+        `label` to position `position`, possibly shifting other indices forward
+        or back in the process. """
         index = self.labels.index(label)
-
         #Move label in list
         self.labels.pop(index)
         self.labels.insert(position, label)
@@ -257,6 +363,94 @@ class Tensor():
             self.data=np.rollaxis(self.data,index,position)
         else:
             self.data=np.rollaxis(self.data,index,position+1)
+
+    def move_indices(self, labels, position, 
+            preserve_relative_order=False):
+        """Move indices with labels in `labels` to consecutive positions
+        starting at `position`. If `preserve_relative_order`==True, the
+        relative order of the moved indices will be identical to their order in
+        the original tensor. If not, the relative order will be determined by
+        the order in the `labels` argument.
+        
+        Examples
+        --------
+	First initialise a random tensor.
+	>>> from tncontract import random_tensor
+	>>> t=random_tensor(2,3,4,5,6, labels=["a", "b", "c", "b", "d"])
+
+	Now we move the indices labelled "d", "b" and "c" to position 0 (i.e.
+	the beginning). When preserve_relative_order is True, the relative 
+	order of these indices is identical to the original tensor.
+	>>> t.move_indices(["d","b","c"], 0, preserve_relative_order=True)
+	>>> print(t)
+	Tensor object: 
+	Data type: float64
+	Number of indices: 5
+	Index labels:
+	   0. (dim=3) b
+	   1. (dim=4) c
+	   2. (dim=5) b
+	   3. (dim=6) d
+	   4. (dim=2) a
+
+	If, on the other hand, preserve_relative_order is False, the order of 
+	the indices is determined by the order in which they appear in the 
+	`labels` argument of `move_indices`. In this case, "d" comes first 
+	then the "b" indices then "c". 
+	>>> t=random_tensor(2,3,4,5,6, labels=["a", "b", "c", "b", "d"])
+	>>> t.move_indices(["d","b","c"], 0, preserve_relative_order=False)
+	>>> print(t)
+	Tensor object: 
+	Data type: float64
+	Number of indices: 5
+	Index labels:
+	   0. (dim=6) d
+	   1. (dim=3) b
+	   2. (dim=5) b
+	   3. (dim=4) c
+	   4. (dim=2) a
+  
+        """
+
+        if not isinstance(labels, list):
+            labels=[labels]
+
+        if preserve_relative_order:
+            orig_labels=self.labels.copy()
+            n_indices_to_move=0
+            for label in orig_labels:
+                if label in labels:
+                    #Move label to end of list
+                    self.move_index(label, len(self.labels)-1)
+                    n_indices_to_move+=1
+        else:
+            #Remove duplicates
+            unique_labels=[]
+            for label in labels:
+                if label not in unique_labels:
+                    unique_labels.append(label)
+            labels=unique_labels
+
+            n_indices_to_move=0
+            for label in labels:
+                for i in range(self.labels.count(label)):
+                    #Move label to end of list
+                    self.move_index(label, len(self.labels)-1)
+                    n_indices_to_move+=1
+
+        if position + n_indices_to_move > len(self.labels):
+            raise ValueError("Specified position too far right.")
+
+        #All indices to move are at the end of the array
+        #Now put put them in desired place
+        for j in range(n_indices_to_move):
+            old_index=len(self.labels)-n_indices_to_move+j
+            label=self.labels[old_index]
+            #Move label in list
+            self.labels.pop(old_index)
+            self.labels.insert(position+j, label)
+            #Reshape accordingly
+            self.data=np.rollaxis(self.data, old_index, position+j)
 
     def conjugate(self):
         self.data=self.data.conjugate()
@@ -342,6 +536,20 @@ class Tensor():
         npad = ((0, 0),)*(index) + npad + ((0,0),)*(self.rank-index-1)
         self.data = np.pad(self.data, npad, mode='constant', constant_values=0)
 
+    def contract(self, *args, **kwargs):
+        """
+        A method that calls the function `contract`, passing `self` as the
+        first argument.
+        
+        See also
+        --------
+        contract (function)
+
+        """
+        t=contract(self, *args, **kwargs)
+        self.data=t.data
+        self.labels=t.labels
+
     @property
     def shape(self):
         return self.data.shape
@@ -349,6 +557,21 @@ class Tensor():
     @property
     def rank(self):
         return len(self.shape)
+    def norm(self):
+        """Return the frobenius norm of the tensor, equivalent to taking the
+        sum of absolute values squared of every element. """
+        return np.linalg.norm(self.data)
+
+class ToContract():
+    """A simple class that contains a Tensor and a list of indices (labels) of
+    that tensor which are to be contracted with another tensor. Used in
+    __mul__, __rmul__ for convenient tensor contraction."""
+    def __init__(self, tensor, labels):
+        self.tensor=tensor
+        self.labels=labels
+    def __mul__(self, other):
+        return contract(self.tensor, other.tensor, list(self.labels), 
+                list(other.labels))
 
 #Tensor constructors
 def random_tensor(*args, labels=[], base_label="i"):
@@ -361,49 +584,103 @@ def zeros_tensor(*args, labels=[], dtype=np.float, base_label="i"):
     return Tensor(np.zeros(*args, dtype=dtype), labels=labels,
             base_label=base_label)
 
-def contract(tensor1, tensor2, label_list1, label_list2, index_list1=None, 
-        index_list2=None):
-    """Contract two different tensors according to the specified labels"""
-    """Indices to contract are specified by label_list1 and label_list2"""
-    """Will find all the indices of tensor1 data with label label_list1[0],"""
-    """then append indices with label given by "label_list1[1] etc."""
+def contract(tensor1, tensor2, labels1, labels2, index_slice1=None, 
+        index_slice2=None):
+    """
+    Contract the indices of `tensor1` specified in `labels1` with the indices
+    of `tensor2` specified in `labels2`. 
+    
+    This is an intuitive wrapper for numpy's `tensordot` function.  A pairwise
+    tensor contraction is specified by a pair of tensors `tensor1` and
+    `tensor2`, a set of index labels `labels1` from `tensor1`, and a set of
+    index labels `labels2` from `tensor2`. All indices of `tensor1` with label
+    in `labels1` are fused (preserving order) into a single label, and likewise
+    for `tensor2`, then these two fused indices are contracted. 
 
-    #If the input label_list is not a list, convert to list with one entry
-    if not isinstance(label_list1, list):
-        label_list1=[label_list1]
-    if not isinstance(label_list2, list):
-        label_list2=[label_list2]
+    Parameters
+    ----------
+    tensor1, tensor2 : Tensor
+        The two tensors to be contracted.
+
+    labels1, labels2 : str or list
+        The indices of `tensor1` and `tensor2` to be contracted. Can either be
+        a single label, or a list of labels. 
+
+    Examples
+    --------
+    Define a random 2x2 tensor with index labels "spam" and "eggs" and a random
+    2x3x2x4 tensor with index labels 'i0', 'i1', etc. 
+
+    >>> A = random_tensor(2, 2, labels = ["spam", "eggs"])
+    >>> B = random_tensor(2, 3, 2, 4)
+    >>> print(B)
+    Tensor object: shape = (2, 3, 2, 4), labels = ['i0', 'i1', 'i2', 'i3']
+    
+    Contract the "spam" index of tensor A with the "i2" index of tensor B.
+    >>> C = contract(A, B, "spam", "i2")
+    >>> print(C)
+    Tensor object: shape = (2, 2, 3, 4), labels = ['eggs', 'i0', 'i1', 'i3']
+
+    Contract the "spam" index of tensor A with the "i0" index of tensor B and
+    also contract the "eggs" index of tensor A with the "i2" index of tensor B.
+
+    >>> D = contract(A, B, ["spam", "eggs"], ["i0", "i2"])
+    >>> print(D)
+    Tensor object: shape = (3, 4), labels = ['i1', 'i3']
+
+    Note that the following shorthand can be used to perform the same operation
+    described above.
+    >>> D = A["spam", "eggs"]*B["i0", "i2"]
+    >>> print(D)
+    Tensor object: shape = (3, 4), labels = ['i1', 'i3']
+
+    Returns
+    -------
+    C : Tensor
+        The result of the tensor contraction. Regarding the `data` and `labels`
+        attributes of this tensor, `C` will have all of the uncontracted
+        indices of `tensor1` and `tensor2`, with the indices of `tensor1`
+        always coming before those of `tensor2`, and their internal order
+        preserved. 
+
+    """
+
+    #If the input labels is not a list, convert to list with one entry
+    if not isinstance(labels1, list):
+        labels1=[labels1]
+    if not isinstance(labels2, list):
+        labels2=[labels2]
 
     tensor1_indices=[]
-    for label in label_list1:
+    for label in labels1:
         #Append all indices to tensor1_indices with label
         tensor1_indices.extend([i for i,x in enumerate(tensor1.labels) 
             if x==label])
 
     tensor2_indices=[]
-    for label in label_list2:
+    for label in labels2:
         #Append all indices to tensor1_indices with label
         tensor2_indices.extend([i for i,x in enumerate(tensor2.labels) 
             if x==label])
         
     #Replace the index -1 with the len(tensor1_indeces), 
     #to refer to the last element in the list
-    if index_list1 != None:
-        index_list1=[x if x!=-1 else len(tensor1_indices)-1 for x 
-                in index_list1]
-    if index_list2 != None:
-        index_list2=[x if x!=-1 else len(tensor2_indices)-1 for x 
-                in index_list2]
+    if index_slice1 != None:
+        index_slice1=[x if x!=-1 else len(tensor1_indices)-1 for x 
+                in index_slice1]
+    if index_slice2 != None:
+        index_slice2=[x if x!=-1 else len(tensor2_indices)-1 for x 
+                in index_slice2]
    
     #Select some subset or permutation of these indices if specified
     #If no list is specified, contract all indices with the specified labels
     #If an empty list is specified, no indices will be contracted
-    if index_list1 != None:
+    if index_slice1 != None:
         tensor1_indices=[j for i,j in enumerate(tensor1_indices) 
-                if i in index_list1]
-    if index_list2 != None:
+                if i in index_slice1]
+    if index_slice2 != None:
         tensor2_indices=[j for i,j in enumerate(tensor2_indices) 
-                if i in index_list2]
+                if i in index_slice2]
 
     
     #Contract the two tensors
@@ -443,7 +720,7 @@ def distance(tensor1, tensor2):
     if t1.labels == t2.labels:
         return np.linalg.norm(t1.data - t2.data)
     else:
-        raise ValueError("Input tensors have different labels.")
+        raise ValueError("Input tensors must have the same labels.")
 
 def tensor_to_matrix(tensor, row_labels):
     """
@@ -615,13 +892,13 @@ def tensor_qr(tensor, row_labels, qr_label="qr_"):
     row_labels : list
         List of labels specifying the indices of `tensor` which will form the
         rows of the matrix on which the QR will be performed.
-    svd_label : str
+    qr_label : str
         Base label for the indices that are contracted between `Q` and `R`.
 
     Returns
     -------
     Q : Tensor
-        Tensor obtained by reshaping the matrix u obtained from QR
+        Tensor obtained by reshaping the matrix q obtained from QR
         decomposition.  Has indices labelled by `row_labels` corresponding to
         the indices labelled `row_labels` of `tensor` and has one index
         labelled `qr_label`+"in" which connects to `R`.
@@ -647,7 +924,7 @@ def tensor_qr(tensor, row_labels, qr_label="qr_"):
     Recombining the two tensors obtained from `tensor_qr`, yeilds a tensor very
     close to the original
 
-    >>> x=contract(Q, R, "qr_in", "qr_out")
+    >>> x = contract(Q, R, "qr_in", "qr_out")
     >>> print(x)
     Tensor object: shape = (2, 4, 3), labels = ['i0', 'i2', 'i1']
     >>> distance(x,t)
@@ -655,18 +932,27 @@ def tensor_qr(tensor, row_labels, qr_label="qr_"):
     """
     t=tensor.copy()
 
+    if not isinstance(row_labels, list):
+        #If row_labels is not a list, convert to list with a single entry
+        #"row_labels"
+        row_labels=[row_labels]
+
     #Move labels in row_labels to the beginning of list, and reshape data 
     #accordingly
-    total_input_dimension=1
-    for i,label in enumerate(row_labels):
-        t.move_index(label, i)
-        total_input_dimension*=t.data.shape[i]
+    t.move_indices(row_labels, 0)
+
+    #Compute the combined dimension of the row indices
+    row_dimension=1
+    for i,label in enumerate(t.labels):
+        if label not in row_labels:
+            break
+        row_dimension*=t.data.shape[i]
 
     column_labels=[x for x in t.labels if x not in row_labels]
 
     old_shape=t.data.shape
-    total_output_dimension=int(np.product(t.data.shape)/total_input_dimension)
-    data_matrix=np.reshape(t.data,(total_input_dimension, 
+    total_output_dimension=int(np.product(t.data.shape)/row_dimension)
+    data_matrix=np.reshape(t.data,(row_dimension, 
         total_output_dimension))
 
     q,r = np.linalg.qr(data_matrix, mode="reduced")
@@ -682,7 +968,61 @@ def tensor_qr(tensor, row_labels, qr_label="qr_"):
 
     return Q,R
 
-def truncated_svd(tensor, row_labels, chi=0, threshold=10**-15, 
+def tensor_lq(tensor, row_labels, lq_label="lq_"):
+    """
+    Compute the LQ decomposition of `tensor` after reshaping it into a matrix.
+    Indices with labels in `row_labels` are fused to form a single index
+    corresponding to the rows of the matrix (typically the left index of a
+    matrix). The remaining indices are fused to form the column index. An LR
+    decomposition is performed on this matrix, yielding two matrices l,q, where
+    q and is a rectangular matrix with orthonormal rows and l is upper
+    triangular. These two matrices are then reshaped into tensors L and Q, as
+    described below.  Note that the LQ decomposition is actually identical to
+    the QR decomposition after a relabelling of indices. 
+
+    Parameters
+    ----------
+    tensor : Tensor
+        The tensor on which the LQ decomposition will be performed.
+    row_labels : list
+        List of labels specifying the indices of `tensor` which will form the
+        rows of the matrix on which the LQ decomposition will be performed.
+    lq_label : str
+        Base label for the indices that are contracted between `L` and `Q`.
+
+    Returns
+    -------
+    Q : Tensor
+        Tensor obtained by reshaping the matrix q obtained by LQ decomposition.
+        Indices correspond to the indices of `tensor` that aren't in
+        `row_labels`. Has one index labelled `lq_label`+"out" which connects
+        to `L`.
+    L : Tensor
+        Tensor obtained by reshaping the matrix l obtained from LQ
+        decomposition.  Has indices labelled by `row_labels` corresponding to
+        the indices labelled `row_labels` of `tensor` and has one index
+        labelled `lq_label`+"in" which connects to `Q`.
+
+    See Also
+    --------
+    tensor_qr
+    
+    """
+
+
+    col_labels = [x for x in tensor.labels if x not in row_labels]
+
+    temp_label=lbl.unique_label()
+    #Note the LQ is essentially equivalent to a QR decomposition, only labels
+    #are renamed
+    Q,L = tensor_qr(tensor, col_labels, qr_label=temp_label)
+    Q.replace_label(temp_label+"in", lq_label+"out")
+    L.replace_label(temp_label+"out", lq_label+"in")
+
+    return L,Q
+
+
+def truncated_svd(tensor, row_labels, chi=0, threshold=1e-15, 
         absorb_singular_values="right"):
     """
     Will perform svd of a tensor, as in tensor_svd, and provide approximate
@@ -735,5 +1075,11 @@ def truncated_svd(tensor, row_labels, chi=0, threshold=10**-15,
         U_new=contract(U, sqrtS, ["svd_in"], ["svd_out"])
         V_new=contract(sqrtS, V, ["svd_in"], ["svd_out"])
     return U_new, V_new, truncated_evals
+
+def conjugate(tensor):
+    """Return complex conjugate of `tensor`"""
+    t=tensor.copy()
+    t.conjugate()
+    return t
 
 
