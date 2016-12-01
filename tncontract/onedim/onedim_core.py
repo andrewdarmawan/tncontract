@@ -590,7 +590,7 @@ class MatrixProductState(OneDimensionalTensorNetwork):
             #these quantities are equivalent to the differences between the
             #frobenius norms between the target state and the variational
             #state.
-            if np.all(np.abs(norms2[1:]-norms2[:-1]) < tolerance):
+            if np.all(np.abs(norms2[1:]-norms2[:-1])/norms2[1:] < tolerance):
                 mps.replace_labels([mps.left_label, mps.right_label,
                     mps.phys_label], [self.left_label, self.right_label,
                         self.phys_label])
