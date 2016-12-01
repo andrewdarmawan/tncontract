@@ -438,9 +438,9 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         performing two successive canonisations. If `reverse` is False,
         canonisation is first performed from left to right (with QR
         decomposition) then the resulting state is canonised from right to left
-        (using SVD decomposition). The resulting MPS is in left canonical form.
-        If `reverse` is True this is mirrored, resulting in a state in right
-        canonical form. """
+        (using SVD decomposition). The resulting MPS is in right canonical
+        form.  If `reverse` is True this is mirrored, resulting in a state in
+        left canonical form. """
         if reverse:
             self.reverse()
         self.left_canonise(normalise=False, qr_decomposition=True)
@@ -454,7 +454,7 @@ class MatrixProductState(OneDimensionalTensorNetwork):
             self.reverse()
 
     def variational_compress(self, chi, max_iter=10, initial_guess=None,
-            tolerance=1e-15):
+            tolerance=1e-15, normalise=False):
         """Compress MPS to a given bond dimension `chi` or to the same bond
         dimensions as an optional input MPS `initial_guess` using an iterative
         compression procedure described in U. Schollwock, Ann. Phys. 326 (2011)
@@ -491,14 +491,12 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         """
         if initial_guess == None:
             mps=self.copy()
+            #Make sure state is in left canonical form to start
             mps.svd_compress(chi=chi, reverse=True)
         else:
             mps=initial_guess
-            #Put state in right canonical form
-            mps.right_canonise(qr_decomposition=True)
-
-        #Norm of state
-        norm=self.norm()
+            #Put state in left canonical form
+            mps.left_canonise(qr_decomposition=True)
 
         #Give mps1 unique labels
         mps.replace_labels([mps.left_label, mps.right_label, mps.phys_label], 
@@ -596,6 +594,8 @@ class MatrixProductState(OneDimensionalTensorNetwork):
                 mps.replace_labels([mps.left_label, mps.right_label,
                     mps.phys_label], [self.left_label, self.right_label,
                         self.phys_label])
+                if normalise==True:
+                    mps[-1].data/=mps.norm(canonical_form="left")
                 return mps
             elif i==max_iter-1: #Has reached the last iteration
                 raise RuntimeError("variational_compress did not converge.")
