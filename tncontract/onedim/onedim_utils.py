@@ -199,7 +199,7 @@ def expvals_mps(mps, oplist=[], sites=None, output_label=None, canonised=None):
     N = len(sites)
     expvals = np.zeros(N, dtype=complex)
 
-    if not np.iterable(oplist):
+    if not isinstance(oplist, list):
         oplist_new = [oplist]*N
     else:
         oplist_new = oplist
