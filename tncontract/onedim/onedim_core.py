@@ -942,7 +942,9 @@ def ladder_contract(array1, array2, label1, label2, start=0, end=None,
                 t=C.copy()
                 t.replace_label([a1.right_label, a2.right_label], 
                         [right_output_label+"1", right_output_label+"2"])
-                t.remove_all_dummy_indices()
+                #Remove dummy indices except the right indices
+                t.remove_all_dummy_indices(labels=[x for x in t.labels if x
+                    not in [right_output_label+"1", right_output_label+"2"]])
                 intermediate_contractions.append(t)
 
         C.replace_label([a1.right_label, a2.right_label], 
@@ -962,7 +964,9 @@ def ladder_contract(array1, array2, label1, label2, start=0, end=None,
                 t=C.copy()
                 t.replace_label([a1.left_label, a2.left_label], 
                         [left_output_label+"1", left_output_label+"2"])
-                t.remove_all_dummy_indices()
+                #Remove dummy indices except the left indices
+                t.remove_all_dummy_indices(labels=[x for x in t.labels if x
+                    not in [left_output_label+"1", left_output_label+"2"]])
                 intermediate_contractions.insert(0,t)
 
         C.replace_label([a1.left_label, a2.left_label], 
@@ -986,6 +990,10 @@ def ladder_contract(array1, array2, label1, label2, start=0, end=None,
                     a2.left_label], [right_output_label+"1", 
                         right_output_label+"2", left_output_label+"1", 
                         left_output_label+"2"])
+                #Remove dummy indices except the left and right indices
+                t.remove_all_dummy_indices(labels=[x for x in t.labels if x
+                    not in [right_output_label+"1", right_output_label+"2", 
+                        left_output_label+"1", left_output_label+"2"]])
                 t.remove_all_dummy_indices()
                 intermediate_contractions.append(t)
 
