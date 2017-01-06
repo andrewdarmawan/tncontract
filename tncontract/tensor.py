@@ -202,8 +202,8 @@ class Tensor():
             preserve_relative_order=True):
         """Fuse multiple indices into a single index. If
         `preserve_relative_order` is True, the relative order of the fused
-        indices will be preserved. Otherwise, the order will be determined  by
-        the `indices_to_fuse` argument.
+        indices will be preserved. Otherwise, the order will follow the order
+        in the `indices_to_fuse` argument.
         
         Examples
         --------
@@ -713,7 +713,9 @@ def tensor_svd(tensor, row_labels, svd_label="svd_"):
     matrix). The remaining indices are fused to form the column indices. An SVD
     is performed on this matrix, yielding three matrices u, s, v, where u and
     v are unitary and s is diagonal with positive entries. These three
-    matrices are then reshaped into tensors U, S, and V as described below.
+    matrices are then reshaped into tensors U, S, and V. Contracting U, S and V
+    together along the indices labelled by `svd_label` will yeild the original
+    input `tensor`.
 
     Parameters
     ----------
@@ -749,17 +751,17 @@ def tensor_svd(tensor, row_labels, svd_label="svd_"):
     >>> a=random_tensor(2,3,4, labels = ["i0", "i1", "i2"])
     >>> U,S,V = tensor_svd(a, ["i0", "i2"])
     >>> print(U)
-    Tensor object: shape = (2, 4, 3), labels = ['i0', 'i2', 'svdin']
+    Tensor object: shape = (2, 4, 3), labels = ['i0', 'i2', 'svd_in']
     >>> print(V)
-    Tensor object: shape = (3, 3), labels = ['svdout', 'i1']
+    Tensor object: shape = (3, 3), labels = ['svd_out', 'i1']
     >>> print(S)
-    Tensor object: shape = (3, 3), labels = ['svdout', 'svdin']
+    Tensor object: shape = (3, 3), labels = ['svd_out', 'svd_in']
     
     Recombining the three tensors obtained from SVD, yeilds a tensor very close
     to the original.
 
-    >>> temp=tn.contract(S, V, "svdin", "svdout")
-    >>> b=tn.contract(U, temp, "svdin", "svdout")
+    >>> temp=tn.contract(S, V, "svd_in", "svd_out")
+    >>> b=tn.contract(U, temp, "svd_in", "svd_out")
     >>> tn.distance(a,b)
     1.922161284937472e-15
     """
@@ -809,9 +811,9 @@ def tensor_qr(tensor, row_labels, qr_label="qr_"):
     matrix). The remaining indices are fused to form the column index. A QR
     decomposition is performed on this matrix, yielding two matrices q,r, where
     q and is a rectangular matrix with orthonormal columns and r is upper
-    triangular. These two matrices are then reshaped into tensors Q and R,
-    splitting rows indices of Q into multiple indices and the column indices of
-    R into multiple indices as described below.
+    triangular. These two matrices are then reshaped into tensors Q and R.
+    Contracting Q and R along the indices labelled `qr_label` will yeild the
+    original input tensor `tensor`.
 
     Parameters
     ----------
@@ -904,9 +906,10 @@ def tensor_lq(tensor, row_labels, lq_label="lq_"):
     matrix). The remaining indices are fused to form the column index. An LR
     decomposition is performed on this matrix, yielding two matrices l,q, where
     q and is a rectangular matrix with orthonormal rows and l is upper
-    triangular. These two matrices are then reshaped into tensors L and Q, as
-    described below.  Note that the LQ decomposition is actually identical to
-    the QR decomposition after a relabelling of indices. 
+    triangular. These two matrices are then reshaped into tensors L and Q.
+    Contracting L and Q along the indices labelled `lq_label` will yeild the
+    original input `tensor`. Note that the LQ decomposition is actually
+    identical to the QR decomposition after a relabelling of indices. 
 
     Parameters
     ----------
