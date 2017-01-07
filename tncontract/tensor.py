@@ -298,6 +298,10 @@ class Tensor():
         self.labels=[label for j,label in enumerate(self.labels) 
             if j not in [index_to_contract1, index_to_contract2]]
 
+    #alias for contract_internal
+    trace=contract_internal
+    tr=contract_internal
+
     def consolidate_indices(self):
         """Combines all indices with the same label into a single label.
         Also puts labels in alphabetical order (and reshapes data accordingly).
