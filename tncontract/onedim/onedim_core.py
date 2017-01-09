@@ -207,7 +207,7 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         return MatrixProductState([x.copy() for x in self], self.left_label, 
                 self.right_label, self.phys_label)
 
-    def left_canonise(self, start=0, end=-1, chi=0, threshold=1e-14, 
+    def left_canonise(self, start=0, end=-1, chi=None, threshold=1e-14, 
             normalise=False, qr_decomposition=False):
         """
         Perform left canonisation of MPS. 
@@ -327,7 +327,7 @@ class MatrixProductState(OneDimensionalTensorNetwork):
                 if i==end-1:
                     self[i+1].data*=norm
 
-    def right_canonise(self, start=0, end=-1, chi=0, threshold=1e-14, 
+    def right_canonise(self, start=0, end=-1, chi=None, threshold=1e-14, 
             normalise=False, qr_decomposition=False):
         """Perform right canonisation of MPS. Identical to `left_canonise`
         except that process is mirrored (i.e. canonisation is performed from
@@ -430,7 +430,7 @@ class MatrixProductState(OneDimensionalTensorNetwork):
                             str(first_site_not_right_canonised))
         return (first_site_not_left_canonised, first_site_not_right_canonised)
 
-    def svd_compress(self, chi=0, threshold=1e-15, normalise=False,
+    def svd_compress(self, chi=None, threshold=1e-15, normalise=False,
             reverse=False):
         """Compress MPS to a given bond dimension `chi` or to a minimum
         singular value `threshold` using SVD compression as described in U.
