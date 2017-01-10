@@ -199,7 +199,7 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         return MatrixProductState([x.copy() for x in self], self.left_label, 
                 self.right_label, self.phys_label)
 
-    def left_canonise(self, start=0, end=-1, chi=0, threshold=1e-14, 
+    def left_canonise(self, start=0, end=-1, chi=None, threshold=1e-14, 
             normalise=False, qr_decomposition=False):
         """
         Perform left canonisation of MPS. 
@@ -319,7 +319,7 @@ class MatrixProductState(OneDimensionalTensorNetwork):
                 if i==end-1:
                     self[i+1].data*=norm
 
-    def right_canonise(self, start=0, end=-1, chi=0, threshold=1e-14, 
+    def right_canonise(self, start=0, end=-1, chi=None, threshold=1e-14, 
             normalise=False, qr_decomposition=False):
         """Perform right canonisation of MPS. Identical to `left_canonise`
         except that process is mirrored (i.e. canonisation is performed from
@@ -422,7 +422,7 @@ class MatrixProductState(OneDimensionalTensorNetwork):
                             str(first_site_not_right_canonised))
         return (first_site_not_left_canonised, first_site_not_right_canonised)
 
-    def svd_compress(self, chi=0, threshold=1e-15, normalise=False,
+    def svd_compress(self, chi=None, threshold=1e-15, normalise=False,
             reverse=False):
         """Compress MPS to a given bond dimension `chi` or to a minimum
         singular value `threshold` using SVD compression as described in U.
@@ -931,7 +931,9 @@ def ladder_contract(array1, array2, label1, label2, start=0, end=None,
                 t=C.copy()
                 t.replace_label([a1.right_label, a2.right_label], 
                         [right_output_label+"1", right_output_label+"2"])
-                t.remove_all_dummy_indices()
+                #Remove dummy indices except the right indices
+                t.remove_all_dummy_indices(labels=[x for x in t.labels if x
+                    not in [right_output_label+"1", right_output_label+"2"]])
                 intermediate_contractions.append(t)
 
         C.replace_label([a1.right_label, a2.right_label], 
@@ -951,7 +953,9 @@ def ladder_contract(array1, array2, label1, label2, start=0, end=None,
                 t=C.copy()
                 t.replace_label([a1.left_label, a2.left_label], 
                         [left_output_label+"1", left_output_label+"2"])
-                t.remove_all_dummy_indices()
+                #Remove dummy indices except the left indices
+                t.remove_all_dummy_indices(labels=[x for x in t.labels if x
+                    not in [left_output_label+"1", left_output_label+"2"]])
                 intermediate_contractions.insert(0,t)
 
         C.replace_label([a1.left_label, a2.left_label], 
@@ -975,6 +979,10 @@ def ladder_contract(array1, array2, label1, label2, start=0, end=None,
                     a2.left_label], [right_output_label+"1", 
                         right_output_label+"2", left_output_label+"1", 
                         left_output_label+"2"])
+                #Remove dummy indices except the left and right indices
+                t.remove_all_dummy_indices(labels=[x for x in t.labels if x
+                    not in [right_output_label+"1", right_output_label+"2", 
+                        left_output_label+"1", left_output_label+"2"]])
                 t.remove_all_dummy_indices()
                 intermediate_contractions.append(t)
 

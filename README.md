@@ -54,7 +54,7 @@ Tensor object: shape = (3, 4), labels = ['i1', 'i3']
 ```
 The following contracts a pair of indices within the same tensor.
 ```python
->>> B.contract_internal("i0", "i2")
+>>> B.trace("i0", "i2")
 >>> print(B)
 Tensor object: shape = (3, 4), labels = ['i1', 'i3']
 ```
