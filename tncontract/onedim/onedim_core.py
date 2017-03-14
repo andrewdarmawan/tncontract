@@ -122,7 +122,7 @@ class OneDimensionalTensorNetwork():
         V.replace_label('svd_out', self.left_label)
         self[i+1] = V
 
-    def replace_labels(old_labels, new_labels):
+    def replace_labels(self, old_labels, new_labels):
         """Run `Tensor.replace_label` method on every tensor in `self` then
         replace `self.left_label` and `self.right_label` appropriately."""
 
