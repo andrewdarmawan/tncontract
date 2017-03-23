@@ -140,6 +140,18 @@ class SquareLatticeTensorNetwork():
         return od.inner_product_mps(compressed_mps, final_column_mps, 
                 return_whole_tensor=True, complex_conjugate_bra=False)*norm
 
+    def col_to_1D_array(self, col):
+        """
+        Will extract column col from square_tn (which is assumed to be a 
+        SquareLatticeTensorNetwork object), and convert the column into a
+        MatrixProductState object (if first or last column without periodic 
+        boundary conditions) or a MatrixProductOperator object. 
+        """
+        new_data=self[:,col].copy()
+        return od.OneDimensionalTensorNetwork(new_data, 
+                left_label=self.up_label,
+                right_label=self.down_label)
+
 class SquareLatticePEPS(SquareLatticeTensorNetwork):
     def __init__(self, tensors, up_label="up", right_label="right",
             down_label="down", left_label="left", phys_label="phys"):

@@ -827,8 +827,8 @@ def ladder_contract(array1, array2, label1, label2, start=0, end=None,
         right_output_label="right", return_intermediate_contractions=False): 
     """
     Contract two one-dimensional tensor networks. Indices labelled `label1` in
-    `array1` and indices labelled `label2` in `array2` are contracted pairwise.
-    , and all virtual indices are contracted.  The contraction pattern
+    `array1` and indices labelled `label2` in `array2` are contracted pairwise
+    and all virtual indices are contracted.  The contraction pattern
     resembles a ladder when represented graphically. 
 
     Parameters
@@ -889,7 +889,7 @@ def ladder_contract(array1, array2, label1, label2, start=0, end=None,
 
     Notes
     -----
-    If the interval specified contains the left boundary, contraction is
+    If the interval specified contains the left open boundary, contraction is
     performed from left to right. If not and if interval contains right
     boundary, contraction is performed from right to left. If the interval
     does not contain either boundary, contraction is performed from left to
