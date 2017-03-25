@@ -5,14 +5,17 @@ onedim_core
 Core module for onedimensional tensor networks
 """
 
-__all__ = ['MatrixProductState', 'MatrixProductOperator',
-        'OneDimensionalTensorNetwork', 'check_canonical_form_mps',
+__all__ = ['MatrixProductState', 'MatrixProductStateCanonical',
+        'MatrixProductOperator', 'OneDimensionalTensorNetwork',
+        'check_canonical_form_mps',
         'contract_mps_mpo', 'contract_multi_index_tensor_with_one_dim_array',
         'contract_virtual_indices', 'frob_distance_squared',
         'inner_product_mps', 'ladder_contract', 'left_canonical_form_mps',
         'mps_complex_conjugate', 'reverse_mps', 'right_canonical_form_mps',
         'svd_compress_mps', 'variational_compress_mps', 'tensor_to_mpo',
-        'tensor_to_mps']
+        'tensor_to_mps',
+        'right_canonical_to_canonical',
+        ]
 
 import numpy as np
 
@@ -340,7 +343,7 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         self.reverse()
 
     def replace_labels(self, old_labels, new_labels):
-        """Run `Tensor.replace_label` method on every tensor in `self` then
+        """run `tensor.replace_label` method on every tensor in `self` then
         replace `self.left_label`, `self.right_label` and `self.phys_label` 
         appropriately."""
 
@@ -361,7 +364,7 @@ class MatrixProductState(OneDimensionalTensorNetwork):
 
     def standard_labels(self, suffix=""):
         """
-        Overwrite self.labels, self.left_label, self.right_label, 
+        overwrite self.labels, self.left_label, self.right_label, 
         self.phys_label with standard labels "left", "right", "phys"
         """
         self.replace_labels([self.left_label, self.right_label,
@@ -694,6 +697,77 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         if canonise == 'right':
             mps.reverse()
         self.data[firstsite:firstsite+nsites] = mps.data
+
+
+class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
+    """
+    Matrix product state in canonical form with every other tensor assumed to
+    be a diagonal matrix of singular values
+
+    Convenient for TEBD type algorithms.
+
+    See U. Schollwock, Ann. Phys. 326 (2011) 96-192 section 4.6.
+    """
+
+    def __init__(self, tensors, left_label="left", right_label="right",
+            phys_label="phys"):
+        OneDimensionalTensorNetwork.__init__(self, tensors,
+                left_label=left_label, right_label=right_label)
+        self.phys_label=phys_label
+
+    def __repr__(self):
+        return ("MatrixProductStateCanonical(tensors=%r, left_label=%r,"
+            "right_label=%r, phys_label=%r)" % (self.data, self.left_label,
+                self.right_label, self.phys_label))
+
+    def __str__(self):
+        return ("MatrixProductStateCanonical object: " +
+              "sites (incl. singular value sites)= " + str(len(self)) + 
+              ", left_label = " + self.left_label + 
+              ", right_label = " + self.right_label + 
+              ", phys_label = " + self.phys_label)
+
+    def copy(self):
+        """Return an MPS that is not linked in memory to the original."""
+        return MatrixProductStateCanonical([x.copy() for x in self],
+                self.left_label, self.right_label, self.phys_label)
+
+    def physdim(self, site):
+        """Return physical index dimesion for site"""
+        return self.data[site].index_dimension(self.phys_label)
+
+    def replace_labels(self, old_labels, new_labels):
+        """run `tensor.replace_label` method on every tensor in `self` then
+        replace `self.left_label`, `self.right_label` and `self.phys_label` 
+        appropriately."""
+
+        if not isinstance(old_labels, list):
+            old_labels=[old_labels]
+        if not isinstance(new_labels, list):
+            new_labels=[new_labels]
+
+        for x in self.data:
+            x.replace_label(old_labels, new_labels)
+
+        if self.left_label in old_labels:
+            self.left_label = new_labels[old_labels.index(self.left_label)]
+        if self.right_label in old_labels:
+            self.right_label = new_labels[old_labels.index(self.right_label)]
+        if self.phys_label in old_labels:
+            self.phys_label = new_labels[old_labels.index(self.phys_label)]
+
+    def standard_labels(self, suffix=""):
+        """
+        overwrite self.labels, self.left_label, self.right_label, 
+        self.phys_label with standard labels "left", "right", "phys"
+        """
+        self.replace_labels([self.left_label, self.right_label,
+            self.phys_label], ["left"+suffix, "right"+suffix, "phys"+suffix])
+
+    def apply_gate(self, gate, firstsite, gate_outputs=None, gate_inputs=None,
+            chi=None, threshold=1e-15):
+        raise NotImplementedError
+
 
 class MatrixProductOperator(OneDimensionalTensorNetwork):
     #TODO currently assumes open boundaries
@@ -1165,5 +1239,84 @@ def tensor_to_mpo(tensor, physout_labels=None, physin_labels=None,
     return MatrixProductOperator(mpo, physout_label=mpo_physout_label,
             physin_label=mpo_physin_label, left_label=left_label,
             right_label=right_label)
+
+
+def right_canonical_to_canonical(mps, chi=None, threshold=1e-14,
+        normalise=False):
+    """
+    Turn an MPS in right canonical form into an MPS in canonical form
+    """
+    N=len(mps)
+
+    #At each step will divide by a constant so that the largest singular 
+    #value of S is 1. Will store the product of these constants in `norm`
+    norm=1
+    S_prev = 1.0
+    S_prev_inv = 1.0
+    tensors = [mps[0]]
+    svd_label=unique_label()
+    for i in range(N):
+        if i==N-1:
+            #The final SVD has no right index, so S and V are just scalars.
+            #S is the norm of the state. 
+            G = tsr.contract(S_prev_inv, tensors[-1], [mps.right_label],
+                    [mps.left_label])
+            tensors[-1] = S_prev
+            tensors.append(G)
+            if normalise==True:
+                tensors[-1].data=tensors[-1].data/np.linalg.norm(
+                        tensors[-1].data)
+            else:
+                tensors[-1].data=tensors[-1].data*norm
+        else:
+            # Construct B = Gamma Lambda
+            U,S,V = tsr.tensor_svd(tensors[-1], [mps.phys_label, 
+                mps.left_label], svd_label=svd_label)
+
+            #Truncate to threshold and to specified chi
+            singular_values=np.diag(S.data)
+            largest_singular_value=singular_values[0]
+            #Normalise S
+            singular_values=singular_values/largest_singular_value
+            norm*=largest_singular_value
+
+            singular_values_to_keep = singular_values[singular_values > 
+                    threshold]
+            if chi:
+                singular_values_to_keep = singular_values_to_keep[:chi]
+            S.data=np.diag(singular_values_to_keep)
+            #Truncate corresponding singular index of U and V
+            U.data=U.data[:,:,0:len(singular_values_to_keep)]
+            V.data=V.data[0:len(singular_values_to_keep)]
+            U.replace_label(svd_label+"in", mps.right_label)
+
+            if i>0:
+                G = tsr.contract(S_prev_inv, U, [mps.right_label],
+                        [mps.left_label])
+                tensors[-1] = S_prev
+                tensors.append(G)
+            else:
+                tensors[-1] = U
+            # Store S and S^{-1} for next iteration
+            S_prev = S.copy()
+            S_prev.replace_label([svd_label+"out"], mps.left_label)
+            S_prev.replace_label([svd_label+"in"], mps.right_label)
+            S_prev_inv = S_prev.copy()
+            S_prev_inv.data = np.diag(1./singular_values_to_keep)
+
+            tensors.append(tsr.contract(V, mps[i+1], mps.right_label, 
+                    mps.left_label))
+            tensors[-1]=tsr.contract(S, tensors[-1], [svd_label+"in"], 
+                    [svd_label+"out"])
+            tensors[-1].replace_label(svd_label+"out", mps.left_label)
+
+            #Reabsorb normalisation factors into next tensor
+            if i==N-1:
+                tensors[-1].data*=norm
+
+    # Construct empty MPS in canonical form
+    return MatrixProductStateCanonical(tensors,
+            left_label=mps.left_label, right_label=mps.right_label,
+            phys_label=mps.phys_label)
 
 
