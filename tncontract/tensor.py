@@ -693,21 +693,25 @@ def contract(tensor1, tensor2, labels1, labels2, index_slice1=None,
             (tensor1_indices, tensor2_indices)))
     except ValueError as e:
         # Print more useful info in case of ValueError.
+        # Check if number of labels are equal
+        if not len(labels1) == len(labels2):
+            raise ValueError('Number of labels in contraction does not match.',
+                    len(labels1), len(labels2))
         # Check if indices exist and have equal dimensions
         for i in range(len(labels1)):
             if not labels1[i] in tensor1.labels:
-                print(labels1[i] + ' not in list of labels for tensor1')
-                d1=0
+                raise ValueError(labels1[i] +
+                        ' not in list of labels for tensor1')
             else:
                 d1 = tensor1.index_dimension(labels1[i])
             if not labels2[i] in tensor2.labels:
-                print(labels2[i] + ' not in list of labels for tensor2')
-                d2=0
+                raise ValueError(labels2[i] +
+                        ' not in list of labels for tensor2')
             else:
                 d2 = tensor2.index_dimension(labels2[i])
             if d1 != d2:
-                print((labels1[i] + ' with dim=' +  str(d1) + 'does not match '
-                    + labels2[i] + ' with dim=' + str(d2)))
+                raise ValueError((labels1[i] + ' with dim=' +  str(d1) + 
+                    'does not match ' + labels2[i] + ' with dim=' + str(d2)))
         # Re-raise exception
         raise e
 
@@ -1089,6 +1093,8 @@ def truncated_svd(tensor, row_labels, chi=0, threshold=1e-15,
     U.data=U.data[:,:,0:len(singular_values_to_keep)]
     V.data=V.data[0:len(singular_values_to_keep)]
 
+    if absorb_singular_values is None:
+        return U, S, V
     #Absorb singular values S into either V or U
     #or take the square root of S and absorb into both (default)
     if absorb_singular_values=="left":

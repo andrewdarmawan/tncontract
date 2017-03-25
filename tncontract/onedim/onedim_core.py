@@ -702,7 +702,15 @@ class MatrixProductState(OneDimensionalTensorNetwork):
 class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
     """
     Matrix product state in canonical form with every other tensor assumed to
-    be a diagonal matrix of singular values
+    be a diagonal matrix of singular values. The site numbering is
+
+    0     1      2      3     ... N-2   N-1
+
+    Lambda Gamma Lambda Gamma ... Gamma Lambda
+
+    where the Gammas are rank three tensors and the Lambdas diagonal matrices 
+    of singular values. The left-mots and right-most Lambda matrices are 
+    trivial one-by-one matrices inserted for convenience.
 
     Convenient for TEBD type algorithms.
 
@@ -764,9 +772,60 @@ class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
         self.replace_labels([self.left_label, self.right_label,
             self.phys_label], ["left"+suffix, "right"+suffix, "phys"+suffix])
 
+    def physical_site(self, n):
+        """ Return position of n'th physical (pos=2*n+1)"""
+        return 2*n+1
+
+    def singular_site(self, n):
+        """ Return position of n'th singular value site (pos=2*n)"""
+        return 2*n
+
     def apply_gate(self, gate, firstsite, gate_outputs=None, gate_inputs=None,
             chi=None, threshold=1e-15):
-        raise NotImplementedError
+        """
+        Apply two-site gate to `physical_site(firstsite)` and 
+        `physical_site(firstsite+1)`, and perform optimal compression, assuming 
+        canonical form.
+        """
+        # Set gate_outputs and gate_inputs to default values if not given
+        if gate_outputs is None and gate_inputs is None:
+            gate_outputs = gate.labels[:int(len(gate.labels)/2)]
+            gate_inputs = gate.labels[int(len(gate.labels)/2):]
+        elif gate_outputs is None:
+            gate_outputs =[x for x in gate.labels if x not in gate_inputs]
+        elif gate_inputs is None:
+            gate_inputs =[x for x in gate.labels if x not in gate_outputs]
+
+        nsites = len(gate_inputs)
+        if len(gate_outputs) != nsites:
+            raise ValueError("len(gate_outputs) != len(gate_inputs)")
+
+        # contract the MPS sites first
+        start = self.physical_site(firstsite)-1
+        end = self.physical_site(firstsite+1)+1
+        t = contract_virtual_indices(self, start, end,
+                periodic_boundaries=False)
+
+        # contract all physical indices with gate input indices
+        t = tsr.contract(t, gate, self.phys_label, gate_inputs)
+
+        # split big tensor into MPS form by exact SVD
+        U, S, V = tsr.truncated_svd(t, [gate_outputs[0], self.left_label],
+                chi=chi, threshold=threshold, absorb_singular_values=None)
+        U.replace_label(["svd_in", gate_outputs[0]],
+                [self.right_label, self.phys_label])
+        V.replace_label(["svd_out", gate_outputs[1]],
+                [self.left_label, self.phys_label])
+        S1_inv = self[start].copy()
+        S1_inv.inv()
+        S2_inv = self[end].copy()
+        S2_inv.inv()
+        S.replace_label(["svd_out", "svd_in"], [self.left_label,
+            self.right_label])
+        self[start+1] = S1_inv[self.right_label,]*U[self.left_label,]
+        self[start+2] = S
+        self[start+3] = V[self.right_label,]*S2_inv[self.left_label,]
+
 
 
 class MatrixProductOperator(OneDimensionalTensorNetwork):
@@ -1251,16 +1310,15 @@ def right_canonical_to_canonical(mps, chi=None, threshold=1e-14,
     #At each step will divide by a constant so that the largest singular 
     #value of S is 1. Will store the product of these constants in `norm`
     norm=1
-    S_prev = 1.0
-    S_prev_inv = 1.0
-    tensors = [mps[0]]
+    S_prev = tsr.Tensor([[1.0]], labels=[mps.left_label, mps.right_label])
+    S_prev_inv = S_prev.copy()
+    tensors = [S_prev, mps[0]]
     svd_label=unique_label()
     for i in range(N):
         if i==N-1:
             #The final SVD has no right index, so S and V are just scalars.
             #S is the norm of the state. 
-            G = tsr.contract(S_prev_inv, tensors[-1], [mps.right_label],
-                    [mps.left_label])
+            G = S_prev_inv[mps.right_label,]*tensors[-1][mps.left_label,]
             tensors[-1] = S_prev
             tensors.append(G)
             if normalise==True:
@@ -1268,6 +1326,8 @@ def right_canonical_to_canonical(mps, chi=None, threshold=1e-14,
                         tensors[-1].data)
             else:
                 tensors[-1].data=tensors[-1].data*norm
+            tensors.append(tsr.Tensor([[1.0]], labels=[mps.left_label,
+                mps.right_label]))
         else:
             # Construct B = Gamma Lambda
             U,S,V = tsr.tensor_svd(tensors[-1], [mps.phys_label, 
@@ -1290,13 +1350,12 @@ def right_canonical_to_canonical(mps, chi=None, threshold=1e-14,
             V.data=V.data[0:len(singular_values_to_keep)]
             U.replace_label(svd_label+"in", mps.right_label)
 
-            if i>0:
-                G = tsr.contract(S_prev_inv, U, [mps.right_label],
-                        [mps.left_label])
+            G = S_prev_inv[mps.right_label,]*U[mps.left_label,]
+            if i > 0:
                 tensors[-1] = S_prev
                 tensors.append(G)
             else:
-                tensors[-1] = U
+                tensors[-1] = G
             # Store S and S^{-1} for next iteration
             S_prev = S.copy()
             S_prev.replace_label([svd_label+"out"], mps.left_label)
@@ -1304,10 +1363,8 @@ def right_canonical_to_canonical(mps, chi=None, threshold=1e-14,
             S_prev_inv = S_prev.copy()
             S_prev_inv.data = np.diag(1./singular_values_to_keep)
 
-            tensors.append(tsr.contract(V, mps[i+1], mps.right_label, 
-                    mps.left_label))
-            tensors[-1]=tsr.contract(S, tensors[-1], [svd_label+"in"], 
-                    [svd_label+"out"])
+            tensors.append(V[mps.right_label,]*mps[i+1][mps.left_label,])
+            tensors[-1]=S[svd_label+"in",]*tensors[-1][svd_label+"out",]
             tensors[-1].replace_label(svd_label+"out", mps.left_label)
 
             #Reabsorb normalisation factors into next tensor
