@@ -740,10 +740,6 @@ class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
         return MatrixProductStateCanonical([x.copy() for x in self],
                 self.left_label, self.right_label, self.phys_label)
 
-    def physdim(self, site):
-        """Return physical index dimesion for site"""
-        return self.data[site].index_dimension(self.phys_label)
-
     def replace_labels(self, old_labels, new_labels):
         """run `tensor.replace_label` method on every tensor in `self` then
         replace `self.left_label`, `self.right_label` and `self.phys_label` 
@@ -779,6 +775,21 @@ class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
     def singular_site(self, n):
         """ Return position of n'th singular value site (pos=2*n)"""
         return 2*n
+
+    def physdim(self, site):
+        """Return physical index dimesion for physical site"""
+        return self.data[self.physical_site(site)].index_dimension(
+                self.phys_label)
+
+    def norm(self, canonical_form=False):
+        raise NotImplementedError
+
+    def svd_compress(self, chi=None, threshold=1e-15, normalise=False,
+            reverse=False):
+        raise NotImplementedError
+
+    def check_canonical_form(self, threshold=1e-14, print_output=True):
+        raise NotImplementedError
 
     def apply_gate(self, gate, firstsite, gate_outputs=None, gate_inputs=None,
             chi=None, threshold=1e-15):
