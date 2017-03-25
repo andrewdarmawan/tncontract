@@ -617,15 +617,15 @@ class MatrixProductState(OneDimensionalTensorNetwork):
             return np.sqrt(inner_product_mps(self, self))
 
     def apply_gate(self, gate, firstsite, gate_outputs=None, gate_inputs=None,
-            threshold=1e-15):
+            chi=None, threshold=1e-15, canonise='left'):
         """
         Apply Tensor `gate` on sites `firstsite`, `firstsite`+1, ...,
         `firstsite`+`nsites`-1, where `nsites` is the length of gate_inputs.
         The physical index of the nth site is contracted with the nth label of 
         `gate_inputs`. After the contraction the MPS is put back into the 
-        original form by SVD, and the nth sites physical index is given by the 
-        nth label of `gate_outputs` (but relabeled to `self.phys_label` to
-        preserve the original MPS form).
+        original form by SVD, and the nth sites physical index is given 
+        by the nth label of `gate_outputs` (but relabeled to `self.phys_label` 
+        to preserve the original MPS form).
 
         Parameters
         ----------
@@ -646,6 +646,11 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         threshold : float
             Lower bound on the magnitude of singular values to keep. Singular
             values less than or equal to this value will be truncated.
+        chi : int
+            Maximum number of singular values of each tensor to keep after
+            performing singular-value decomposition.
+        canonise : str {'left', 'right'}
+            Direction in which to canonise the sites after applying gate.
 
         Notes
         -----
@@ -675,9 +680,19 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         t = tsr.contract(t, gate, self.phys_label, gate_inputs)
 
         # split big tensor into MPS form by exact SVD
-        mps = tensor_to_mps(t, mps_phys_label=self.phys_label,
-                left_label=self.left_label, right_label=self.right_label,
-                chi=0, threshold=threshold)
+        if canonise == 'right':
+            phys_labels = gate_outputs[::-1]
+            left_label = 'right'
+            right_label = 'left'
+        else:
+            phys_labels = gate_outputs
+            left_label = 'left'
+            right_label = 'right'
+        mps = tensor_to_mps(t, phys_labels=phys_labels,
+                mps_phys_label=self.phys_label, left_label=left_label,
+                right_label=right_label, chi=chi, threshold=threshold)
+        if canonise == 'right':
+            mps.reverse()
         self.data[firstsite:firstsite+nsites] = mps.data
 
 class MatrixProductOperator(OneDimensionalTensorNetwork):
