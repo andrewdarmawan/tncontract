@@ -698,6 +698,62 @@ class MatrixProductState(OneDimensionalTensorNetwork):
             mps.reverse()
         self.data[firstsite:firstsite+nsites] = mps.data
 
+    def expval(self, gate, firstsite, gate_outputs=None, gate_inputs=None):
+        """
+        Compute multi-site expectation value for operator `gate` applied to
+        `firstsite`, `firstsite+1`, ... `firstsite_+n`
+
+        Assumes that MPS has been canonised such that everything to the left
+        of `firstsite` is left-canonised and everything to the right of
+        `firstsite+n` is right-canonised.
+
+        Parameters
+        ----------
+        gate : Tensor
+            Tensor representing the multisite gate.
+        firstsite : int
+            First site of MPS involved in the gate
+        gate_outputs : list of str, optional
+            Output labels corresponding to the input labels given by
+            `gate_inputs`. Must have the same length as `gate_inputs`.
+            If `None` the first half of `gate.labels` will be taken as output
+            labels.
+        gate_inputs : list of str, optional
+            Input labels. The first index of the list is contracted with
+            `firstsite`, the second with `firstsite`+1 etc.
+            If `None` the second half of `gate.labels` will be taken as input
+            labels.
+
+        Returns
+        ------
+        t : Tensor
+        Contracted tensor containing expectation value as `t.data`.
+        """
+        # Set gate_outputs and gate_inputs to default values if not given
+        if gate_outputs is None and gate_inputs is None:
+            gate_outputs = gate.labels[:int(len(gate.labels)/2)]
+            gate_inputs = gate.labels[int(len(gate.labels)/2):]
+        elif gate_outputs is None:
+            gate_outputs =[x for x in gate.labels if x not in gate_inputs]
+        elif gate_inputs is None:
+            gate_inputs =[x for x in gate.labels if x not in gate_outputs]
+
+        nsites = len(gate_inputs)
+        if len(gate_outputs) != nsites:
+            raise ValueError("len(gate_outputs) != len(gate_inputs)")
+
+        # contract the MPS sites first
+        t = contract_virtual_indices(self, firstsite, firstsite+nsites,
+                periodic_boundaries=True)
+        td = t.copy()
+        td.conjugate()
+
+        # contract all physical indices with gate indices
+        exp = tsr.contract(t, gate, self.phys_label, gate_inputs)
+        exp = tsr.contract(td, exp, self.phys_label, gate_outputs)
+
+        return exp
+
 
 class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
     """
@@ -711,6 +767,9 @@ class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
     where the Gammas are rank three tensors and the Lambdas diagonal matrices 
     of singular values. The left-mots and right-most Lambda matrices are 
     trivial one-by-one matrices inserted for convenience.
+
+    The n'th physical site index (i=2*n+1) can conveniently be accessed with
+    the `physical_site` method.
 
     Convenient for TEBD type algorithms.
 
@@ -784,7 +843,7 @@ class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
     def norm(self, canonical_form=False):
         raise NotImplementedError
 
-    def svd_compress(self, chi=None, threshold=1e-15, normalise=False,
+    def compress(self, chi=None, threshold=1e-15, normalise=False,
             reverse=False):
         raise NotImplementedError
 
@@ -837,6 +896,37 @@ class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
         self[start+2] = S
         self[start+3] = V[self.right_label,]*S2_inv[self.left_label,]
 
+    def expval(self, gate, firstsite, gate_outputs=None, gate_inputs=None):
+        """
+        Compute multi-site expectation value for operator `gate` applied to
+        `physical_site(firstsite)`, `physical_site(firstsite+1)`, ...
+        """
+        # Set gate_outputs and gate_inputs to default values if not given
+        if gate_outputs is None and gate_inputs is None:
+            gate_outputs = gate.labels[:int(len(gate.labels)/2)]
+            gate_inputs = gate.labels[int(len(gate.labels)/2):]
+        elif gate_outputs is None:
+            gate_outputs =[x for x in gate.labels if x not in gate_inputs]
+        elif gate_inputs is None:
+            gate_inputs =[x for x in gate.labels if x not in gate_outputs]
+
+        nsites = len(gate_inputs)
+        if len(gate_outputs) != nsites:
+            raise ValueError("len(gate_outputs) != len(gate_inputs)")
+
+        # contract the MPS sites first
+        start = self.physical_site(firstsite)
+        end = self.physical_site(firstsite+len(gate_inputs))
+        t = contract_virtual_indices(self, start, end,
+                periodic_boundaries=False)
+        td = t.copy()
+        td.conjugate()
+
+        # contract all physical indices with gate indices
+        exp = tsr.contract(t, gate, self.phys_label, gate_inputs)
+        exp = tsr.contract(td, exp, self.phys_label, gate_outputs)
+
+        return exp
 
 
 class MatrixProductOperator(OneDimensionalTensorNetwork):
