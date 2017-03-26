@@ -1013,7 +1013,7 @@ def contract_virtual_indices(array_1d, start=0, end=None,
     periodic_boundaries : bool
         If `True` leftmost and rightmost virtual indices are contracted.
     """
-    C=array_1d[start]
+    C=array_1d[start].copy()
     for x in array_1d[start+1:end]:
         C=tsr.contract(C, x, array_1d.right_label, array_1d.left_label)
     if periodic_boundaries:
