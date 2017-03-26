@@ -139,19 +139,19 @@ def onebody_sum_mpo(terms, output_label=None):
         else:
             term = term1
         if i==0:
-            B = np.zeros(shape=term.shape+[2], dtype=complex)
+            B = np.zeros(shape=term.shape+(2,), dtype=complex)
             for k in range(term.shape[0]):
                 for l in range(term.shape[1]):
                     B[k,l,:] = [term[k, l], k==l]
             tensors.append(tnc.Tensor(B, ['physout', 'physin', 'right']))
         elif i==len(terms)-1:
-            B = np.zeros(shape=term.shape+[2], dtype=complex)
+            B = np.zeros(shape=term.shape+(2,), dtype=complex)
             for k in range(term.shape[0]):
                 for l in range(term.shape[1]):
                     B[k,l,:] = [k==l, term[k, l]]
             tensors.append(tnc.Tensor(B, ['physout', 'physin', 'left']))
         else:
-            B = np.zeros(shape=term.shape+[2,2], dtype=complex)
+            B = np.zeros(shape=term.shape+(2,2), dtype=complex)
             for k in range(term.shape[0]):
                 for l in range(term.shape[1]):
                     B[k,l,:,:] = [[k==l, 0], [term[k, l], k==l]]
