@@ -15,7 +15,8 @@ __all__ = ['MatrixProductState', 'MatrixProductStateCanonical',
         'svd_compress_mps', 'variational_compress_mps', 'tensor_to_mpo',
         'tensor_to_mps',
         'right_canonical_to_canonical',
-        'canonical_to_right_canonical', 'canonical_to_left_canonical',
+        'canonical_to_right_canonical',
+        'canonical_to_left_canonical',
         ]
 
 import numpy as np
@@ -1451,12 +1452,15 @@ def right_canonical_to_canonical(mps, chi=None, threshold=1e-14,
     """
     N=mps.nsites
 
+    tmp = left_canonical_form_mps(mps)
+
     #At each step will divide by a constant so that the largest singular 
     #value of S is 1. Will store the product of these constants in `norm`
     norm=1
     S_prev = tsr.Tensor([[1.0]], labels=[mps.left_label, mps.right_label])
     S_prev_inv = S_prev.copy()
     B = mps[0]
+    An = B.copy()
     tensors = []
     svd_label=unique_label()
     for i in range(N):
@@ -1487,6 +1491,15 @@ def right_canonical_to_canonical(mps, chi=None, threshold=1e-14,
         tensors.append(S_prev)
         tensors.append(G)
 
+        check = S_prev[mps.right_label,]*G[mps.left_label,]
+        check.consolidate_indices()
+        G.consolidate_indices()
+        U.consolidate_indices()
+
+        #print(check.data-U.data)
+        #print('--')
+        #print(S_prev[mps.right_label,]*S_prev_inv[mps.left_label,])
+        #print(check[mps.left_label,mps.phys_label]*U[mps.left_label,mps.phys_label])
         if i==N-1:
             #The final SVD has no right index, so S and V are just scalars.
             #S is the norm of the state. 
@@ -1503,6 +1516,41 @@ def right_canonical_to_canonical(mps, chi=None, threshold=1e-14,
             S_prev = S.copy()
             S_prev_inv = S_prev.copy()
             S_prev_inv.data = np.diag(1./singular_values_to_keep)
+
+        #
+        U,S,V = tsr.tensor_svd(An, [mps.phys_label, 
+            mps.left_label], svd_label=svd_label)
+
+        #Truncate to threshold and to specified chi
+        singular_values=np.diag(S.data)
+        largest_singular_value=singular_values[0]
+        #Normalise S
+        singular_values=singular_values/largest_singular_value
+        norm*=largest_singular_value
+
+        singular_values_to_keep = singular_values[singular_values > 
+                threshold]
+        if chi:
+            singular_values_to_keep = singular_values_to_keep[:chi]
+        S.data=np.diag(singular_values_to_keep)
+        #Truncate corresponding singular index of U and V
+        U.data=U.data[:,:,0:len(singular_values_to_keep)]
+        V.data=V.data[0:len(singular_values_to_keep)]
+
+        A=U
+        An=tsr.contract(V, mps[i+1], mps.right_label, 
+                mps.left_label)
+        An=tsr.contract(S, An, [svd_label+"in"], 
+                [svd_label+"out"])
+        An.replace_label(svd_label+"out", mps.left_label)
+        #
+
+        A.consolidate_indices()
+        A2 = tmp[i].copy()
+        A2.consolidate_indices()
+        #print(np.amax(np.abs(check.data-A.data)))
+        print(np.amax(np.abs(A2.data-A.data)))
+        #print(B.data-An.data)
 
     # Construct MPS in canonical form
     return MatrixProductStateCanonical(tensors,
