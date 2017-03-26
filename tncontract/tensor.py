@@ -693,25 +693,25 @@ def contract(tensor1, tensor2, labels1, labels2, index_slice1=None,
             (tensor1_indices, tensor2_indices)))
     except ValueError as e:
         # Print more useful info in case of ValueError.
-        # Check if number of labels are equal
-        if not len(labels1) == len(labels2):
-            raise ValueError('Number of labels in contraction does not match.',
-                    len(labels1), len(labels2))
-        # Check if indices exist and have equal dimensions
+        # Check if number of indices are equal
+        if not len(tensor1_indices) == len(tensor2_indices):
+            raise ValueError('Number of indices in contraction does not match.',
+                    len(tensor1_indices), len(tensor2_indices))
+        # Check if indices have equal dimensions
+        for i in range(len(tensor1_indices)):
+            d1 = tensor1.index_dimension(tensor1_indices[i])
+            d2 = tensor2.index_dimension(tensor2_indices[i])
+            if d1 != d2:
+                raise ValueError((labels1[i] + ' with dim=' +  str(d1) + 
+                    'does not match ' + labels2[i] + ' with dim=' + str(d2)))
+        # Check if indices exist
         for i in range(len(labels1)):
             if not labels1[i] in tensor1.labels:
                 raise ValueError(labels1[i] +
                         ' not in list of labels for tensor1')
-            else:
-                d1 = tensor1.index_dimension(labels1[i])
             if not labels2[i] in tensor2.labels:
                 raise ValueError(labels2[i] +
                         ' not in list of labels for tensor2')
-            else:
-                d2 = tensor2.index_dimension(labels2[i])
-            if d1 != d2:
-                raise ValueError((labels1[i] + ' with dim=' +  str(d1) + 
-                    'does not match ' + labels2[i] + ' with dim=' + str(d2)))
         # Re-raise exception
         raise e
 
