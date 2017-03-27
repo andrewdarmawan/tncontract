@@ -599,6 +599,11 @@ class MatrixProductState(OneDimensionalTensorNetwork):
             elif i==max_iter-1: #Has reached the last iteration
                 raise RuntimeError("variational_compress did not converge.")
 
+    def physical_site(self, n):
+        """ Return position of n'th physical (pos=n). Implemented for 
+        comaptibility with MatrixProductStateCanonical."""
+        return n
+
     def physdim(self, site):
         """Return physical index dimesion for site"""
         return self.data[site].index_dimension(self.phys_label)
@@ -708,7 +713,8 @@ class MatrixProductState(OneDimensionalTensorNetwork):
             ):
         """
         Compute multi-site expectation value for operator `gate` applied to
-        `firstsite`, `firstsite+1`, ... `firstsite_+n`
+        `firstsite`, `firstsite+1`, ... `firstsite_+n-1` where `n` is the
+        number of gate inputs.
 
         Assumes that MPS has been canonised such that everything to the left
         of `left_canonised_up_to` is left-canonised and everything to the right 
@@ -739,6 +745,11 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         ------
         t : Tensor
         Contracted tensor <mps|O|mps>
+
+        Notes
+        -----
+        The MPS is left-canonised up to `firstsite` and right-canonised up to
+        `firstsite+n` after the operation.
         """
         # Set gate_outputs and gate_inputs to default values if not given
         if gate_outputs is None and gate_inputs is None:
@@ -779,6 +790,60 @@ class MatrixProductState(OneDimensionalTensorNetwork):
                 index2=1)
 
         return exp
+
+    def ptrace(self, firstsite, lastsite=None,
+            left_canonised_up_to=0, right_canonised_up_to=-1):
+        """
+        Compute local density matrix for sites `firstsite` to `lastsite`
+        assuming left and right canonisation up to boundaries.
+
+        Parameters
+        ----------
+        firstsite : int
+            First physical site of MPS not traced out
+        lastsite : int
+            Last physical site of MPS not traced out. By default `lastsite` is
+            set to `firstsite`.
+        left_canonised_up_to : int
+            Everything to the left of this is assumed to be left-canonised.
+        right_canonised_up_to : int
+            Everything to the right of this is assumed to be right-canonised.
+
+        Returns
+        ------
+        t : Tensor
+        Local density matrix
+
+        Notes
+        -----
+        The MPS is left-canonised up to `firstsite` and right-canonised up to
+        `firstsite+n` after the operation.
+        """
+        if right_canonised_up_to==-1:
+            right_canonised_up_to=self.nsites
+        if lastsite is None:
+            lastsite = firstsite
+
+        # Mover left/right orthogonality centers to firstsite/firtsite+n
+        if left_canonised_up_to < firstsite:
+            self.left_canonise(left_canonised_up_to, firstsite)
+        if right_canonised_up_to > lastsite:
+            self.right_canonise(lastsite+1, right_canonised_up_to)
+
+        start = self.physical_site(firstsite)
+        end = self.physical_site(lastsite)
+        t = contract_virtual_indices(self, start, end+1,
+                periodic_boundaries=False)
+        td = t.copy()
+        td.conjugate()
+        # rename physical labels
+        for i, l in enumerate(t.labels):
+            if l == self.phys_label:
+                t.labels[i] = l + "_out" + str(i)
+                td.labels[i] = l + "_in" + str(i)
+        rho = (t[self.left_label, self.right_label]
+                *td[self.left_label, self.right_label])
+        return rho
 
 
 class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
@@ -1045,13 +1110,53 @@ class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
             self[start+2] = S
             self[start+3] = V[self.right_label,]*S2_inv[self.left_label,]
 
+    def swap_gate(self, i, threshold=1e-15):
+        """
+        Apply a swap gate swapping all "physical" (i.e., non-"left" and
+        non-"right") indices for site `physical_site(i)` and 
+        `physical_site(i+1)` of a MatrixProductStateCanonical object.
+
+        Parameters
+        ----------
+        i : int
+        threshold : float
+            Lower bound on the magnitude of singular values to keep. Singular
+            values less than or equal to this value will be truncated.
+
+        Notes
+        -----
+        The swap is implemented by SVD as described
+        in Y.-Y. Shi et al, Phys. Rev. A 74, 022320 (2006).
+        """
+        # contract the MPS sites first
+        start = self.physical_site(i)-1
+        end = self.physical_site(i+1)+1
+        self[start+1].prime_label(self.phys_label)
+        t = contract_virtual_indices(self, start, end+1,
+                periodic_boundaries=False)
+
+        # remember inverse singular values
+        S1_inv = self[start].copy()
+        S1_inv.inv()
+        S2_inv = self[end].copy()
+        S2_inv.inv()
+
+        U, S, V = tsr.tensor_svd(t, [self.left_label, self.phys_label])
+        V.unprime_label(self.phys_label)
+
+        U.replace_label("svd_in", self.right_label)
+        V.replace_label('svd_out', self.left_label)
+        S.replace_label(["svd_out", "svd_in"], [self.left_label,
+            self.right_label])
+        self[start+1] = S1_inv[self.right_label,]*U[self.left_label,]
+        self[start+2] = S
+        self[start+3] = V[self.right_label,]*S2_inv[self.left_label,]
+
     def expval(self, gate, firstsite, gate_outputs=None, gate_inputs=None):
         """
         Compute multi-site expectation value for operator `gate` applied to
         `physical_site(firstsite)`, `physical_site(firstsite+1)`, ...,
         assuming canonical form.
-
-        Assumes that MPS is in canonical form.
 
         Parameters
         ----------
@@ -1104,6 +1209,42 @@ class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
         exp.tr(self.right_label, self.right_label, index1=0, index2=1)
 
         return exp
+
+    def ptrace(self, firstsite, lastsite=None):
+        """
+        Compute local density matrix for sites
+        `physical_site(firstsite)` to `physical_site(lastsite)`
+        assuming canonical form.
+
+        Parameters
+        ----------
+        firstsite : int
+            First physical site of MPS not traced out
+        lastsite : int
+            Last physical site of MPS not traced out. By default `lastsite` is
+            set to `firstsite`.
+
+        Returns
+        ------
+        t : Tensor
+        Local density matrix
+        """
+        if lastsite is None:
+            lastsite = firstsite
+        start = self.physical_site(firstsite)-1
+        end = self.physical_site(lastsite)+1
+        t = contract_virtual_indices(self, start, end+1,
+                periodic_boundaries=False)
+        td = t.copy()
+        td.conjugate()
+        # rename physical labels
+        for i, l in enumerate(t.labels):
+            if l == self.phys_label:
+                t.labels[i] = l + "_out" + str(i)
+                td.labels[i] = l + "_in" + str(i)
+        rho = (t[self.left_label, self.right_label]
+                *td[self.left_label, self.right_label])
+        return rho
 
 
 class MatrixProductOperator(OneDimensionalTensorNetwork):
