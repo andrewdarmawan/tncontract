@@ -702,14 +702,17 @@ class MatrixProductState(OneDimensionalTensorNetwork):
             mps.reverse()
         self.data[firstsite:firstsite+nsites] = mps.data
 
-    def expval(self, gate, firstsite, gate_outputs=None, gate_inputs=None):
+    def expval(self, gate, firstsite,
+            left_canonised_up_to=0, right_canonised_up_to=-1,
+            gate_outputs=None, gate_inputs=None,
+            ):
         """
         Compute multi-site expectation value for operator `gate` applied to
         `firstsite`, `firstsite+1`, ... `firstsite_+n`
 
         Assumes that MPS has been canonised such that everything to the left
-        of `firstsite` is left-canonised and everything to the right of
-        `firstsite+n` is right-canonised.
+        of `left_canonised_up_to` is left-canonised and everything to the right 
+        of `right_canonised_up_to` is right-canonised.
 
         Parameters
         ----------
@@ -727,6 +730,10 @@ class MatrixProductState(OneDimensionalTensorNetwork):
             `firstsite`, the second with `firstsite`+1 etc.
             If `None` the second half of `gate.labels` will be taken as input
             labels.
+        left_canonised_up_to : int
+            Everything to the left of this is assumed to be left-canonised.
+        right_canonised_up_to : int
+            Everything to the right of this is assumed to be right-canonised.
 
         Returns
         ------
@@ -745,6 +752,16 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         nsites = len(gate_inputs)
         if len(gate_outputs) != nsites:
             raise ValueError("len(gate_outputs) != len(gate_inputs)")
+
+        N=len(self)
+        if right_canonised_up_to==-1:
+            right_canonised_up_to=N
+
+        # Mover left/right orthogonality centers to firstsite/firtsite+n
+        if left_canonised_up_to < firstsite:
+            self.left_canonise(left_canonised_up_to, firstsite)
+        if right_canonised_up_to > firstsite + nsites:
+            self.right_canonise(firstsite+nsites, right_canonised_up_to)
 
         # contract the MPS sites first
         t = contract_virtual_indices(self, firstsite, firstsite+nsites,
@@ -880,7 +897,16 @@ class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
         raise NotImplementedError
 
     def check_canonical_form(self, threshold=1e-14, print_output=True):
-        """Check if MPS is in canonical form."""
+        """Check if MPS is in canonical form, by checking for every site:
+        1) if A=Lambda Gamma satisfies :math:`A^\dagger A = I` taking 
+        (`left_label`, `phys_label`) as combined row-index,
+        2) if B=Gamma Lambda satisfies :math:`B B^\dagger = I` taking 
+        (`left_label`, `phys_label`) as combined row-index.
+
+        Returns a list of sites not satisfying 1), a list not satisfying 2),
+        and a list containing any un-normalised left-most or right-most sites.
+        If print_output=True, will print useful information concerning whether 
+        a given MPS is in canonical form."""
         not_left_canonised=[]
         not_right_canonised=[]
         not_normalised=[]
@@ -938,6 +964,38 @@ class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
         Apply multi-site gate to `physical_site(firstsite)`,
         `physical_site(firstsite+1)`, ... and perform optimal compression, 
         assuming canonical form.
+
+        Currently only implemented for 1-site and 2-site gates.
+
+        Parameters
+        ----------
+        gate : Tensor
+            Tensor representing the multisite gate.
+        firstsite : int
+            First site of MPS involved in the gate
+        gate_outputs : list of str, optional
+            Output labels corresponding to the input labels given by
+            `gate_inputs`. Must have the same length as `gate_inputs`.
+            If `None` the first half of `gate.labels` will be taken as output
+            labels.
+        gate_inputs : list of str, optional
+            Input labels. The first index of the list is contracted with
+            `firstsite`, the second with `firstsite`+1 etc.
+            If `None` the second half of `gate.labels` will be taken as input
+            labels.
+        threshold : float
+            Lower bound on the magnitude of singular values to keep. Singular
+            values less than or equal to this value will be truncated.
+        chi : int
+            Maximum number of singular values of each tensor to keep after
+            performing singular-value decomposition.
+
+        Notes
+        -----
+        At the end of the gate all physical indices are relabeled to
+        `self.phys_label`.
+
+        Only use this for gates acting on small number of sites.
         """
         # Set gate_outputs and gate_inputs to default values if not given
         if gate_outputs is None and gate_inputs is None:
@@ -990,6 +1048,30 @@ class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
         Compute multi-site expectation value for operator `gate` applied to
         `physical_site(firstsite)`, `physical_site(firstsite+1)`, ...,
         assuming canonical form.
+
+        Assumes that MPS is in canonical form.
+
+        Parameters
+        ----------
+        gate : Tensor
+            Tensor representing the multisite gate.
+        firstsite : int
+            First site of MPS involved in the gate
+        gate_outputs : list of str, optional
+            Output labels corresponding to the input labels given by
+            `gate_inputs`. Must have the same length as `gate_inputs`.
+            If `None` the first half of `gate.labels` will be taken as output
+            labels.
+        gate_inputs : list of str, optional
+            Input labels. The first index of the list is contracted with
+            `firstsite`, the second with `firstsite`+1 etc.
+            If `None` the second half of `gate.labels` will be taken as input
+            labels.
+
+        Returns
+        ------
+        t : Tensor
+        Contracted tensor <mps|O|mps>
         """
         # Set gate_outputs and gate_inputs to default values if not given
         if gate_outputs is None and gate_inputs is None:
@@ -1146,7 +1228,8 @@ def canonical_form_mps(orig_mps, chi=0, threshold=1e-14,
 
 def reverse_mps(orig_mps):
     mps=orig_mps.copy()
-    return mps.reverse()
+    mps.reverse()
+    return mps
 
 def check_canonical_form_mps(mps, threshold=1e-14, print_output=True):
     return mps.check_canonical_form(threshold=threshold,
@@ -1374,6 +1457,9 @@ def contract_mps_mpo(mps, mpo):
     Left and right indices will be combined. The resulting MPS will have the 
     same left and right labels as mps and the physical label will be 
     mpo.physout_label"""
+    if isinstance(mps, MatrixProductStateCanonical):
+        raise NotImplementedError(("Function not implemented for"
+            +"MatrixProductStateCanonical"))
     N=len(mps)
     new_mps=[]
     for i in range(N):

@@ -13,8 +13,7 @@ import tncontract as tnc
 
 pwd = os.path.dirname(__file__)
 
-N = 100
-f = open(pwd + "/random_100site_mps.dat", "rb")
+f = open(pwd + "/random_10site_mps.dat", "rb")
 psi = pickle.load(f, encoding="latin1")
 f.close()
 
@@ -23,12 +22,14 @@ def test_right_and_left_canonical_to_canonical():
     # Test for unnormalized MPS
     psi.svd_compress(threshold=1e-12, normalise=False)
     psicr = tnc.onedim.right_canonical_to_canonical(psi, threshold=1e-12)
+    testing.assert_almost_equal(psi.norm(), psicr.norm(), decimal=10)
     l, r, n = psicr.check_canonical_form(threshold=1e-10, print_output=False)
     testing.assert_equal(len(l), 0)
     testing.assert_equal(len(r), 0)
     testing.assert_equal(len(n), 1)
     psi.left_canonise()
     psicl = tnc.onedim.left_canonical_to_canonical(psi, threshold=1e-12)
+    testing.assert_almost_equal(psi.norm(), psicr.norm(), decimal=10)
     l, r, n = psicr.check_canonical_form(threshold=1e-10, print_output=False)
     testing.assert_equal(len(l), 0)
     testing.assert_equal(len(r), 0)
@@ -64,6 +65,6 @@ def test_right_canonical_to_canonical_and_back():
     l, r = psir.check_canonical_form(threshold=1e-10, print_output=False)
     testing.assert_equal(r, 0)
     l, r = psil.check_canonical_form(threshold=1e-10, print_output=False)
-    testing.assert_equal(l, N-1)
+    testing.assert_equal(l, len(psi)-1)
 
 
