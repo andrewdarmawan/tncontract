@@ -699,8 +699,8 @@ def contract(tensor1, tensor2, labels1, labels2, index_slice1=None,
                     len(tensor1_indices), len(tensor2_indices))
         # Check if indices have equal dimensions
         for i in range(len(tensor1_indices)):
-            d1 = tensor1.index_dimension(tensor1_indices[i])
-            d2 = tensor2.index_dimension(tensor2_indices[i])
+            d1 = tensor1.data.shape[tensor1_indices[i]]
+            d2 = tensor2.data.shape[tensor2_indices[i]]
             if d1 != d2:
                 raise ValueError((labels1[i] + ' with dim=' +  str(d1) + 
                     'does not match ' + labels2[i] + ' with dim=' + str(d2)))
