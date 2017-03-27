@@ -34,7 +34,7 @@ def test_right_and_left_canonical_to_canonical():
     testing.assert_equal(len(r), 0)
     testing.assert_equal(len(n), 1)
     testing.assert_almost_equal(tnc.onedim.inner_product_mps(psicr, psicl),
-            1.0, decimal=10)
+            psi.norm()**2, decimal=10)
     # Test for normalized MPS
     psi.svd_compress(threshold=1e-12, normalise=True)
     psicr = tnc.onedim.right_canonical_to_canonical(psi, threshold=1e-12)

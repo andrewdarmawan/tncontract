@@ -1341,8 +1341,17 @@ def ladder_contract(array1, array2, label1, label2, start=0, end=None,
 def inner_product_mps(mps_bra, mps_ket, complex_conjugate_bra=True, 
         return_whole_tensor=False):
     """Compute the inner product of two MatrixProductState objects."""
-    t=ladder_contract(mps_bra, mps_ket, mps_bra.phys_label, mps_ket.phys_label,
-            complex_conjugate_array1=complex_conjugate_bra)
+    # If MPS are in canonical form, convert left-canonical first
+    if isinstance(mps_bra, MatrixProductStateCanonical):
+        mps_bra_tmp = canonical_to_left_canonical(mps_bra)
+    else:
+        mps_bra_tmp = mps_bra
+    if isinstance(mps_ket, MatrixProductStateCanonical):
+        mps_ket_tmp = canonical_to_left_canonical(mps_ket)
+    else:
+        mps_ket_tmp = mps_ket
+    t=ladder_contract(mps_bra_tmp, mps_ket_tmp, mps_bra.phys_label, 
+            mps_ket.phys_label, complex_conjugate_array1=complex_conjugate_bra)
     if return_whole_tensor:
         return t
     else:
