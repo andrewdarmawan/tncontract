@@ -14,9 +14,8 @@ __all__ = ['MatrixProductState', 'MatrixProductStateCanonical',
         'mps_complex_conjugate', 'reverse_mps', 'right_canonical_form_mps',
         'svd_compress_mps', 'variational_compress_mps', 'tensor_to_mpo',
         'tensor_to_mps',
-        'right_canonical_to_canonical',
-        'canonical_to_right_canonical',
-        'canonical_to_left_canonical',
+        'right_canonical_to_canonical', 'left_canonical_to_canonical',
+        'canonical_to_right_canonical', 'canonical_to_left_canonical',
         ]
 
 import numpy as np
@@ -881,7 +880,57 @@ class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
         raise NotImplementedError
 
     def check_canonical_form(self, threshold=1e-14, print_output=True):
-        raise NotImplementedError
+        """Check if MPS is in canonical form."""
+        not_left_canonised=[]
+        not_right_canonised=[]
+        not_normalised=[]
+        for i in range(self.nsites_physical):
+            A = (self[self.physical_site(i)-1][self.right_label,]
+                    *self[self.physical_site(i)][self.left_label,])
+            Ad = tsr.conjugate(A)
+            I=tsr.contract(A, Ad, 
+                    [self.phys_label, self.left_label], 
+                    [self.phys_label, self.left_label])
+            #Check if tensor is left canonised.
+            if np.linalg.norm(I.data-np.identity(I.data.shape[0])) > threshold:
+                if i==0 or i == self.nsites_physical-1:
+                    If = I.data.flatten()
+                    if len(If[np.abs(If) > threshold]) > 1:
+                        not_left_canonised.append(i)
+                    else:
+                        not_normalised.append(i)
+                else:
+                    not_left_canonised.append(i)
+        for i in range(self.nsites_physical):
+            B = (self[self.physical_site(i)][self.right_label,]
+                    *self[self.physical_site(i)+1][self.left_label,])
+            Bd = tsr.conjugate(B)
+            I=tsr.contract(B, Bd,
+                    [self.phys_label, self.right_label],
+                    [self.phys_label, self.right_label])
+            #Check if tensor is right canonised.
+            if np.linalg.norm(I.data-np.identity(I.data.shape[0])) > threshold:
+                if i==0 or i == self.nsites_physical-1:
+                    If = I.data.flatten()
+                    if len(If[np.abs(If) > threshold]) > 1:
+                        not_right_canonised.append(i)
+                    else:
+                        not_normalised.append(i)
+                else:
+                    not_right_canonised.append(i)
+        if print_output:
+            if len(not_left_canonised) == 0 and len(not_right_canonised) == 0:
+                if len(not_normalised) == 0:
+                    print("MPS in canonical form (normalised)")
+                else:
+                    print("MPS in canonical form (unnormalised)")
+            else:
+                print("Physical sites not left-canonical:")
+                print(not_left_canonised)
+                print("Physical sites not right-canonical:")
+                print(not_right_canonised)
+        return not_left_canonised, not_right_canonised, not_normalised
+
 
     def apply_gate(self, gate, firstsite, gate_outputs=None, gate_inputs=None,
             chi=None, threshold=1e-15):
@@ -1494,6 +1543,16 @@ def right_canonical_to_canonical(mps, threshold=1e-14):
     return MatrixProductStateCanonical(tensors,
             left_label=mps.left_label, right_label=mps.right_label,
             phys_label=mps.phys_label)
+
+
+def left_canonical_to_canonical(mps, threshold=1e-14):
+    """
+    Turn an MPS in left canonical form into an MPS in canonical form
+    """
+    mpsr = reverse_mps(mps)
+    mpsc = right_canonical_to_canonical(mpsr, threshold=threshold)
+    mpsc.reverse()
+    return mpsc
 
 
 def canonical_to_right_canonical(mps):
