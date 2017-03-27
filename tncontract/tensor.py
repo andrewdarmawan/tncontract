@@ -574,8 +574,17 @@ class ToContract():
         self.tensor=tensor
         self.labels=labels
     def __mul__(self, other):
-        return contract(self.tensor, other.tensor, list(self.labels), 
-                list(other.labels))
+        #If label argument is not a tuple, simply use that as the argument to 
+        #contract function. Otherwise convert to a list. 
+        if not isinstance(self.labels, tuple):
+            labels1=self.labels
+        else:
+            labels1=list(self.labels)
+        if not isinstance(other.labels, tuple):
+            labels2=other.labels
+        else:
+            labels2=list(other.labels)
+        return contract(self.tensor, other.tensor, labels1, labels2) 
 
 #Tensor constructors
 def random_tensor(*args, labels=[], base_label="i"):
