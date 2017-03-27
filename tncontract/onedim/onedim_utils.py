@@ -47,6 +47,7 @@ def init_mps_random(nsites, physdim, bonddim=1, left_label='left',
         rt = tnc.Tensor(np.random.rand(
             physdim[i], bonddim[i], bonddim[i+1]),
             [phys_label, left_label, right_label])
+        # Normalize matrix to avoid norm blowing up
         U, S, V = tnc.tensor_svd(rt, [phys_label, left_label])
         S.data = S.data/S.data[0,0]
         rt = U["svd_in",]*S["svd_out",]

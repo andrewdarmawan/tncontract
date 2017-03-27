@@ -1445,7 +1445,7 @@ def tensor_to_mpo(tensor, physout_labels=None, physin_labels=None,
             right_label=right_label)
 
 
-def right_canonical_to_canonical(mps, chi=None, threshold=1e-14):
+def right_canonical_to_canonical(mps, threshold=1e-14):
     """
     Turn an MPS in right canonical form into an MPS in canonical form
     """
@@ -1459,12 +1459,10 @@ def right_canonical_to_canonical(mps, chi=None, threshold=1e-14):
     for i in range(N):
         U, S, V = tsr.tensor_svd(B, [mps.phys_label, mps.left_label],
                 svd_label=svd_label)
-        #Truncate to threshold and to specified chi
+        #Truncate to threshold
         singular_values=np.diag(S.data)
         singular_values_to_keep = singular_values[singular_values > 
                 threshold]
-        if chi:
-            singular_values_to_keep = singular_values_to_keep[:chi]
         S.data=np.diag(singular_values_to_keep)
         #Truncate corresponding singular index of U and V
         U.data=U.data[:,:,0:len(singular_values_to_keep)]
@@ -1498,7 +1496,7 @@ def right_canonical_to_canonical(mps, chi=None, threshold=1e-14):
             phys_label=mps.phys_label)
 
 
-def canonical_to_right_canonical(mps, normalise=False):
+def canonical_to_right_canonical(mps):
     """
     Turn an MPS in canonical form into an MPS in right canonical form
     """
@@ -1508,14 +1506,13 @@ def canonical_to_right_canonical(mps, normalise=False):
         tensors.append(mps[mps.physical_site(i)][mps.right_label,]
                 *mps[mps.physical_site(i)+1][mps.left_label,])
     tensors.append(mps[mps.physical_site(N-1)])
-    if not normalise:
-        tensors[0].data = (tensors[0].data*np.linalg.norm(mps[-1].data)
-                *np.linalg.norm(mps[0].data))
+    tensors[0].data = (tensors[0].data*np.linalg.norm(mps[-1].data)
+            *np.linalg.norm(mps[0].data))
     return MatrixProductState(tensors,
             left_label=mps.left_label, right_label=mps.right_label,
             phys_label=mps.phys_label)
 
-def canonical_to_left_canonical(mps, normalise=False):
+def canonical_to_left_canonical(mps):
     """
     Turn an MPS in canonical form into an MPS in left canonical form
     """
@@ -1525,9 +1522,8 @@ def canonical_to_left_canonical(mps, normalise=False):
     for i in range(1,N):
         tensors.append(mps[mps.physical_site(i)-1][mps.right_label,]
                 *mps[mps.physical_site(i)][mps.left_label,])
-    if not normalise:
-        tensors[-1].data = (tensors[-1].data*np.linalg.norm(mps[-1].data)
-                *np.linalg.norm(mps[0].data))
+    tensors[-1].data = (tensors[-1].data*np.linalg.norm(mps[-1].data)
+            *np.linalg.norm(mps[0].data))
     return MatrixProductState(tensors,
             left_label=mps.left_label, right_label=mps.right_label,
             phys_label=mps.phys_label)
