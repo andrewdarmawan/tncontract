@@ -957,10 +957,6 @@ class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
         else:
             return np.sqrt(inner_product_mps(self, self))
 
-    def compress(self, chi=None, threshold=1e-15, normalise=False,
-            reverse=False):
-        raise NotImplementedError
-
     def check_canonical_form(self, threshold=1e-14, print_output=True):
         """Check if MPS is in canonical form, by checking for every site:
         1) if A=Lambda Gamma satisfies 
@@ -1024,6 +1020,14 @@ class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
                 print(not_right_canonised)
         return not_left_canonised, not_right_canonised, not_normalised
 
+    def compress_site(self, site, chi=None, threshold=1e-15):
+        """ Compress site `physical_site(site)` by truncating singular values.
+        """
+        raise NotImplementedError
+
+    def compress(self, chi=None, threshold=1e-15, normalise=False,
+            reverse=False):
+        raise NotImplementedError
 
     def apply_gate(self, gate, firstsite, gate_outputs=None, gate_inputs=None,
             chi=None, threshold=1e-15):
