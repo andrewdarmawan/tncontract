@@ -1136,12 +1136,20 @@ def right_canonical_form_mps(orig_mps, chi=0, threshold=1e-14,
     mps.right_canonise(chi=chi, threshold=threshold, normalise=normalise)
     return mps
 
-def reverse_mps(mps):
-    return MatrixProductState([x.copy() for x in reversed(mps)], 
-            mps.right_label, mps.left_label, mps.phys_label)
+def canonical_form_mps(orig_mps, chi=0, threshold=1e-14, 
+        normalise=False):
+    """Computes canonical form of an MPS"""
+
+    mps=orig_mps.copy()
+    mps.right_canonise(chi=chi, threshold=threshold, normalise=normalise)
+    return right_canonical_to_canonical(mps, threshold=threshold)
+
+def reverse_mps(orig_mps):
+    mps=orig_mps.copy()
+    return mps.reverse()
 
 def check_canonical_form_mps(mps, threshold=1e-14, print_output=True):
-    mps.check_canonical_form(threshold=threshold,
+    return mps.check_canonical_form(threshold=threshold,
             print_output=print_output)
     
 def svd_compress_mps(orig_mps, chi, threshold=1e-15, normalise=False):
