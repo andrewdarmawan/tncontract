@@ -898,10 +898,12 @@ class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
 
     def check_canonical_form(self, threshold=1e-14, print_output=True):
         """Check if MPS is in canonical form, by checking for every site:
-        1) if A=Lambda Gamma satisfies :math:`A^\dagger A = I` taking 
-        (`left_label`, `phys_label`) as combined row-index,
-        2) if B=Gamma Lambda satisfies :math:`B B^\dagger = I` taking 
-        (`left_label`, `phys_label`) as combined row-index.
+        1) if A=Lambda Gamma satisfies 
+        `A[phys_label, left_label]*Ad[phys_label, left_label]` where `Ad` is
+        the conjugate tensor,
+        2) if B=Gamma Lambda satisfies
+        `B[phys_label, right_label]*Bd[phys_label, right_label]` where `Bd` is
+        the conjugate tensor.
 
         Returns a list of sites not satisfying 1), a list not satisfying 2),
         and a list containing any un-normalised left-most or right-most sites.
