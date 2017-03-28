@@ -1139,8 +1139,9 @@ class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
             t.replace_label([gate_outputs[0]], [self.phys_label])
             t = S1_inv[self.right_label,]*t[self.left_label,]
             self[start+1] = t[self.right_label,]*S2_inv[self.left_label,]
-            if chi is not None:
-                self.compress(x)
+            #if chi is not None:
+            #    self.compress_bond(firstsite)
+            #    self.compress_bond(firstsite+1)
         elif nsites == 2:
             U, S, V = tsr.truncated_svd(t, [gate_outputs[0], self.left_label],
                     chi=chi, threshold=threshold, absorb_singular_values=None)
@@ -1153,14 +1154,8 @@ class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
             self[start+1] = S1_inv[self.right_label,]*U[self.left_label,]
             self[start+2] = S
             self[start+3] = V[self.right_label,]*S2_inv[self.left_label,]
-            #print('--')
-            #print(self.leftdim(start))
-            #print(self.rightdim(start))
-            #print(self.rightdim(start+1))
-            #print(self.rightdim(start+2))
-            #print(self.rightdim(start+3))
 
-    def swap_gate(self, i, threshold=1e-15):
+    def swap_gate(self, i, chi=None, threshold=1e-15):
         """
         Apply a swap gate swapping all "physical" (i.e., non-"left" and
         non-"right") indices for site `physical_site(i)` and 
@@ -1172,6 +1167,9 @@ class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
         threshold : float
             Lower bound on the magnitude of singular values to keep. Singular
             values less than or equal to this value will be truncated.
+        chi : int
+            Maximum number of singular values of each tensor to keep after
+            performing singular-value decomposition.
 
         Notes
         -----
@@ -1191,7 +1189,8 @@ class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
         S2_inv = self[end].copy()
         S2_inv.inv()
 
-        U, S, V = tsr.tensor_svd(t, [self.left_label, self.phys_label])
+        U, S, V = tsr.truncated_svd(t, [self.left_label, self.phys_label],
+                chi=chi, threshold=threshold, absorb_singular_values=None)
         V.unprime_label(self.phys_label)
 
         U.replace_label("svd_in", self.right_label)
