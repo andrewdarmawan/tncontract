@@ -712,7 +712,7 @@ def contract(tensor1, tensor2, labels1, labels2, index_slice1=None,
             d2 = tensor2.data.shape[tensor2_indices[i]]
             if d1 != d2:
                 raise ValueError((labels1[i] + ' with dim=' +  str(d1) + 
-                    'does not match ' + labels2[i] + ' with dim=' + str(d2)))
+                    ' does not match ' + labels2[i] + ' with dim=' + str(d2)))
         # Check if indices exist
         for i in range(len(labels1)):
             if not labels1[i] in tensor1.labels:

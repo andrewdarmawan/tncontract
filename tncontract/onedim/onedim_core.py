@@ -933,10 +933,17 @@ class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
         return 2*n
 
     def physdim(self, site):
-        """Return physical index dimesion for physical site"""
+        """Return physical index dimesion for `physical_site(site)`"""
         return self.data[self.physical_site(site)].index_dimension(
                 self.phys_label)
 
+    def singulardim(self, site):
+        """Return chi for chi by chi singular matrix at
+        `singular_site(site)`"""
+        return self.data[self.singular_site(site)].index_dimension(
+                self.left_label)
+
+ 
     def bonddims(self):
         """Return list of all bond dimensions. Note that for
         MatrixProductStateCanonical every other site is a diagonal chi by chi
@@ -1032,8 +1039,11 @@ class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
         truncating singular values.
         """
         # contract the MPS sites first
-        start = self.singular_site(singular_site)-2
-        end = self.singular_site(singular_site)+2
+        site = self.singular_site(singular_site)
+        if self.singulardim(site) == 1:
+            return
+        start = site-2
+        end = site+2
         self[end-1].prime_label(self.phys_label)
         t = contract_virtual_indices(self, start, end+1,
                 periodic_boundaries=False)
@@ -1129,6 +1139,8 @@ class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
             t.replace_label([gate_outputs[0]], [self.phys_label])
             t = S1_inv[self.right_label,]*t[self.left_label,]
             self[start+1] = t[self.right_label,]*S2_inv[self.left_label,]
+            if chi is not None:
+                self.compress(x)
         elif nsites == 2:
             U, S, V = tsr.truncated_svd(t, [gate_outputs[0], self.left_label],
                     chi=chi, threshold=threshold, absorb_singular_values=None)
