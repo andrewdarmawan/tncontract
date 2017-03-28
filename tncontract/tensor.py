@@ -780,7 +780,7 @@ def matrix_to_tensor(matrix, shape, labels=[]):
     Convert a matrix to a tensor by reshaping to `shape` and giving labels
     specifid by `labels`
     """
-    return Tensor(np.reshape(matrix, shape), labels)
+    return Tensor(np.reshape(np.array(matrix), shape), labels)
 
 def tensor_svd(tensor, row_labels, svd_label="svd_",
         absorb_singular_values=None):
