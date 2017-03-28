@@ -932,14 +932,21 @@ class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
         """ Return position of n'th singular value site (pos=2*n)"""
         return 2*n
 
-    @property
-    def nsites_physical(self):
-        return int((self.nsites-1)/2)
-
     def physdim(self, site):
         """Return physical index dimesion for physical site"""
         return self.data[self.physical_site(site)].index_dimension(
                 self.phys_label)
+
+    def bonddims(self):
+        """Return list of all bond dimensions. Note that for
+        MatrixProductStateCanonical every other site is a diagonal chi by chi
+        matrix. Hence, this function returns an output of the form 
+        [chi0, chi0, chi1, chi1, chi2, chi2, ...]"""
+        return super(MatrixProductStateCanonical, self).bonddims()
+
+    @property
+    def nsites_physical(self):
+        return int((self.nsites-1)/2)
 
     def norm(self, canonical_form=True):
         """Return norm of mps.
@@ -1020,13 +1027,34 @@ class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
                 print(not_right_canonised)
         return not_left_canonised, not_right_canonised, not_normalised
 
-    def compress_site(self, site, chi=None, threshold=1e-15):
-        """ Compress site `physical_site(site)` by truncating singular values.
+    def compress_bond(self, singular_site, chi=None, threshold=1e-15):
+        """ Compress bonds connecting to `singular_site(singular_site)` by 
+        truncating singular values.
         """
-        raise NotImplementedError
+        # contract the MPS sites first
+        start = self.singular_site(singular_site)-2
+        end = self.singular_site(singular_site)+2
+        self[end-1].prime_label(self.phys_label)
+        t = contract_virtual_indices(self, start, end+1,
+                periodic_boundaries=False)
+        # Remember singular values
+        S1_inv = self[start].copy()
+        S1_inv.inv()
+        S2_inv = self[end].copy()
+        S2_inv.inv()
+        # SVD and compress
+        U, S, V = tsr.truncated_svd(t, [self.phys_label, self.left_label],
+                chi=chi, threshold=threshold, absorb_singular_values=None)
+        U.replace_label("svd_in", self.right_label)
+        V.replace_label("svd_out", self.left_label)
+        S.replace_label(["svd_out", "svd_in"], [self.left_label,
+            self.right_label])
+        self[start+1] = S1_inv[self.right_label,]*U[self.left_label,]
+        self[start+2] = S
+        self[end-1] = V[self.right_label,]*S2_inv[self.left_label,]
+        self[end-1].unprime_label(self.phys_label)
 
-    def compress(self, chi=None, threshold=1e-15, normalise=False,
-            reverse=False):
+    def compress_all(self, chi=None, threshold=1e-15, normalise=False):
         raise NotImplementedError
 
     def apply_gate(self, gate, firstsite, gate_outputs=None, gate_inputs=None,
@@ -1113,6 +1141,12 @@ class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
             self[start+1] = S1_inv[self.right_label,]*U[self.left_label,]
             self[start+2] = S
             self[start+3] = V[self.right_label,]*S2_inv[self.left_label,]
+            #print('--')
+            #print(self.leftdim(start))
+            #print(self.rightdim(start))
+            #print(self.rightdim(start+1))
+            #print(self.rightdim(start+2))
+            #print(self.rightdim(start+3))
 
     def swap_gate(self, i, threshold=1e-15):
         """
