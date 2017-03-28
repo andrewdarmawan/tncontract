@@ -11,11 +11,11 @@ import numpy as np
 # Pauli spin 1/2 operators:
 #
 def sigmap():
-    return np.matrix([[0., 1.], [0., 0.]])
+    return np.array([[0., 1.], [0., 0.]])
 
 
 def sigmam():
-    return np.matrix([[0., 0.], [1., 0.]])
+    return np.array([[0., 0.], [1., 0.]])
 
 
 def sigmax():
@@ -27,7 +27,7 @@ def sigmay():
 
 
 def sigmaz():
-    return np.matrix([[1., 0.], [0., -1.]])
+    return np.array([[1., 0.], [0., -1.]])
 
 def destroy(dim):
     """
@@ -38,7 +38,7 @@ def destroy(dim):
     dim : int
         Dimension of Hilbert space.
     """
-    return np.matrix(np.diag(np.sqrt(range(1, dim)), 1))
+    return np.array(np.diag(np.sqrt(range(1, dim)), 1))
 
 def create(dim):
     """
@@ -61,7 +61,7 @@ def identity(dim):
         Dimension of Hilbert space.
 
     """
-    return np.matrix(np.identity(dim))
+    return np.array(np.identity(dim))
 
 def basis(dim, i):
     """
@@ -69,4 +69,4 @@ def basis(dim, i):
     """
     vec = np.zeros(dim)
     vec[i] = 1.0
-    return np.matrix(vec).T
+    return np.array(vec).T
