@@ -378,41 +378,41 @@ class Tensor():
         
         Examples
         --------
-	First initialise a random tensor.
-	>>> from tncontract import random_tensor
-	>>> t=random_tensor(2,3,4,5,6, labels=["a", "b", "c", "b", "d"])
+        First initialise a random tensor.
+        >>> from tncontract import random_tensor
+        >>> t=random_tensor(2,3,4,5,6, labels=["a", "b", "c", "b", "d"])
 
-	Now we move the indices labelled "d", "b" and "c" to position 0 (i.e.
-	the beginning). When preserve_relative_order is True, the relative 
-	order of these indices is identical to the original tensor.
-	>>> t.move_indices(["d","b","c"], 0, preserve_relative_order=True)
-	>>> print(t)
-	Tensor object: 
-	Data type: float64
-	Number of indices: 5
-	Index labels:
-	   0. (dim=3) b
-	   1. (dim=4) c
-	   2. (dim=5) b
-	   3. (dim=6) d
-	   4. (dim=2) a
+        Now we move the indices labelled "d", "b" and "c" to position 0 (i.e.
+        the beginning). When preserve_relative_order is True, the relative 
+        order of these indices is identical to the original tensor.
+        >>> t.move_indices(["d","b","c"], 0, preserve_relative_order=True)
+        >>> print(t)
+        Tensor object: 
+        Data type: float64
+        Number of indices: 5
+        Index labels:
+           0. (dim=3) b
+           1. (dim=4) c
+           2. (dim=5) b
+           3. (dim=6) d
+           4. (dim=2) a
 
-	If, on the other hand, preserve_relative_order is False, the order of 
-	the indices is determined by the order in which they appear in the 
-	`labels` argument of `move_indices`. In this case, "d" comes first 
-	then the "b" indices then "c". 
-	>>> t=random_tensor(2,3,4,5,6, labels=["a", "b", "c", "b", "d"])
-	>>> t.move_indices(["d","b","c"], 0, preserve_relative_order=False)
-	>>> print(t)
-	Tensor object: 
-	Data type: float64
-	Number of indices: 5
-	Index labels:
-	   0. (dim=6) d
-	   1. (dim=3) b
-	   2. (dim=5) b
-	   3. (dim=4) c
-	   4. (dim=2) a
+        If, on the other hand, preserve_relative_order is False, the order of 
+        the indices is determined by the order in which they appear in the 
+        `labels` argument of `move_indices`. In this case, "d" comes first 
+        then the "b" indices then "c". 
+        >>> t=random_tensor(2,3,4,5,6, labels=["a", "b", "c", "b", "d"])
+        >>> t.move_indices(["d","b","c"], 0, preserve_relative_order=False)
+        >>> print(t)
+        Tensor object: 
+        Data type: float64
+        Number of indices: 5
+        Index labels:
+           0. (dim=6) d
+           1. (dim=3) b
+           2. (dim=5) b
+           3. (dim=4) c
+           4. (dim=2) a
   
         """
 
@@ -697,8 +697,34 @@ def contract(tensor1, tensor2, labels1, labels2, index_slice1=None,
 
     
     #Contract the two tensors
-    C=Tensor(np.tensordot(tensor1.data, tensor2.data, 
-        (tensor1_indices, tensor2_indices)))
+    try:
+        C=Tensor(np.tensordot(tensor1.data, tensor2.data, 
+            (tensor1_indices, tensor2_indices)))
+    except ValueError as e:
+        # Print more useful info in case of ValueError.
+        # Check if number of indices are equal
+        if not len(tensor1_indices) == len(tensor2_indices):
+            raise ValueError('Number of indices in contraction does not match.',
+                    len(tensor1_indices), len(tensor2_indices)) from e
+        # Check if indices have equal dimensions
+        for i in range(len(tensor1_indices)):
+            d1 = tensor1.data.shape[tensor1_indices[i]]
+            d2 = tensor2.data.shape[tensor2_indices[i]]
+            if d1 != d2:
+                raise ValueError((labels1[i] + ' with dim=' +  str(d1) + 
+                    ' does not match ' + labels2[i] +
+                    ' with dim=' + str(d2))) from e
+        # Check if indices exist
+        for i in range(len(labels1)):
+            if not labels1[i] in tensor1.labels:
+                raise ValueError(labels1[i] +
+                        ' not in list of labels for tensor1') from e
+            if not labels2[i] in tensor2.labels:
+                raise ValueError(labels2[i] +
+                        ' not in list of labels for tensor2') from e
+        # Re-raise exception
+        raise e
+
     #The following removes the contracted indices from the list of labels 
     #and concatenates them
     new_tensor1_labels=[i for j,i in enumerate(tensor1.labels) 
@@ -755,7 +781,7 @@ def matrix_to_tensor(matrix, shape, labels=[]):
     Convert a matrix to a tensor by reshaping to `shape` and giving labels
     specifid by `labels`
     """
-    return Tensor(np.reshape(matrix, shape), labels)
+    return Tensor(np.reshape(np.array(matrix), shape), labels)
 
 def tensor_svd(tensor, row_labels, svd_label="svd_",
         absorb_singular_values=None):
@@ -1077,6 +1103,8 @@ def truncated_svd(tensor, row_labels, chi=0, threshold=1e-15,
     U.data=U.data[:,:,0:len(singular_values_to_keep)]
     V.data=V.data[0:len(singular_values_to_keep)]
 
+    if absorb_singular_values is None:
+        return U, S, V
     #Absorb singular values S into either V or U
     #or take the square root of S and absorb into both (default)
     if absorb_singular_values=="left":

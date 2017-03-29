@@ -5,14 +5,18 @@ onedim_core
 Core module for onedimensional tensor networks
 """
 
-__all__ = ['MatrixProductState', 'MatrixProductOperator',
-        'OneDimensionalTensorNetwork', 'check_canonical_form_mps',
+__all__ = ['MatrixProductState', 'MatrixProductStateCanonical',
+        'MatrixProductOperator', 'OneDimensionalTensorNetwork',
+        'check_canonical_form_mps',
         'contract_mps_mpo', 'contract_multi_index_tensor_with_one_dim_array',
         'contract_virtual_indices', 'frob_distance_squared',
         'inner_product_mps', 'ladder_contract', 'left_canonical_form_mps',
         'mps_complex_conjugate', 'reverse_mps', 'right_canonical_form_mps',
         'svd_compress_mps', 'variational_compress_mps', 'tensor_to_mpo',
-        'tensor_to_mps']
+        'tensor_to_mps',
+        'right_canonical_to_canonical', 'left_canonical_to_canonical',
+        'canonical_to_right_canonical', 'canonical_to_left_canonical',
+        ]
 
 import numpy as np
 
@@ -166,6 +170,9 @@ class OneDimensionalTensorNetwork():
     def nsites(self):
         return len(self.data)
 
+    @property
+    def nsites_physical(self):
+        return self.nsites
 
 class MatrixProductState(OneDimensionalTensorNetwork):
     """Matrix product state"is a list of tensors, each having and index 
@@ -340,7 +347,7 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         self.reverse()
 
     def replace_labels(self, old_labels, new_labels):
-        """Run `Tensor.replace_label` method on every tensor in `self` then
+        """run `tensor.replace_label` method on every tensor in `self` then
         replace `self.left_label`, `self.right_label` and `self.phys_label` 
         appropriately."""
 
@@ -361,7 +368,7 @@ class MatrixProductState(OneDimensionalTensorNetwork):
 
     def standard_labels(self, suffix=""):
         """
-        Overwrite self.labels, self.left_label, self.right_label, 
+        overwrite self.labels, self.left_label, self.right_label, 
         self.phys_label with standard labels "left", "right", "phys"
         """
         self.replace_labels([self.left_label, self.right_label,
@@ -592,6 +599,11 @@ class MatrixProductState(OneDimensionalTensorNetwork):
             elif i==max_iter-1: #Has reached the last iteration
                 raise RuntimeError("variational_compress did not converge.")
 
+    def physical_site(self, n):
+        """ Return position of n'th physical (pos=n). Implemented for 
+        comaptibility with MatrixProductStateCanonical."""
+        return n
+
     def physdim(self, site):
         """Return physical index dimesion for site"""
         return self.data[site].index_dimension(self.phys_label)
@@ -617,15 +629,15 @@ class MatrixProductState(OneDimensionalTensorNetwork):
             return np.sqrt(inner_product_mps(self, self))
 
     def apply_gate(self, gate, firstsite, gate_outputs=None, gate_inputs=None,
-            threshold=1e-15):
+            chi=None, threshold=1e-15, canonise='left'):
         """
         Apply Tensor `gate` on sites `firstsite`, `firstsite`+1, ...,
         `firstsite`+`nsites`-1, where `nsites` is the length of gate_inputs.
         The physical index of the nth site is contracted with the nth label of 
         `gate_inputs`. After the contraction the MPS is put back into the 
-        original form by SVD, and the nth sites physical index is given by the 
-        nth label of `gate_outputs` (but relabeled to `self.phys_label` to
-        preserve the original MPS form).
+        original form by SVD, and the nth sites physical index is given 
+        by the nth label of `gate_outputs` (but relabeled to `self.phys_label` 
+        to preserve the original MPS form).
 
         Parameters
         ----------
@@ -646,6 +658,11 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         threshold : float
             Lower bound on the magnitude of singular values to keep. Singular
             values less than or equal to this value will be truncated.
+        chi : int
+            Maximum number of singular values of each tensor to keep after
+            performing singular-value decomposition.
+        canonise : str {'left', 'right'}
+            Direction in which to canonise the sites after applying gate.
 
         Notes
         -----
@@ -675,10 +692,609 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         t = tsr.contract(t, gate, self.phys_label, gate_inputs)
 
         # split big tensor into MPS form by exact SVD
-        mps = tensor_to_mps(t, mps_phys_label=self.phys_label,
-                left_label=self.left_label, right_label=self.right_label,
-                chi=0, threshold=threshold)
+        if canonise == 'right':
+            phys_labels = gate_outputs[::-1]
+            left_label = 'right'
+            right_label = 'left'
+        else:
+            phys_labels = gate_outputs
+            left_label = 'left'
+            right_label = 'right'
+        mps = tensor_to_mps(t, phys_labels=phys_labels,
+                mps_phys_label=self.phys_label, left_label=left_label,
+                right_label=right_label, chi=chi, threshold=threshold)
+        if canonise == 'right':
+            mps.reverse()
         self.data[firstsite:firstsite+nsites] = mps.data
+
+    def expval(self, gate, firstsite,
+            left_canonised_up_to=0, right_canonised_up_to=-1,
+            gate_outputs=None, gate_inputs=None,
+            ):
+        """
+        Compute multi-site expectation value for operator `gate` applied to
+        `firstsite`, `firstsite+1`, ... `firstsite_+n-1` where `n` is the
+        number of gate inputs.
+
+        Assumes that MPS has been canonised such that everything to the left
+        of `left_canonised_up_to` is left-canonised and everything to the right 
+        of `right_canonised_up_to` is right-canonised.
+
+        Parameters
+        ----------
+        gate : Tensor
+            Tensor representing the multisite gate.
+        firstsite : int
+            First site of MPS involved in the gate
+        gate_outputs : list of str, optional
+            Output labels corresponding to the input labels given by
+            `gate_inputs`. Must have the same length as `gate_inputs`.
+            If `None` the first half of `gate.labels` will be taken as output
+            labels.
+        gate_inputs : list of str, optional
+            Input labels. The first index of the list is contracted with
+            `firstsite`, the second with `firstsite`+1 etc.
+            If `None` the second half of `gate.labels` will be taken as input
+            labels.
+        left_canonised_up_to : int
+            Everything to the left of this is assumed to be left-canonised.
+        right_canonised_up_to : int
+            Everything to the right of this is assumed to be right-canonised.
+
+        Returns
+        ------
+        t : Tensor
+        Contracted tensor <mps|O|mps>
+
+        Notes
+        -----
+        The MPS is left-canonised up to `firstsite` and right-canonised up to
+        `firstsite+n` after the operation.
+        """
+        # Set gate_outputs and gate_inputs to default values if not given
+        if gate_outputs is None and gate_inputs is None:
+            gate_outputs = gate.labels[:int(len(gate.labels)/2)]
+            gate_inputs = gate.labels[int(len(gate.labels)/2):]
+        elif gate_outputs is None:
+            gate_outputs =[x for x in gate.labels if x not in gate_inputs]
+        elif gate_inputs is None:
+            gate_inputs =[x for x in gate.labels if x not in gate_outputs]
+
+        nsites = len(gate_inputs)
+        if len(gate_outputs) != nsites:
+            raise ValueError("len(gate_outputs) != len(gate_inputs)")
+
+        N=len(self)
+        if right_canonised_up_to==-1:
+            right_canonised_up_to=N
+
+        # Mover left/right orthogonality centers to firstsite/firtsite+n
+        if left_canonised_up_to < firstsite:
+            self.left_canonise(left_canonised_up_to, firstsite)
+        if right_canonised_up_to > firstsite + nsites:
+            self.right_canonise(firstsite+nsites, right_canonised_up_to)
+
+        # contract the MPS sites first
+        t = contract_virtual_indices(self, firstsite, firstsite+nsites,
+                periodic_boundaries=False)
+        td = t.copy()
+        td.conjugate()
+
+        # contract all physical indices with gate indices
+        exp = tsr.contract(t, gate, self.phys_label, gate_inputs)
+        exp = tsr.contract(td, exp, self.phys_label, gate_outputs)
+        # contract boundary indices
+        exp.tr(self.left_label, self.left_label, index1=0,
+                index2=1)
+        exp.tr(self.right_label, self.right_label, index1=0,
+                index2=1)
+
+        return exp
+
+    def ptrace(self, firstsite, lastsite=None,
+            left_canonised_up_to=0, right_canonised_up_to=-1):
+        """
+        Compute local density matrix for sites `firstsite` to `lastsite`
+        assuming left and right canonisation up to boundaries.
+
+        Parameters
+        ----------
+        firstsite : int
+            First physical site of MPS not traced out
+        lastsite : int
+            Last physical site of MPS not traced out. By default `lastsite` is
+            set to `firstsite`.
+        left_canonised_up_to : int
+            Everything to the left of this is assumed to be left-canonised.
+        right_canonised_up_to : int
+            Everything to the right of this is assumed to be right-canonised.
+
+        Returns
+        ------
+        t : Tensor
+        Local density matrix
+
+        Notes
+        -----
+        The MPS is left-canonised up to `firstsite` and right-canonised up to
+        `firstsite+n` after the operation.
+        """
+        if right_canonised_up_to==-1:
+            right_canonised_up_to=self.nsites
+        if lastsite is None:
+            lastsite = firstsite
+
+        # Mover left/right orthogonality centers to firstsite/firtsite+n
+        if left_canonised_up_to < firstsite:
+            self.left_canonise(left_canonised_up_to, firstsite)
+        if right_canonised_up_to > lastsite:
+            self.right_canonise(lastsite+1, right_canonised_up_to)
+
+        start = self.physical_site(firstsite)
+        end = self.physical_site(lastsite)
+        t = contract_virtual_indices(self, start, end+1,
+                periodic_boundaries=False)
+        td = t.copy()
+        td.conjugate()
+        # rename physical labels
+        for i, l in enumerate(t.labels):
+            if l == self.phys_label:
+                t.labels[i] = l + "_out" + str(i)
+                td.labels[i] = l + "_in" + str(i)
+        rho = (t[self.left_label, self.right_label]
+                *td[self.left_label, self.right_label])
+        return rho
+
+
+class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
+    """
+    Matrix product state in canonical form with every other tensor assumed to
+    be a diagonal matrix of singular values. The site numbering is
+
+    0     1      2      3     ... N-2   N-1
+
+    Lambda Gamma Lambda Gamma ... Gamma Lambda
+
+    where the Gammas are rank three tensors and the Lambdas diagonal matrices 
+    of singular values. The left-mots and right-most Lambda matrices are 
+    trivial one-by-one matrices inserted for convenience. For a canonical form
+    MPS created from a right-canonical MPS using e.g.
+    `right_canonical_to_canonical` the right-most Lambda is equal to the norm
+    of the state, and vice versa if created from a left-canonical MPS.
+
+    The n'th physical site index (i=2*n+1) can conveniently be accessed with
+    the `physical_site` method.
+
+    Notes
+    -----
+    Convenient for TEBD type algorithms. Many methods assume canonical form
+    for efficiency.
+
+    See U. Schollwock, Ann. Phys. 326 (2011) 96-192 section 4.6.
+    """
+
+    def __init__(self, tensors, left_label="left", right_label="right",
+            phys_label="phys"):
+        OneDimensionalTensorNetwork.__init__(self, tensors,
+                left_label=left_label, right_label=right_label)
+        self.phys_label=phys_label
+
+    def __repr__(self):
+        return ("MatrixProductStateCanonical(tensors=%r, left_label=%r,"
+            "right_label=%r, phys_label=%r)" % (self.data, self.left_label,
+                self.right_label, self.phys_label))
+
+    def __str__(self):
+        return ("MatrixProductStateCanonical object: " +
+              "sites (incl. singular value sites)= " + str(len(self)) + 
+              ", left_label = " + self.left_label + 
+              ", right_label = " + self.right_label + 
+              ", phys_label = " + self.phys_label)
+
+    def copy(self):
+        """Return an MPS that is not linked in memory to the original."""
+        return MatrixProductStateCanonical([x.copy() for x in self],
+                self.left_label, self.right_label, self.phys_label)
+
+    def replace_labels(self, old_labels, new_labels):
+        """run `tensor.replace_label` method on every tensor in `self` then
+        replace `self.left_label`, `self.right_label` and `self.phys_label` 
+        appropriately."""
+
+        if not isinstance(old_labels, list):
+            old_labels=[old_labels]
+        if not isinstance(new_labels, list):
+            new_labels=[new_labels]
+
+        for x in self.data:
+            x.replace_label(old_labels, new_labels)
+
+        if self.left_label in old_labels:
+            self.left_label = new_labels[old_labels.index(self.left_label)]
+        if self.right_label in old_labels:
+            self.right_label = new_labels[old_labels.index(self.right_label)]
+        if self.phys_label in old_labels:
+            self.phys_label = new_labels[old_labels.index(self.phys_label)]
+
+    def standard_labels(self, suffix=""):
+        """
+        overwrite self.labels, self.left_label, self.right_label, 
+        self.phys_label with standard labels "left", "right", "phys"
+        """
+        self.replace_labels([self.left_label, self.right_label,
+            self.phys_label], ["left"+suffix, "right"+suffix, "phys"+suffix])
+
+    def physical_site(self, n):
+        """ Return position of n'th physical (pos=2*n+1)"""
+        return 2*n+1
+
+    def singular_site(self, n):
+        """ Return position of n'th singular value site (pos=2*n)"""
+        return 2*n
+
+    def physdim(self, site):
+        """Return physical index dimesion for `physical_site(site)`"""
+        return self.data[self.physical_site(site)].index_dimension(
+                self.phys_label)
+
+    def singulardim(self, site):
+        """Return chi for chi by chi singular matrix at
+        `singular_site(site)`"""
+        return self.data[self.singular_site(site)].index_dimension(
+                self.left_label)
+
+ 
+    def bonddims(self):
+        """Return list of all bond dimensions. Note that for
+        MatrixProductStateCanonical every other site is a diagonal chi by chi
+        matrix. Hence, this function returns an output of the form 
+        [chi0, chi0, chi1, chi1, chi2, chi2, ...]"""
+        return super(MatrixProductStateCanonical, self).bonddims()
+
+    @property
+    def nsites_physical(self):
+        return int((self.nsites-1)/2)
+
+    def norm(self, canonical_form=True):
+        """Return norm of mps.
+
+        Parameters
+        ----------
+        canonical_form : bool
+            If `canonical_form` is `True`, the state will be assumed to be in
+            canonical form. In this case the norm can be read off from the
+            edge singular value matrices (much more efficient).
+
+        """
+        if canonical_form is True:
+            return np.linalg.norm(self[-1].data)*np.linalg.norm(self[0].data)
+        else:
+            return np.sqrt(inner_product_mps(self, self))
+
+    def check_canonical_form(self, threshold=1e-14, print_output=True):
+        """Check if MPS is in canonical form, by checking for every site:
+        1) if A=Lambda Gamma satisfies 
+        `A[phys_label, left_label]*Ad[phys_label, left_label]` where `Ad` is
+        the conjugate tensor,
+        2) if B=Gamma Lambda satisfies
+        `B[phys_label, right_label]*Bd[phys_label, right_label]` where `Bd` is
+        the conjugate tensor.
+
+        Returns a list of sites not satisfying 1), a list not satisfying 2),
+        and a list containing any un-normalised left-most or right-most sites.
+        If print_output=True, will print useful information concerning whether 
+        a given MPS is in canonical form."""
+        not_left_canonised=[]
+        not_right_canonised=[]
+        not_normalised=[]
+        for i in range(self.nsites_physical):
+            A = (self[self.physical_site(i)-1][self.right_label,]
+                    *self[self.physical_site(i)][self.left_label,])
+            Ad = tsr.conjugate(A)
+            I=tsr.contract(A, Ad, 
+                    [self.phys_label, self.left_label], 
+                    [self.phys_label, self.left_label])
+            #Check if tensor is left canonised.
+            if np.linalg.norm(I.data-np.identity(I.data.shape[0])) > threshold:
+                if i==0 or i == self.nsites_physical-1:
+                    If = I.data.flatten()
+                    if len(If[np.abs(If) > threshold]) > 1:
+                        not_left_canonised.append(i)
+                    else:
+                        not_normalised.append(i)
+                else:
+                    not_left_canonised.append(i)
+        for i in range(self.nsites_physical):
+            B = (self[self.physical_site(i)][self.right_label,]
+                    *self[self.physical_site(i)+1][self.left_label,])
+            Bd = tsr.conjugate(B)
+            I=tsr.contract(B, Bd,
+                    [self.phys_label, self.right_label],
+                    [self.phys_label, self.right_label])
+            #Check if tensor is right canonised.
+            if np.linalg.norm(I.data-np.identity(I.data.shape[0])) > threshold:
+                if i==0 or i == self.nsites_physical-1:
+                    If = I.data.flatten()
+                    if len(If[np.abs(If) > threshold]) > 1:
+                        not_right_canonised.append(i)
+                    else:
+                        not_normalised.append(i)
+                else:
+                    not_right_canonised.append(i)
+        if print_output:
+            if len(not_left_canonised) == 0 and len(not_right_canonised) == 0:
+                if len(not_normalised) == 0:
+                    print("MPS in canonical form (normalised)")
+                else:
+                    print("MPS in canonical form (unnormalised)")
+            else:
+                print("Physical sites not left-canonical:")
+                print(not_left_canonised)
+                print("Physical sites not right-canonical:")
+                print(not_right_canonised)
+        return not_left_canonised, not_right_canonised, not_normalised
+
+    def compress_bond(self, singular_site, chi=None, threshold=1e-15):
+        """ Compress bonds connecting to `singular_site(singular_site)` by 
+        truncating singular values.
+        """
+        # contract the MPS sites first
+        site = self.singular_site(singular_site)
+        if self.singulardim(site) == 1:
+            return
+        start = site-2
+        end = site+2
+        self[end-1].prime_label(self.phys_label)
+        t = contract_virtual_indices(self, start, end+1,
+                periodic_boundaries=False)
+        # Remember singular values
+        S1_inv = self[start].copy()
+        S1_inv.inv()
+        S2_inv = self[end].copy()
+        S2_inv.inv()
+        # SVD and compress
+        U, S, V = tsr.truncated_svd(t, [self.phys_label, self.left_label],
+                chi=chi, threshold=threshold, absorb_singular_values=None)
+        U.replace_label("svd_in", self.right_label)
+        V.replace_label("svd_out", self.left_label)
+        S.replace_label(["svd_out", "svd_in"], [self.left_label,
+            self.right_label])
+        self[start+1] = S1_inv[self.right_label,]*U[self.left_label,]
+        self[start+2] = S
+        self[end-1] = V[self.right_label,]*S2_inv[self.left_label,]
+        self[end-1].unprime_label(self.phys_label)
+
+    def compress_all(self, chi=None, threshold=1e-15, normalise=False):
+        raise NotImplementedError
+
+    def apply_gate(self, gate, firstsite, gate_outputs=None, gate_inputs=None,
+            chi=None, threshold=1e-15):
+        """
+        Apply multi-site gate to `physical_site(firstsite)`,
+        `physical_site(firstsite+1)`, ... and perform optimal compression, 
+        assuming canonical form.
+
+        Currently only implemented for 1-site and 2-site gates.
+
+        Parameters
+        ----------
+        gate : Tensor
+            Tensor representing the multisite gate.
+        firstsite : int
+            First site of MPS involved in the gate
+        gate_outputs : list of str, optional
+            Output labels corresponding to the input labels given by
+            `gate_inputs`. Must have the same length as `gate_inputs`.
+            If `None` the first half of `gate.labels` will be taken as output
+            labels.
+        gate_inputs : list of str, optional
+            Input labels. The first index of the list is contracted with
+            `firstsite`, the second with `firstsite`+1 etc.
+            If `None` the second half of `gate.labels` will be taken as input
+            labels.
+        threshold : float
+            Lower bound on the magnitude of singular values to keep. Singular
+            values less than or equal to this value will be truncated.
+        chi : int
+            Maximum number of singular values of each tensor to keep after
+            performing singular-value decomposition.
+
+        Notes
+        -----
+        At the end of the gate all physical indices are relabeled to
+        `self.phys_label`.
+
+        Only use this for gates acting on small number of sites.
+        """
+        # Set gate_outputs and gate_inputs to default values if not given
+        if gate_outputs is None and gate_inputs is None:
+            gate_outputs = gate.labels[:int(len(gate.labels)/2)]
+            gate_inputs = gate.labels[int(len(gate.labels)/2):]
+        elif gate_outputs is None:
+            gate_outputs =[x for x in gate.labels if x not in gate_inputs]
+        elif gate_inputs is None:
+            gate_inputs =[x for x in gate.labels if x not in gate_outputs]
+
+        nsites = len(gate_inputs)
+        if len(gate_outputs) != nsites:
+            raise ValueError("len(gate_outputs) != len(gate_inputs)")
+        if nsites > 2:
+            raise NotImplementedError("gate acting on more than two sites.")
+
+        # contract the MPS sites first
+        start = self.physical_site(firstsite)-1
+        end = self.physical_site(firstsite+nsites-1)+1
+        t = contract_virtual_indices(self, start, end+1,
+                periodic_boundaries=False)
+
+        # contract all physical indices with gate input indices
+        t = tsr.contract(t, gate, self.phys_label, gate_inputs)
+
+        # split big tensor into MPS form by exact SVD
+        S1_inv = self[start].copy()
+        S1_inv.inv()
+        S2_inv = self[end].copy()
+        S2_inv.inv()
+        if nsites == 1:
+            t.replace_label([gate_outputs[0]], [self.phys_label])
+            t = S1_inv[self.right_label,]*t[self.left_label,]
+            self[start+1] = t[self.right_label,]*S2_inv[self.left_label,]
+            #if chi is not None:
+            #    self.compress_bond(firstsite)
+            #    self.compress_bond(firstsite+1)
+        elif nsites == 2:
+            U, S, V = tsr.truncated_svd(t, [gate_outputs[0], self.left_label],
+                    chi=chi, threshold=threshold, absorb_singular_values=None)
+            U.replace_label(["svd_in", gate_outputs[0]],
+                    [self.right_label, self.phys_label])
+            V.replace_label(["svd_out", gate_outputs[1]],
+                    [self.left_label, self.phys_label])
+            S.replace_label(["svd_out", "svd_in"], [self.left_label,
+                self.right_label])
+            self[start+1] = S1_inv[self.right_label,]*U[self.left_label,]
+            self[start+2] = S
+            self[start+3] = V[self.right_label,]*S2_inv[self.left_label,]
+
+    def swap_gate(self, i, chi=None, threshold=1e-15):
+        """
+        Apply a swap gate swapping all "physical" (i.e., non-"left" and
+        non-"right") indices for site `physical_site(i)` and 
+        `physical_site(i+1)` of a MatrixProductStateCanonical object.
+
+        Parameters
+        ----------
+        i : int
+        threshold : float
+            Lower bound on the magnitude of singular values to keep. Singular
+            values less than or equal to this value will be truncated.
+        chi : int
+            Maximum number of singular values of each tensor to keep after
+            performing singular-value decomposition.
+
+        Notes
+        -----
+        The swap is implemented by SVD as described
+        in Y.-Y. Shi et al, Phys. Rev. A 74, 022320 (2006).
+        """
+        # contract the MPS sites first
+        start = self.physical_site(i)-1
+        end = self.physical_site(i+1)+1
+        self[start+1].prime_label(self.phys_label)
+        t = contract_virtual_indices(self, start, end+1,
+                periodic_boundaries=False)
+
+        # remember inverse singular values
+        S1_inv = self[start].copy()
+        S1_inv.inv()
+        S2_inv = self[end].copy()
+        S2_inv.inv()
+
+        U, S, V = tsr.truncated_svd(t, [self.left_label, self.phys_label],
+                chi=chi, threshold=threshold, absorb_singular_values=None)
+        V.unprime_label(self.phys_label)
+
+        U.replace_label("svd_in", self.right_label)
+        V.replace_label('svd_out', self.left_label)
+        S.replace_label(["svd_out", "svd_in"], [self.left_label,
+            self.right_label])
+        self[start+1] = S1_inv[self.right_label,]*U[self.left_label,]
+        self[start+2] = S
+        self[start+3] = V[self.right_label,]*S2_inv[self.left_label,]
+
+    def expval(self, gate, firstsite, gate_outputs=None, gate_inputs=None):
+        """
+        Compute multi-site expectation value for operator `gate` applied to
+        `physical_site(firstsite)`, `physical_site(firstsite+1)`, ...,
+        assuming canonical form.
+
+        Parameters
+        ----------
+        gate : Tensor
+            Tensor representing the multisite gate.
+        firstsite : int
+            First site of MPS involved in the gate
+        gate_outputs : list of str, optional
+            Output labels corresponding to the input labels given by
+            `gate_inputs`. Must have the same length as `gate_inputs`.
+            If `None` the first half of `gate.labels` will be taken as output
+            labels.
+        gate_inputs : list of str, optional
+            Input labels. The first index of the list is contracted with
+            `firstsite`, the second with `firstsite`+1 etc.
+            If `None` the second half of `gate.labels` will be taken as input
+            labels.
+
+        Returns
+        ------
+        t : Tensor
+        Contracted tensor <mps|O|mps>
+        """
+        # Set gate_outputs and gate_inputs to default values if not given
+        if gate_outputs is None and gate_inputs is None:
+            gate_outputs = gate.labels[:int(len(gate.labels)/2)]
+            gate_inputs = gate.labels[int(len(gate.labels)/2):]
+        elif gate_outputs is None:
+            gate_outputs =[x for x in gate.labels if x not in gate_inputs]
+        elif gate_inputs is None:
+            gate_inputs =[x for x in gate.labels if x not in gate_outputs]
+
+        nsites = len(gate_inputs)
+        if len(gate_outputs) != nsites:
+            raise ValueError("len(gate_outputs) != len(gate_inputs)")
+
+        # contract the MPS sites first
+        start = self.physical_site(firstsite)-1
+        end = self.physical_site(firstsite+len(gate_inputs)-1)+1
+        t = contract_virtual_indices(self, start, end+1,
+                periodic_boundaries=False)
+        td = t.copy()
+        td.conjugate()
+
+        # contract all physical indices with gate indices
+        exp = t[self.phys_label,]*gate[gate_inputs]
+        exp = td[self.phys_label,]*exp[gate_outputs]
+        # contract boundary indices
+        exp.tr(self.left_label, self.left_label, index1=0, index2=1)
+        exp.tr(self.right_label, self.right_label, index1=0, index2=1)
+
+        return exp
+
+    def ptrace(self, firstsite, lastsite=None):
+        """
+        Compute local density matrix for sites
+        `physical_site(firstsite)` to `physical_site(lastsite)`
+        assuming canonical form.
+
+        Parameters
+        ----------
+        firstsite : int
+            First physical site of MPS not traced out
+        lastsite : int
+            Last physical site of MPS not traced out. By default `lastsite` is
+            set to `firstsite`.
+
+        Returns
+        ------
+        t : Tensor
+        Local density matrix
+        """
+        if lastsite is None:
+            lastsite = firstsite
+        start = self.physical_site(firstsite)-1
+        end = self.physical_site(lastsite)+1
+        t = contract_virtual_indices(self, start, end+1,
+                periodic_boundaries=False)
+        td = t.copy()
+        td.conjugate()
+        # rename physical labels
+        for i, l in enumerate(t.labels):
+            if l == self.phys_label:
+                t.labels[i] = l + "_out" + str(i)
+                td.labels[i] = l + "_in" + str(i)
+        rho = (t[self.left_label, self.right_label]
+                *td[self.left_label, self.right_label])
+        return rho
+
 
 class MatrixProductOperator(OneDimensionalTensorNetwork):
     #TODO currently assumes open boundaries
@@ -764,7 +1380,7 @@ def contract_virtual_indices(array_1d, start=0, end=None,
     periodic_boundaries : bool
         If `True` leftmost and rightmost virtual indices are contracted.
     """
-    C=array_1d[start]
+    C=array_1d[start].copy()
     for x in array_1d[start+1:end]:
         C=tsr.contract(C, x, array_1d.right_label, array_1d.left_label)
     if periodic_boundaries:
@@ -794,12 +1410,21 @@ def right_canonical_form_mps(orig_mps, chi=0, threshold=1e-14,
     mps.right_canonise(chi=chi, threshold=threshold, normalise=normalise)
     return mps
 
-def reverse_mps(mps):
-    return MatrixProductState([x.copy() for x in reversed(mps)], 
-            mps.right_label, mps.left_label, mps.phys_label)
+def canonical_form_mps(orig_mps, chi=0, threshold=1e-14, 
+        normalise=False):
+    """Computes canonical form of an MPS"""
+
+    mps=orig_mps.copy()
+    mps.right_canonise(chi=chi, threshold=threshold, normalise=normalise)
+    return right_canonical_to_canonical(mps, threshold=threshold)
+
+def reverse_mps(orig_mps):
+    mps=orig_mps.copy()
+    mps.reverse()
+    return mps
 
 def check_canonical_form_mps(mps, threshold=1e-14, print_output=True):
-    mps.check_canonical_form(threshold=threshold,
+    return mps.check_canonical_form(threshold=threshold,
             print_output=print_output)
     
 def svd_compress_mps(orig_mps, chi, threshold=1e-15, normalise=False):
@@ -999,8 +1624,17 @@ def ladder_contract(array1, array2, label1, label2, start=0, end=None,
 def inner_product_mps(mps_bra, mps_ket, complex_conjugate_bra=True, 
         return_whole_tensor=False):
     """Compute the inner product of two MatrixProductState objects."""
-    t=ladder_contract(mps_bra, mps_ket, mps_bra.phys_label, mps_ket.phys_label,
-            complex_conjugate_array1=complex_conjugate_bra)
+    # If MPS are in canonical form, convert left-canonical first
+    if isinstance(mps_bra, MatrixProductStateCanonical):
+        mps_bra_tmp = canonical_to_left_canonical(mps_bra)
+    else:
+        mps_bra_tmp = mps_bra
+    if isinstance(mps_ket, MatrixProductStateCanonical):
+        mps_ket_tmp = canonical_to_left_canonical(mps_ket)
+    else:
+        mps_ket_tmp = mps_ket
+    t=ladder_contract(mps_bra_tmp, mps_ket_tmp, mps_bra.phys_label, 
+            mps_ket.phys_label, complex_conjugate_array1=complex_conjugate_bra)
     if return_whole_tensor:
         return t
     else:
@@ -1015,6 +1649,9 @@ def contract_mps_mpo(mps, mpo):
     Left and right indices will be combined. The resulting MPS will have the 
     same left and right labels as mps and the physical label will be 
     mpo.physout_label"""
+    if isinstance(mps, MatrixProductStateCanonical):
+        raise NotImplementedError(("Function not implemented for"
+            +"MatrixProductStateCanonical"))
     N=len(mps)
     new_mps=[]
     for i in range(N):
@@ -1150,5 +1787,100 @@ def tensor_to_mpo(tensor, physout_labels=None, physin_labels=None,
     return MatrixProductOperator(mpo, physout_label=mpo_physout_label,
             physin_label=mpo_physin_label, left_label=left_label,
             right_label=right_label)
+
+
+def right_canonical_to_canonical(mps, threshold=1e-14):
+    """
+    Turn an MPS in right canonical form into an MPS in canonical form
+    """
+    N=mps.nsites
+
+    S_prev = tsr.Tensor([[1.0]], labels=[mps.left_label, mps.right_label])
+    S_prev_inv = S_prev.copy()
+    B = mps[0]
+    tensors = []
+    svd_label=unique_label()
+    for i in range(N):
+        U, S, V = tsr.tensor_svd(B, [mps.phys_label, mps.left_label],
+                svd_label=svd_label)
+        #Truncate to threshold
+        singular_values=np.diag(S.data)
+        singular_values_to_keep = singular_values[singular_values > 
+                threshold]
+        S.data=np.diag(singular_values_to_keep)
+        #Truncate corresponding singular index of U and V
+        U.data=U.data[:,:,0:len(singular_values_to_keep)]
+        V.data=V.data[0:len(singular_values_to_keep)]
+
+        U.replace_label(svd_label+"in", mps.right_label)
+        V.replace_label(svd_label+"out", mps.left_label)
+        S.replace_label([svd_label+"out", svd_label+"in"],
+                [mps.left_label, mps.right_label])
+
+        G = S_prev_inv[mps.right_label,]*U[mps.left_label,]
+        tensors.append(S_prev)
+        tensors.append(G)
+
+        if i==N-1:
+            #The final SVD has no right index, so S and V are just scalars.
+            #S is the norm of the state. 
+            tensors.append(S)
+        else:
+            V = S[mps.right_label,]*V[mps.left_label,]
+            B = V[mps.right_label,]*mps[i+1][mps.left_label,]
+            # Store S and S^{-1} for next iteration
+            S_prev = S.copy()
+            S_prev_inv = S_prev.copy()
+            S_prev_inv.inv()
+            #S_prev_inv.data = np.diag(1./singular_values_to_keep)
+
+    # Construct MPS in canonical form
+    return MatrixProductStateCanonical(tensors,
+            left_label=mps.left_label, right_label=mps.right_label,
+            phys_label=mps.phys_label)
+
+
+def left_canonical_to_canonical(mps, threshold=1e-14):
+    """
+    Turn an MPS in left canonical form into an MPS in canonical form
+    """
+    mpsr = reverse_mps(mps)
+    mpsc = right_canonical_to_canonical(mpsr, threshold=threshold)
+    mpsc.reverse()
+    return mpsc
+
+
+def canonical_to_right_canonical(mps):
+    """
+    Turn an MPS in canonical form into an MPS in right canonical form
+    """
+    N=mps.nsites_physical
+    tensors = []
+    for i in range(N-1):
+        tensors.append(mps[mps.physical_site(i)][mps.right_label,]
+                *mps[mps.physical_site(i)+1][mps.left_label,])
+    tensors.append(mps[mps.physical_site(N-1)])
+    tensors[0].data = (tensors[0].data*np.linalg.norm(mps[-1].data)
+            *np.linalg.norm(mps[0].data))
+    return MatrixProductState(tensors,
+            left_label=mps.left_label, right_label=mps.right_label,
+            phys_label=mps.phys_label)
+
+def canonical_to_left_canonical(mps):
+    """
+    Turn an MPS in canonical form into an MPS in left canonical form
+    """
+    N=mps.nsites_physical
+    tensors = []
+    tensors.append(mps[mps.physical_site(0)])
+    for i in range(1,N):
+        tensors.append(mps[mps.physical_site(i)-1][mps.right_label,]
+                *mps[mps.physical_site(i)][mps.left_label,])
+    tensors[-1].data = (tensors[-1].data*np.linalg.norm(mps[-1].data)
+            *np.linalg.norm(mps[0].data))
+    return MatrixProductState(tensors,
+            left_label=mps.left_label, right_label=mps.right_label,
+            phys_label=mps.phys_label)
+
 
 

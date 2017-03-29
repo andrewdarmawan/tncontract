@@ -42,8 +42,17 @@ def init_mps_random(nsites, physdim, bonddim=1, left_label='left',
     if not np.iterable(bonddim):
         bonddim = [bonddim]*(nsites-1)
     bonddim = [1] + bonddim + [1]
-    tensors = [tnc.Tensor(np.random.rand(physdim[i], bonddim[i], bonddim[i+1]),
-        [phys_label, left_label, right_label]) for i in range(nsites)]
+    tensors = []
+    for i in range(nsites):
+        rt = tnc.Tensor(np.random.rand(
+            physdim[i], bonddim[i], bonddim[i+1]),
+            [phys_label, left_label, right_label])
+        # Normalize matrix to avoid norm blowing up
+        U, S, V = tnc.tensor_svd(rt, [phys_label, left_label])
+        S.data = S.data/S.data[0,0]
+        rt = U["svd_in",]*S["svd_out",]
+        rt = rt["svd_in",]*V["svd_out",]
+        tensors.append(rt)
     return onedim.MatrixProductState(tensors, left_label=left_label,
             right_label=right_label, phys_label=phys_label)
 
@@ -189,7 +198,8 @@ def expvals_mps(mps, oplist=[], sites=None, output_label=None, canonised=None):
 
     Notes
     -----
-    `mps` will be in left canonical form after the function call.
+    After the function call, `mps` will be in left (right) canonical form for
+    `canonised = 'right'` (`canonised = 'left'`).
     """
     if sites is None:
         sites = range(len(mps))
