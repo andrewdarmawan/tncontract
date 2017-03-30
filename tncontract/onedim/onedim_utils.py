@@ -1,3 +1,7 @@
+from __future__ import (absolute_import, division,
+                        print_function, unicode_literals)
+from builtins import *
+
 """
 onedim_utils
 ==========
@@ -6,19 +10,19 @@ Module with various functions for MPS/MPOs.
 """
 
 __all__ = ['init_mps_random', 'init_mps_allzero', 'init_mps_logical',
-        'onebody_sum_mpo', 'expvals_mps', 'ptrace_mps']
-
+           'onebody_sum_mpo', 'expvals_mps', 'ptrace_mps']
 
 import numpy as np
 
-
 from tncontract import tensor as tnc
 from tncontract.onedim import onedim_core as onedim
+
+
 # from tncontract import onedim as onedim
 
 
 def init_mps_random(nsites, physdim, bonddim=1, left_label='left',
-        right_label='right', phys_label='phys'):
+                    right_label='right', phys_label='phys'):
     """
     Create an MPS with `nsites` sites and random tensors with physical 
     dimensions given by `physdim` and bond dimensions given by
@@ -38,27 +42,27 @@ def init_mps_random(nsites, physdim, bonddim=1, left_label='left',
     phys_label : str
     """
     if not np.iterable(physdim):
-        physdim = [physdim]*nsites
+        physdim = [physdim] * nsites
     if not np.iterable(bonddim):
-        bonddim = [bonddim]*(nsites-1)
+        bonddim = [bonddim] * (nsites - 1)
     bonddim = [1] + bonddim + [1]
     tensors = []
     for i in range(nsites):
         rt = tnc.Tensor(np.random.rand(
-            physdim[i], bonddim[i], bonddim[i+1]),
+            physdim[i], bonddim[i], bonddim[i + 1]),
             [phys_label, left_label, right_label])
         # Normalize matrix to avoid norm blowing up
         U, S, V = tnc.tensor_svd(rt, [phys_label, left_label])
-        S.data = S.data/S.data[0,0]
-        rt = U["svd_in",]*S["svd_out",]
-        rt = rt["svd_in",]*V["svd_out",]
+        S.data = S.data / S.data[0, 0]
+        rt = U["svd_in",] * S["svd_out",]
+        rt = rt["svd_in",] * V["svd_out",]
         tensors.append(rt)
     return onedim.MatrixProductState(tensors, left_label=left_label,
-            right_label=right_label, phys_label=phys_label)
+                                     right_label=right_label, phys_label=phys_label)
 
 
 def init_mps_allzero(nsites, physdim, left_label='left',
-        right_label='right', phys_label='phys'):
+                     right_label='right', phys_label='phys'):
     """
     Create an MPS with `nsites` sites in the "all zero" state |00..0>.
 
@@ -71,22 +75,22 @@ def init_mps_allzero(nsites, physdim, left_label='left',
     phys_label : str
     """
     if not np.iterable(physdim):
-        physdim = [physdim]*nsites
+        physdim = [physdim] * nsites
 
     tensors = []
     for j in range(nsites):
         t = np.zeros(physdim[j])
         t[0] = 1.0
         t = tnc.Tensor(t.reshape(physdim[j], 1, 1), [phys_label, left_label,
-            right_label])
+                                                     right_label])
         tensors.append(t)
 
     return onedim.MatrixProductState(tensors, left_label=left_label,
-        right_label=right_label, phys_label=phys_label)
+                                     right_label=right_label, phys_label=phys_label)
 
 
 def init_mps_logical(nsites, basis_state, physdim, left_label='left',
-        right_label='right', phys_label='phys'):
+                     right_label='right', phys_label='phys'):
     """
     Create an MPS with `nsites` sites in the logical basis state |ijk..l>.
 
@@ -102,19 +106,18 @@ def init_mps_logical(nsites, basis_state, physdim, left_label='left',
     phys_label : str
     """
     if not np.iterable(physdim):
-        physdim = [physdim]*nsites
+        physdim = [physdim] * nsites
 
     tensors = []
     for j in range(nsites):
         t = np.zeros(physdim[j])
         t[basis_state[j]] = 1.0
         t = tnc.Tensor(t.reshape(physdim[j], 1, 1), [phys_label, left_label,
-            right_label])
+                                                     right_label])
         tensors.append(t)
 
     return onedim.MatrixProductState(tensors, left_label=left_label,
-        right_label=right_label, phys_label=phys_label)
-
+                                     right_label=right_label, phys_label=phys_label)
 
 
 def onebody_sum_mpo(terms, output_label=None):
@@ -147,27 +150,27 @@ def onebody_sum_mpo(terms, output_label=None):
             term.move_index(output_label, 0)
         else:
             term = term1
-        if i==0:
-            B = np.zeros(shape=term.shape+(2,), dtype=complex)
+        if i == 0:
+            B = np.zeros(shape=term.shape + (2,), dtype=complex)
             for k in range(term.shape[0]):
                 for l in range(term.shape[1]):
-                    B[k,l,:] = [term[k, l], k==l]
+                    B[k, l, :] = [term[k, l], k == l]
             tensors.append(tnc.Tensor(B, ['physout', 'physin', 'right']))
-        elif i==len(terms)-1:
-            B = np.zeros(shape=term.shape+(2,), dtype=complex)
+        elif i == len(terms) - 1:
+            B = np.zeros(shape=term.shape + (2,), dtype=complex)
             for k in range(term.shape[0]):
                 for l in range(term.shape[1]):
-                    B[k,l,:] = [k==l, term[k, l]]
+                    B[k, l, :] = [k == l, term[k, l]]
             tensors.append(tnc.Tensor(B, ['physout', 'physin', 'left']))
         else:
-            B = np.zeros(shape=term.shape+(2,2), dtype=complex)
+            B = np.zeros(shape=term.shape + (2, 2), dtype=complex)
             for k in range(term.shape[0]):
                 for l in range(term.shape[1]):
-                    B[k,l,:,:] = [[k==l, 0], [term[k, l], k==l]]
-            tensors.append(tnc.Tensor(B, ['physout', 'physin', 
-                'left', 'right']))
+                    B[k, l, :, :] = [[k == l, 0], [term[k, l], k == l]]
+            tensors.append(tnc.Tensor(B, ['physout', 'physin',
+                                          'left', 'right']))
     return onedim.MatrixProductOperator(tensors, left_label='left',
-        right_label='right', physin_label='physin', physout_label='physout')
+                                        right_label='right', physin_label='physin', physout_label='physout')
 
 
 def expvals_mps(mps, oplist=[], sites=None, output_label=None, canonised=None):
@@ -210,7 +213,7 @@ def expvals_mps(mps, oplist=[], sites=None, output_label=None, canonised=None):
     expvals = np.zeros(N, dtype=complex)
 
     if not isinstance(oplist, list):
-        oplist_new = [oplist]*N
+        oplist_new = [oplist] * N
     else:
         oplist_new = oplist
 
@@ -240,9 +243,9 @@ def expvals_mps(mps, oplist=[], sites=None, output_label=None, canonised=None):
         exp = tnc.contract(A, op, mps.phys_label, in_label)
         exp = tnc.contract(Ad, exp, mps.phys_label, out_label)
         exp.contract_internal(mps.left_label, mps.left_label, index1=0,
-                index2=1)
+                              index2=1)
         exp.contract_internal(mps.right_label, mps.right_label, index1=0,
-                index2=1)
+                              index2=1)
         expvals[i] = exp.data
 
     if canonised == 'left':
@@ -251,6 +254,7 @@ def expvals_mps(mps, oplist=[], sites=None, output_label=None, canonised=None):
         expvals = expvals[::-1]
 
     return expvals
+
 
 def ptrace_mps(mps, sites=None, canonised=None):
     # TODO: Why canonised gives strange results?
@@ -300,7 +304,7 @@ def ptrace_mps(mps, sites=None, canonised=None):
         Ad.prime_label(mps.phys_label)
 
         rho = tnc.contract(A, Ad, [mps.left_label, mps.right_label],
-                [mps.left_label, mps.right_label])
+                           [mps.left_label, mps.right_label])
         rho_list.append(rho)
 
     if canonised == 'left':
@@ -308,5 +312,3 @@ def ptrace_mps(mps, sites=None, canonised=None):
         rho_list = rho_list[::-1]
 
     return rho_list
-
-

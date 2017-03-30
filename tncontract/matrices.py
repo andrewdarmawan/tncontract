@@ -1,3 +1,7 @@
+from __future__ import (absolute_import, division,
+                        print_function, unicode_literals)
+from builtins import *
+
 """
 matrices
 ==========
@@ -6,6 +10,7 @@ Often used matrices
 """
 
 import numpy as np
+
 
 #
 # Pauli spin 1/2 operators:
@@ -19,15 +24,16 @@ def sigmam():
 
 
 def sigmax():
-    return sigmam()+sigmap()
+    return sigmam() + sigmap()
 
 
 def sigmay():
-    return -1j*sigmap()+1j*sigmam()
+    return -1j * sigmap() + 1j * sigmam()
 
 
 def sigmaz():
     return np.matrix([[1., 0.], [0., -1.]])
+
 
 def destroy(dim):
     """
@@ -40,6 +46,7 @@ def destroy(dim):
     """
     return np.matrix(np.diag(np.sqrt(range(1, dim)), 1))
 
+
 def create(dim):
     """
     Creation (raising) operator.
@@ -50,6 +57,7 @@ def create(dim):
         Dimension of Hilbert space.
     """
     return destroy(dim).getH()
+
 
 def identity(dim):
     """
@@ -62,6 +70,7 @@ def identity(dim):
 
     """
     return np.matrix(np.identity(dim))
+
 
 def basis(dim, i):
     """

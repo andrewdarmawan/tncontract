@@ -12,3 +12,7 @@ def run():
     import nose
     # runs tests in qutip.tests module only
     nose.run(defaultTest="tncontract.tests", argv=['nosetests', '-v'])
+
+
+if __name__ == "__main__":
+    run()

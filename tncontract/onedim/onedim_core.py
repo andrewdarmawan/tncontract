@@ -1,3 +1,7 @@
+from __future__ import (absolute_import, division,
+                        print_function, unicode_literals)
+from builtins import *
+
 """
 onedim_core
 ==========
@@ -6,26 +10,25 @@ Core module for onedimensional tensor networks
 """
 
 __all__ = ['MatrixProductState', 'MatrixProductStateCanonical',
-        'MatrixProductOperator', 'OneDimensionalTensorNetwork',
-        'check_canonical_form_mps',
-        'contract_mps_mpo', 'contract_multi_index_tensor_with_one_dim_array',
-        'contract_virtual_indices', 'frob_distance_squared',
-        'inner_product_mps', 'ladder_contract', 'left_canonical_form_mps',
-        'mps_complex_conjugate', 'reverse_mps', 'right_canonical_form_mps',
-        'svd_compress_mps', 'variational_compress_mps', 'tensor_to_mpo',
-        'tensor_to_mps',
-        'right_canonical_to_canonical', 'left_canonical_to_canonical',
-        'canonical_to_right_canonical', 'canonical_to_left_canonical',
-        ]
+           'MatrixProductOperator', 'OneDimensionalTensorNetwork',
+           'check_canonical_form_mps',
+           'contract_mps_mpo', 'contract_multi_index_tensor_with_one_dim_array',
+           'contract_virtual_indices', 'frob_distance_squared',
+           'inner_product_mps', 'ladder_contract', 'left_canonical_form_mps',
+           'mps_complex_conjugate', 'reverse_mps', 'right_canonical_form_mps',
+           'svd_compress_mps', 'variational_compress_mps', 'tensor_to_mpo',
+           'tensor_to_mps',
+           'right_canonical_to_canonical', 'left_canonical_to_canonical',
+           'canonical_to_right_canonical', 'canonical_to_left_canonical',
+           ]
 
 import numpy as np
-
 
 from tncontract import tensor as tsr
 from tncontract.label import unique_label
 
 
-class OneDimensionalTensorNetwork():
+class OneDimensionalTensorNetwork:
     """
     A one-dimensional tensor network. MatrixProductState and
     MatrixProductOperator are subclasses of this class. 
@@ -43,26 +46,31 @@ class OneDimensionalTensorNetwork():
     `right_label` of the OneDimensionalTensorNetwork instance. 
     
     """
+
     def __init__(self, tensors, left_label="left", right_label="right"):
-        self.left_label=left_label
-        self.right_label=right_label
-        #Copy input tensors to the data attribute
-        self.data=np.array([x.copy() for x in tensors])
-        #Every tensor will have three indices corresponding to "left", "right"
-        #and "phys" labels. If only two are specified for left and right 
-        #boundary tensors (for open boundary conditions) an extra dummy index 
-        #of dimension 1 will be added. 
+        self.left_label = left_label
+        self.right_label = right_label
+        # Copy input tensors to the data attribute
+        self.data = np.array([x.copy() for x in tensors])
+        # Every tensor will have three indices corresponding to "left", "right"
+        # and "phys" labels. If only two are specified for left and right
+        # boundary tensors (for open boundary conditions) an extra dummy index
+        # of dimension 1 will be added.
         for x in self.data:
             if left_label not in x.labels: x.add_dummy_index(left_label)
             if right_label not in x.labels: x.add_dummy_index(right_label)
 
-   #Container emulation
+            # Container emulation
+
     def __iter__(self):
         return self.data.__iter__()
+
     def __len__(self):
         return self.data.__len__()
+
     def __getitem__(self, key):
         return self.data.__getitem__(key)
+
     def __setitem__(self, key, value):
         self.data.__setitem__(key, value)
 
@@ -70,18 +78,18 @@ class OneDimensionalTensorNetwork():
         """Alternative the standard copy method, returning a
         OneDimensionalTensorNetwork that is not
         linked in memory to the previous ones."""
-        return OneDimensionalTensorNetwork([x.copy() for x in self], 
-                self.left_label, self.right_label)
+        return OneDimensionalTensorNetwork([x.copy() for x in self],
+                                           self.left_label, self.right_label)
 
     def reverse(self):
-        self.data=self.data[::-1]
-        temp=self.left_label
-        self.left_label=self.right_label
-        self.right_label=temp
+        self.data = self.data[::-1]
+        temp = self.left_label
+        self.left_label = self.right_label
+        self.right_label = temp
 
     def complex_conjugate(self):
         """Will complex conjugate every entry of every tensor in array."""
-        for x in self.data: 
+        for x in self.data:
             x.conjugate()
 
     def swap_gate(self, i, threshold=1e-15):
@@ -103,29 +111,29 @@ class OneDimensionalTensorNetwork():
         in Y.-Y. Shi et al, Phys. Rev. A 74, 022320 (2006).
         """
         A = self[i]
-        B = self[i+1]
-        A_phys_labels = [l for l in A.labels if l!=self.left_label and
-                l!=self.right_label]
-        B_phys_labels = [l for l in B.labels if l!=self.left_label and
-                l!=self.right_label]
+        B = self[i + 1]
+        A_phys_labels = [l for l in A.labels if l != self.left_label and
+                         l != self.right_label]
+        B_phys_labels = [l for l in B.labels if l != self.left_label and
+                         l != self.right_label]
         A.prime_label(A_phys_labels)
         t = tsr.contract(A, B, self.right_label, self.left_label)
         U, V, _ = tsr.truncated_svd(t, [self.left_label] + B_phys_labels,
-                chi=0, threshold=threshold, absorb_singular_values='both')
+                                    chi=0, threshold=threshold, absorb_singular_values='both')
         U.replace_label('svd_in', self.right_label)
         self[i] = U
         V.unprime_label(A_phys_labels)
         V.replace_label('svd_out', self.left_label)
-        self[i+1] = V
+        self[i + 1] = V
 
     def replace_labels(self, old_labels, new_labels):
         """Run `Tensor.replace_label` method on every tensor in `self` then
         replace `self.left_label` and `self.right_label` appropriately."""
 
         if not isinstance(old_labels, list):
-            old_labels=[old_labels]
+            old_labels = [old_labels]
         if not isinstance(new_labels, list):
-            new_labels=[new_labels]
+            new_labels = [new_labels]
 
         for x in self.data:
             x.replace_label(old_labels, new_labels)
@@ -139,15 +147,15 @@ class OneDimensionalTensorNetwork():
         """Replace `self.left_label` with "left"+`suffix` and 
         `self.right_label` with "right"+`suffix`."""
 
-        self.replace_labels([self.left_label, self.right_label], 
-                ["left"+suffix, "right"+suffix])
+        self.replace_labels([self.left_label, self.right_label],
+                            ["left" + suffix, "right" + suffix])
 
     def unique_virtual_labels(self):
         """Replace `self.left_label` and `self.right_label` with unique labels
         generated by tensor.unique_label()."""
 
-        self.replace_labels([self.left_label, self.right_label], 
-                [unique_label(), unique_label()])
+        self.replace_labels([self.left_label, self.right_label],
+                            [unique_label(), unique_label()])
 
     def leftdim(self, site):
         """Return left index dimesion for site"""
@@ -174,6 +182,7 @@ class OneDimensionalTensorNetwork():
     def nsites_physical(self):
         return self.nsites
 
+
 class MatrixProductState(OneDimensionalTensorNetwork):
     """Matrix product state"is a list of tensors, each having and index 
     labelled "phys" and at least one of the indices "left", "right"
@@ -184,30 +193,30 @@ class MatrixProductState(OneDimensionalTensorNetwork):
     to the original ones."""
 
     def __init__(self, tensors, left_label="left", right_label="right",
-            phys_label="phys"):
+                 phys_label="phys"):
         OneDimensionalTensorNetwork.__init__(self, tensors,
-                left_label=left_label, right_label=right_label)
-        self.phys_label=phys_label
+                                             left_label=left_label, right_label=right_label)
+        self.phys_label = phys_label
 
     def __repr__(self):
         return ("MatrixProductState(tensors=%r, left_label=%r, right_label=%r,"
-            "phys_label=%r)" % (self.data, self.left_label, self.right_label, 
-                    self.phys_label))
+                "phys_label=%r)" % (self.data, self.left_label, self.right_label,
+                                    self.phys_label))
 
     def __str__(self):
         return ("MatrixProductState object: " +
-              "sites = " + str(len(self)) + 
-              ", left_label = " + self.left_label + 
-              ", right_label = " + self.right_label + 
-              ", phys_label = " + self.phys_label)
+                "sites = " + str(len(self)) +
+                ", left_label = " + self.left_label +
+                ", right_label = " + self.right_label +
+                ", phys_label = " + self.phys_label)
 
     def copy(self):
         """Return an MPS that is not linked in memory to the original."""
-        return MatrixProductState([x.copy() for x in self], self.left_label, 
-                self.right_label, self.phys_label)
+        return MatrixProductState([x.copy() for x in self], self.left_label,
+                                  self.right_label, self.phys_label)
 
-    def left_canonise(self, start=0, end=-1, chi=None, threshold=1e-14, 
-            normalise=False, qr_decomposition=False):
+    def left_canonise(self, start=0, end=-1, chi=None, threshold=1e-14,
+                      normalise=False, qr_decomposition=False):
         """
         Perform left canonisation of MPS. 
         
@@ -251,83 +260,83 @@ class MatrixProductState(OneDimensionalTensorNetwork):
             values is possible with a QR decomposition, thus `chi` and
             `threshold` arguments are ignored.
         """
-        N=len(self)
-        if end==-1:
-            end=N
+        N = len(self)
+        if end == -1:
+            end = N
 
         if qr_decomposition:
-            for i in range(start,end):
-                if i==N-1:
-                    #The final QR has no right index, so R are just
-                    #scalars. S is the norm of the state. 
-                    if normalise==True and start==0: #Whole chain is canonised
-                        self[i].data=self[i].data/np.linalg.norm(self[i].data)
+            for i in range(start, end):
+                if i == N - 1:
+                    # The final QR has no right index, so R are just
+                    # scalars. S is the norm of the state.
+                    if normalise == True and start == 0:  # Whole chain is canonised
+                        self[i].data = self[i].data / np.linalg.norm(self[i].data)
                     return
                 else:
-                    qr_label=unique_label()
-                    Q,R = tsr.tensor_qr(self[i], [self.phys_label, 
-                        self.left_label], qr_label=qr_label)
+                    qr_label = unique_label()
+                    Q, R = tsr.tensor_qr(self[i], [self.phys_label,
+                                                   self.left_label], qr_label=qr_label)
 
-                #Replace tensor at site i with Q
-                Q.replace_label(qr_label+"in", self.right_label)
-                self[i]=Q
+                # Replace tensor at site i with Q
+                Q.replace_label(qr_label + "in", self.right_label)
+                self[i] = Q
 
-                #Absorb R into next tensor
-                self[i+1]=tsr.contract(R, self[i+1], self.right_label, 
-                        self.left_label)
-                self[i+1].replace_label(qr_label+"out", self.left_label)
+                # Absorb R into next tensor
+                self[i + 1] = tsr.contract(R, self[i + 1], self.right_label,
+                                           self.left_label)
+                self[i + 1].replace_label(qr_label + "out", self.left_label)
 
         else:
-            #At each step will divide by a constant so that the largest singular 
-            #value of S is 1. Will store the product of these constants in `norm`
-            norm=1
-            for i in range(start,end):
-                if i==N-1:
-                    #The final SVD has no right index, so S and V are just scalars.
-                    #S is the norm of the state. 
-                    if normalise==True and start==0: #Whole chain is canonised
-                        self[i].data=self[i].data/np.linalg.norm(self[i].data)
+            # At each step will divide by a constant so that the largest singular
+            # value of S is 1. Will store the product of these constants in `norm`
+            norm = 1
+            for i in range(start, end):
+                if i == N - 1:
+                    # The final SVD has no right index, so S and V are just scalars.
+                    # S is the norm of the state.
+                    if normalise == True and start == 0:  # Whole chain is canonised
+                        self[i].data = self[i].data / np.linalg.norm(self[i].data)
                     else:
-                        self[i].data=self[i].data*norm
+                        self[i].data = self[i].data * norm
                     return
                 else:
-                    svd_label=unique_label()
-                    U,S,V = tsr.tensor_svd(self[i], [self.phys_label, 
-                        self.left_label], svd_label=svd_label)
+                    svd_label = unique_label()
+                    U, S, V = tsr.tensor_svd(self[i], [self.phys_label,
+                                                       self.left_label], svd_label=svd_label)
 
-                #Truncate to threshold and to specified chi
-                singular_values=np.diag(S.data)
-                largest_singular_value=singular_values[0]
-                #Normalise S
-                singular_values=singular_values/largest_singular_value
-                norm*=largest_singular_value
+                # Truncate to threshold and to specified chi
+                singular_values = np.diag(S.data)
+                largest_singular_value = singular_values[0]
+                # Normalise S
+                singular_values = singular_values / largest_singular_value
+                norm *= largest_singular_value
 
-                singular_values_to_keep = singular_values[singular_values > 
-                        threshold]
+                singular_values_to_keep = singular_values[singular_values >
+                                                          threshold]
                 if chi:
                     singular_values_to_keep = singular_values_to_keep[:chi]
-                S.data=np.diag(singular_values_to_keep)
-                #Truncate corresponding singular index of U and V
-                U.data=U.data[:,:,0:len(singular_values_to_keep)]
-                V.data=V.data[0:len(singular_values_to_keep)]
+                S.data = np.diag(singular_values_to_keep)
+                # Truncate corresponding singular index of U and V
+                U.data = U.data[:, :, 0:len(singular_values_to_keep)]
+                V.data = V.data[0:len(singular_values_to_keep)]
 
-                U.replace_label(svd_label+"in", self.right_label)
-                self[i]=U
-                self[i+1]=tsr.contract(V, self[i+1], self.right_label, 
-                        self.left_label)
-                self[i+1]=tsr.contract(S, self[i+1], [svd_label+"in"], 
-                        [svd_label+"out"])
-                self[i+1].replace_label(svd_label+"out", self.left_label)
+                U.replace_label(svd_label + "in", self.right_label)
+                self[i] = U
+                self[i + 1] = tsr.contract(V, self[i + 1], self.right_label,
+                                           self.left_label)
+                self[i + 1] = tsr.contract(S, self[i + 1], [svd_label + "in"],
+                                           [svd_label + "out"])
+                self[i + 1].replace_label(svd_label + "out", self.left_label)
 
-                #Reabsorb normalisation factors into next tensor
-                #Note if i==N-1 (end of chain), this will not be reached 
-                #and normalisation factors will be taken care of in the earlier 
-                #block.
-                if i==end-1:
-                    self[i+1].data*=norm
+                # Reabsorb normalisation factors into next tensor
+                # Note if i==N-1 (end of chain), this will not be reached
+                # and normalisation factors will be taken care of in the earlier
+                # block.
+                if i == end - 1:
+                    self[i + 1].data *= norm
 
-    def right_canonise(self, start=0, end=-1, chi=None, threshold=1e-14, 
-            normalise=False, qr_decomposition=False):
+    def right_canonise(self, start=0, end=-1, chi=None, threshold=1e-14,
+                       normalise=False, qr_decomposition=False):
         """Perform right canonisation of MPS. Identical to `left_canonise`
         except that process is mirrored (i.e. canonisation is performed from
         right to left). `start` and `end` specify the interval to be canonised.
@@ -335,15 +344,15 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         Notes
         -----
         The first tensor to be canonised is `end`-1 and the final tensor to be
-        canonised is `start`""" 
+        canonised is `start`"""
 
         self.reverse()
-        N=len(self)
-        if end==-1:
-            end=N
-        self.left_canonise(start=N-end, end=N-start, chi=chi,
-                threshold=threshold, normalise=normalise,
-                qr_decomposition=qr_decomposition)
+        N = len(self)
+        if end == -1:
+            end = N
+        self.left_canonise(start=N - end, end=N - start, chi=chi,
+                           threshold=threshold, normalise=normalise,
+                           qr_decomposition=qr_decomposition)
         self.reverse()
 
     def replace_labels(self, old_labels, new_labels):
@@ -352,9 +361,9 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         appropriately."""
 
         if not isinstance(old_labels, list):
-            old_labels=[old_labels]
+            old_labels = [old_labels]
         if not isinstance(new_labels, list):
-            new_labels=[new_labels]
+            new_labels = [new_labels]
 
         for x in self.data:
             x.replace_label(old_labels, new_labels)
@@ -372,7 +381,7 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         self.phys_label with standard labels "left", "right", "phys"
         """
         self.replace_labels([self.left_label, self.right_label,
-            self.phys_label], ["left"+suffix, "right"+suffix, "phys"+suffix])
+                             self.phys_label], ["left" + suffix, "right" + suffix, "phys" + suffix])
 
     def check_canonical_form(self, threshold=1e-14, print_output=True):
         """Determines which tensors in the MPS are left canonised, and which 
@@ -380,57 +389,57 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         from left) that is not left canonised, and the first tensor (starting 
         from right) that is not right canonised. If print_output=True, will 
         print useful information concerning whether a given MPS is in a 
-        canonical form (left, right, mixed).""" 
-        mps_cc=mps_complex_conjugate(self)
-        first_site_not_left_canonised=len(self)-1
-        for i in range(len(self)-1): 
-            I=tsr.contract(self[i], mps_cc[i], 
-                    [self.phys_label, self.left_label], 
-                    [mps_cc.phys_label, mps_cc.left_label])
-            #Check if tensor is left canonised.
-            if np.linalg.norm(I.data-np.identity(I.data.shape[0])) > threshold:
-                first_site_not_left_canonised=i
+        canonical form (left, right, mixed)."""
+        mps_cc = mps_complex_conjugate(self)
+        first_site_not_left_canonised = len(self) - 1
+        for i in range(len(self) - 1):
+            I = tsr.contract(self[i], mps_cc[i],
+                             [self.phys_label, self.left_label],
+                             [mps_cc.phys_label, mps_cc.left_label])
+            # Check if tensor is left canonised.
+            if np.linalg.norm(I.data - np.identity(I.data.shape[0])) > threshold:
+                first_site_not_left_canonised = i
                 break
-        first_site_not_right_canonised=0
-        for i in range(len(self)-1,0, -1): 
-            I=tsr.contract(self[i], mps_cc[i], 
-                    [self.phys_label, self.right_label], 
-                    [mps_cc.phys_label, mps_cc.right_label])
-            #Check if tensor is right canonised.
-            if np.linalg.norm(I.data-np.identity(I.data.shape[0])) > threshold:
-                first_site_not_right_canonised=i
+        first_site_not_right_canonised = 0
+        for i in range(len(self) - 1, 0, -1):
+            I = tsr.contract(self[i], mps_cc[i],
+                             [self.phys_label, self.right_label],
+                             [mps_cc.phys_label, mps_cc.right_label])
+            # Check if tensor is right canonised.
+            if np.linalg.norm(I.data - np.identity(I.data.shape[0])) > threshold:
+                first_site_not_right_canonised = i
                 break
         if print_output:
-            if first_site_not_left_canonised==first_site_not_right_canonised:
-                if first_site_not_left_canonised==len(self)-1:
-                    if abs(np.linalg.norm(self[-1].data)-1) > threshold:
+            if first_site_not_left_canonised == first_site_not_right_canonised:
+                if first_site_not_left_canonised == len(self) - 1:
+                    if abs(np.linalg.norm(self[-1].data) - 1) > threshold:
                         print("MPS in left canonical form (unnormalised)")
                     else:
                         print("MPS in left canonical form (normalised)")
-                elif first_site_not_left_canonised==0:
-                    if abs(np.linalg.norm(self[0].data)-1) > threshold:
+                elif first_site_not_left_canonised == 0:
+                    if abs(np.linalg.norm(self[0].data) - 1) > threshold:
                         print("MPS in right canonical form (unnormalised)")
                     else:
                         print("MPS in right canonical form (normalised)")
                 else:
                     print("MPS in mixed canonical form with orthogonality "
-                            "centre at site "+
-                            str(first_site_not_right_canonised))
+                          "centre at site " +
+                          str(first_site_not_right_canonised))
             else:
-                if first_site_not_left_canonised==0:
+                if first_site_not_left_canonised == 0:
                     print("No tensors left canonised")
                 else:
-                    print("Tensors left canonised up to site "+
-                            str(first_site_not_left_canonised))
-                if first_site_not_right_canonised==len(self)-1:
+                    print("Tensors left canonised up to site " +
+                          str(first_site_not_left_canonised))
+                if first_site_not_right_canonised == len(self) - 1:
                     print("No tensors right canonised")
                 else:
-                    print("Tensors right canonised up to site "+
-                            str(first_site_not_right_canonised))
+                    print("Tensors right canonised up to site " +
+                          str(first_site_not_right_canonised))
         return (first_site_not_left_canonised, first_site_not_right_canonised)
 
     def svd_compress(self, chi=None, threshold=1e-15, normalise=False,
-            reverse=False):
+                     reverse=False):
         """Compress MPS to a given bond dimension `chi` or to a minimum
         singular value `threshold` using SVD compression as described in U.
         Schollwock, Ann. Phys. 326 (2011) 96-192. This is achieved by
@@ -443,17 +452,17 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         if reverse:
             self.reverse()
         self.left_canonise(normalise=False, qr_decomposition=True)
-        #Normalise the state temporarily
-        norm=self.norm(canonical_form="left")
-        self[-1].data/=norm
+        # Normalise the state temporarily
+        norm = self.norm(canonical_form="left")
+        self[-1].data /= norm
         self.right_canonise(chi=chi, threshold=threshold, normalise=False)
-        if normalise==False:
-            self[0].data*=norm
+        if normalise == False:
+            self[0].data *= norm
         if reverse:
             self.reverse()
 
     def variational_compress(self, chi, max_iter=10, initial_guess=None,
-            tolerance=1e-15, normalise=False):
+                             tolerance=1e-15, normalise=False):
         """Compress MPS to a given bond dimension `chi` or to the same bond
         dimensions as an optional input MPS `initial_guess` using an iterative
         compression procedure described in U. Schollwock, Ann. Phys. 326 (2011)
@@ -489,114 +498,114 @@ class MatrixProductState(OneDimensionalTensorNetwork):
             difference is less than `tolerance`.
         """
         if initial_guess == None:
-            mps=self.copy()
-            #Make sure state is in left canonical form to start
+            mps = self.copy()
+            # Make sure state is in left canonical form to start
             mps.svd_compress(chi=chi, reverse=True)
         else:
-            mps=initial_guess
-            #Put state in left canonical form
+            mps = initial_guess
+            # Put state in left canonical form
             mps.left_canonise(qr_decomposition=True)
 
-        #Give mps1 unique labels
-        mps.replace_labels([mps.left_label, mps.right_label, mps.phys_label], 
-                [unique_label(), unique_label(), unique_label()])
+        # Give mps1 unique labels
+        mps.replace_labels([mps.left_label, mps.right_label, mps.phys_label],
+                           [unique_label(), unique_label(), unique_label()])
 
-        le_label=unique_label()
+        le_label = unique_label()
         left_environments = ladder_contract(mps, self, mps.phys_label,
-                self.phys_label, return_intermediate_contractions=True,
-                right_output_label=le_label, complex_conjugate_array1=True)
+                                            self.phys_label, return_intermediate_contractions=True,
+                                            right_output_label=le_label, complex_conjugate_array1=True)
 
         def variational_sweep(mps1, mps2, left_environments):
             """Iteratively update mps1, to minimise frobenius distance to mps2
             by sweeping from right to left. Expects mps1 to be in right
             canonical form."""
 
-            #Get the base label of left_environments
-            le_label=left_environments[0].labels[0][:-1]
-            #Generate some unique labels to avoid conflicts
-            re_label=unique_label()
-            lq_label=unique_label()
+            # Get the base label of left_environments
+            le_label = left_environments[0].labels[0][:-1]
+            # Generate some unique labels to avoid conflicts
+            re_label = unique_label()
+            lq_label = unique_label()
 
-            right_environments=[]
-            norms=[mps1[-1].norm()]
-            for i in range(mps2.nsites-1, 0, -1):
+            right_environments = []
+            norms = [mps1[-1].norm()]
+            for i in range(mps2.nsites - 1, 0, -1):
 
-                #Optimise the tensor at site i by contracting with left and 
-                #right environments
-                updated_tensor=tsr.contract(mps2[i], left_environments[i-1],
-                    mps2.left_label, le_label+"2")
-                if i!=mps2.nsites-1:
-                    updated_tensor=tsr.contract(updated_tensor, 
-                            right_environment, mps2.right_label, re_label+"2")
-                    updated_tensor.replace_label(re_label+"1", 
-                            mps1.right_label)
-                updated_tensor.replace_label([le_label+"1", mps2.phys_label]
-                        , [mps1.left_label, mps1.phys_label])
+                # Optimise the tensor at site i by contracting with left and
+                # right environments
+                updated_tensor = tsr.contract(mps2[i], left_environments[i - 1],
+                                              mps2.left_label, le_label + "2")
+                if i != mps2.nsites - 1:
+                    updated_tensor = tsr.contract(updated_tensor,
+                                                  right_environment, mps2.right_label, re_label + "2")
+                    updated_tensor.replace_label(re_label + "1",
+                                                 mps1.right_label)
+                updated_tensor.replace_label([le_label + "1", mps2.phys_label]
+                                             , [mps1.left_label, mps1.phys_label])
 
-                #Right canonise the tensor at site i using LQ decomposition
-                #Absorb L into tensor at site i-1
+                # Right canonise the tensor at site i using LQ decomposition
+                # Absorb L into tensor at site i-1
                 L, Q = tsr.tensor_lq(updated_tensor, mps1.left_label,
-                        lq_label=lq_label)
-                Q.replace_label(lq_label+"out", mps1.left_label)
-                L.replace_label(lq_label+"in", mps1.right_label)
-                mps1[i]=Q
-                mps1[i-1]=tsr.contract(mps1[i-1], L, mps1.right_label, 
-                        mps1.left_label)
+                                     lq_label=lq_label)
+                Q.replace_label(lq_label + "out", mps1.left_label)
+                L.replace_label(lq_label + "in", mps1.right_label)
+                mps1[i] = Q
+                mps1[i - 1] = tsr.contract(mps1[i - 1], L, mps1.right_label,
+                                           mps1.left_label)
 
-                #Compute norm of mps
-                #Taking advantage of canonical form
-                norms.append(mps1[i-1].norm())
+                # Compute norm of mps
+                # Taking advantage of canonical form
+                norms.append(mps1[i - 1].norm())
 
-                #Compute next column of right_environment
-                if i==mps2.nsites-1:
-                    right_environment=tsr.contract(tsr.conjugate(mps1[i]), 
-                            mps2[i], mps1.phys_label, self.phys_label)
+                # Compute next column of right_environment
+                if i == mps2.nsites - 1:
+                    right_environment = tsr.contract(tsr.conjugate(mps1[i]),
+                                                     mps2[i], mps1.phys_label, self.phys_label)
                     right_environment.remove_all_dummy_indices(
-                            labels=[mps1.right_label, mps2.right_label])
+                        labels=[mps1.right_label, mps2.right_label])
                 else:
-                    right_environment.contract(tsr.conjugate(mps1[i]), 
-                            re_label+"1", mps1.right_label)
+                    right_environment.contract(tsr.conjugate(mps1[i]),
+                                               re_label + "1", mps1.right_label)
                     right_environment.contract(mps2[i], [mps1.phys_label,
-                        re_label+"2"], [self.phys_label, self.right_label])
+                                                         re_label + "2"], [self.phys_label, self.right_label])
 
                 right_environment.replace_label([mps1.left_label,
-                    mps2.left_label], [re_label+"1", re_label+"2"])
+                                                 mps2.left_label], [re_label + "1", re_label + "2"])
                 right_environments.append(right_environment.copy())
 
-                #At second last site, compute final tensor
-                if i==1:
-                    updated_tensor=tsr.contract(mps2[0], right_environment,
-                            mps2.right_label, re_label+"2")
-                    updated_tensor.replace_label([mps2.phys_label, 
-                        re_label+"1"],
-                            [mps1.phys_label, mps1.right_label])
-                    mps1[0]=updated_tensor
+                # At second last site, compute final tensor
+                if i == 1:
+                    updated_tensor = tsr.contract(mps2[0], right_environment,
+                                                  mps2.right_label, re_label + "2")
+                    updated_tensor.replace_label([mps2.phys_label,
+                                                  re_label + "1"],
+                                                 [mps1.phys_label, mps1.right_label])
+                    mps1[0] = updated_tensor
 
             return right_environments, np.array(norms)
 
         for i in range(max_iter):
-            left_environments, norms1 = variational_sweep(mps, self, 
-                    left_environments)
+            left_environments, norms1 = variational_sweep(mps, self,
+                                                          left_environments)
             mps.reverse()
             self.reverse()
-            le_label=left_environments[0].labels[0][:-1]
-            left_environments, norms2 = variational_sweep(mps, self, 
-                    left_environments)
+            le_label = left_environments[0].labels[0][:-1]
+            left_environments, norms2 = variational_sweep(mps, self,
+                                                          left_environments)
             mps.reverse()
             self.reverse()
-            #Compute differences between norms of successive updates in second
-            #sweep. As shown in U. Schollwock, Ann. Phys. 326 (2011) 96-192,
-            #these quantities are equivalent to the differences between the
-            #frobenius norms between the target state and the variational
-            #state.
-            if np.all(np.abs(norms2[1:]-norms2[:-1])/norms2[1:] < tolerance):
+            # Compute differences between norms of successive updates in second
+            # sweep. As shown in U. Schollwock, Ann. Phys. 326 (2011) 96-192,
+            # these quantities are equivalent to the differences between the
+            # frobenius norms between the target state and the variational
+            # state.
+            if np.all(np.abs(norms2[1:] - norms2[:-1]) / norms2[1:] < tolerance):
                 mps.replace_labels([mps.left_label, mps.right_label,
-                    mps.phys_label], [self.left_label, self.right_label,
-                        self.phys_label])
-                if normalise==True:
-                    mps[-1].data/=mps.norm(canonical_form="left")
+                                    mps.phys_label], [self.left_label, self.right_label,
+                                                      self.phys_label])
+                if normalise == True:
+                    mps[-1].data /= mps.norm(canonical_form="left")
                 return mps
-            elif i==max_iter-1: #Has reached the last iteration
+            elif i == max_iter - 1:  # Has reached the last iteration
                 raise RuntimeError("variational_compress did not converge.")
 
     def physical_site(self, n):
@@ -621,15 +630,15 @@ class MatrixProductState(OneDimensionalTensorNetwork):
             last tensor (much more efficient). 
         """
 
-        if canonical_form=="left":
+        if canonical_form == "left":
             return np.linalg.norm(self[-1].data)
-        elif canonical_form=="right":
+        elif canonical_form == "right":
             return np.linalg.norm(self[0].data)
         else:
             return np.sqrt(inner_product_mps(self, self))
 
     def apply_gate(self, gate, firstsite, gate_outputs=None, gate_inputs=None,
-            chi=None, threshold=1e-15, canonise='left'):
+                   chi=None, threshold=1e-15, canonise='left'):
         """
         Apply Tensor `gate` on sites `firstsite`, `firstsite`+1, ...,
         `firstsite`+`nsites`-1, where `nsites` is the length of gate_inputs.
@@ -673,20 +682,20 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         """
         # Set gate_outputs and gate_inputs to default values if not given
         if gate_outputs is None and gate_inputs is None:
-            gate_outputs = gate.labels[:int(len(gate.labels)/2)]
-            gate_inputs = gate.labels[int(len(gate.labels)/2):]
+            gate_outputs = gate.labels[:int(len(gate.labels) / 2)]
+            gate_inputs = gate.labels[int(len(gate.labels) / 2):]
         elif gate_outputs is None:
-            gate_outputs =[x for x in gate.labels if x not in gate_inputs]
+            gate_outputs = [x for x in gate.labels if x not in gate_inputs]
         elif gate_inputs is None:
-            gate_inputs =[x for x in gate.labels if x not in gate_outputs]
+            gate_inputs = [x for x in gate.labels if x not in gate_outputs]
 
         nsites = len(gate_inputs)
         if len(gate_outputs) != nsites:
             raise ValueError("len(gate_outputs) != len(gate_inputs)")
 
         # contract the sites first
-        t = contract_virtual_indices(self, firstsite, firstsite+nsites,
-                periodic_boundaries=False)
+        t = contract_virtual_indices(self, firstsite, firstsite + nsites,
+                                     periodic_boundaries=False)
 
         # contract all physical indices with gate input indices
         t = tsr.contract(t, gate, self.phys_label, gate_inputs)
@@ -701,16 +710,16 @@ class MatrixProductState(OneDimensionalTensorNetwork):
             left_label = 'left'
             right_label = 'right'
         mps = tensor_to_mps(t, phys_labels=phys_labels,
-                mps_phys_label=self.phys_label, left_label=left_label,
-                right_label=right_label, chi=chi, threshold=threshold)
+                            mps_phys_label=self.phys_label, left_label=left_label,
+                            right_label=right_label, chi=chi, threshold=threshold)
         if canonise == 'right':
             mps.reverse()
-        self.data[firstsite:firstsite+nsites] = mps.data
+        self.data[firstsite:firstsite + nsites] = mps.data
 
     def expval(self, gate, firstsite,
-            left_canonised_up_to=0, right_canonised_up_to=-1,
-            gate_outputs=None, gate_inputs=None,
-            ):
+               left_canonised_up_to=0, right_canonised_up_to=-1,
+               gate_outputs=None, gate_inputs=None,
+               ):
         """
         Compute multi-site expectation value for operator `gate` applied to
         `firstsite`, `firstsite+1`, ... `firstsite_+n-1` where `n` is the
@@ -753,30 +762,30 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         """
         # Set gate_outputs and gate_inputs to default values if not given
         if gate_outputs is None and gate_inputs is None:
-            gate_outputs = gate.labels[:int(len(gate.labels)/2)]
-            gate_inputs = gate.labels[int(len(gate.labels)/2):]
+            gate_outputs = gate.labels[:int(len(gate.labels) / 2)]
+            gate_inputs = gate.labels[int(len(gate.labels) / 2):]
         elif gate_outputs is None:
-            gate_outputs =[x for x in gate.labels if x not in gate_inputs]
+            gate_outputs = [x for x in gate.labels if x not in gate_inputs]
         elif gate_inputs is None:
-            gate_inputs =[x for x in gate.labels if x not in gate_outputs]
+            gate_inputs = [x for x in gate.labels if x not in gate_outputs]
 
         nsites = len(gate_inputs)
         if len(gate_outputs) != nsites:
             raise ValueError("len(gate_outputs) != len(gate_inputs)")
 
-        N=len(self)
-        if right_canonised_up_to==-1:
-            right_canonised_up_to=N
+        N = len(self)
+        if right_canonised_up_to == -1:
+            right_canonised_up_to = N
 
         # Mover left/right orthogonality centers to firstsite/firtsite+n
         if left_canonised_up_to < firstsite:
             self.left_canonise(left_canonised_up_to, firstsite)
         if right_canonised_up_to > firstsite + nsites:
-            self.right_canonise(firstsite+nsites, right_canonised_up_to)
+            self.right_canonise(firstsite + nsites, right_canonised_up_to)
 
         # contract the MPS sites first
-        t = contract_virtual_indices(self, firstsite, firstsite+nsites,
-                periodic_boundaries=False)
+        t = contract_virtual_indices(self, firstsite, firstsite + nsites,
+                                     periodic_boundaries=False)
         td = t.copy()
         td.conjugate()
 
@@ -785,14 +794,14 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         exp = tsr.contract(td, exp, self.phys_label, gate_outputs)
         # contract boundary indices
         exp.tr(self.left_label, self.left_label, index1=0,
-                index2=1)
+               index2=1)
         exp.tr(self.right_label, self.right_label, index1=0,
-                index2=1)
+               index2=1)
 
         return exp
 
     def ptrace(self, firstsite, lastsite=None,
-            left_canonised_up_to=0, right_canonised_up_to=-1):
+               left_canonised_up_to=0, right_canonised_up_to=-1):
         """
         Compute local density matrix for sites `firstsite` to `lastsite`
         assuming left and right canonisation up to boundaries.
@@ -819,8 +828,8 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         The MPS is left-canonised up to `firstsite` and right-canonised up to
         `firstsite+n` after the operation.
         """
-        if right_canonised_up_to==-1:
-            right_canonised_up_to=self.nsites
+        if right_canonised_up_to == -1:
+            right_canonised_up_to = self.nsites
         if lastsite is None:
             lastsite = firstsite
 
@@ -828,12 +837,12 @@ class MatrixProductState(OneDimensionalTensorNetwork):
         if left_canonised_up_to < firstsite:
             self.left_canonise(left_canonised_up_to, firstsite)
         if right_canonised_up_to > lastsite:
-            self.right_canonise(lastsite+1, right_canonised_up_to)
+            self.right_canonise(lastsite + 1, right_canonised_up_to)
 
         start = self.physical_site(firstsite)
         end = self.physical_site(lastsite)
-        t = contract_virtual_indices(self, start, end+1,
-                periodic_boundaries=False)
+        t = contract_virtual_indices(self, start, end + 1,
+                                     periodic_boundaries=False)
         td = t.copy()
         td.conjugate()
         # rename physical labels
@@ -842,7 +851,7 @@ class MatrixProductState(OneDimensionalTensorNetwork):
                 t.labels[i] = l + "_out" + str(i)
                 td.labels[i] = l + "_in" + str(i)
         rho = (t[self.left_label, self.right_label]
-                *td[self.left_label, self.right_label])
+               * td[self.left_label, self.right_label])
         return rho
 
 
@@ -874,27 +883,27 @@ class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
     """
 
     def __init__(self, tensors, left_label="left", right_label="right",
-            phys_label="phys"):
+                 phys_label="phys"):
         OneDimensionalTensorNetwork.__init__(self, tensors,
-                left_label=left_label, right_label=right_label)
-        self.phys_label=phys_label
+                                             left_label=left_label, right_label=right_label)
+        self.phys_label = phys_label
 
     def __repr__(self):
         return ("MatrixProductStateCanonical(tensors=%r, left_label=%r,"
-            "right_label=%r, phys_label=%r)" % (self.data, self.left_label,
-                self.right_label, self.phys_label))
+                "right_label=%r, phys_label=%r)" % (self.data, self.left_label,
+                                                    self.right_label, self.phys_label))
 
     def __str__(self):
         return ("MatrixProductStateCanonical object: " +
-              "sites (incl. singular value sites)= " + str(len(self)) + 
-              ", left_label = " + self.left_label + 
-              ", right_label = " + self.right_label + 
-              ", phys_label = " + self.phys_label)
+                "sites (incl. singular value sites)= " + str(len(self)) +
+                ", left_label = " + self.left_label +
+                ", right_label = " + self.right_label +
+                ", phys_label = " + self.phys_label)
 
     def copy(self):
         """Return an MPS that is not linked in memory to the original."""
         return MatrixProductStateCanonical([x.copy() for x in self],
-                self.left_label, self.right_label, self.phys_label)
+                                           self.left_label, self.right_label, self.phys_label)
 
     def replace_labels(self, old_labels, new_labels):
         """run `tensor.replace_label` method on every tensor in `self` then
@@ -902,9 +911,9 @@ class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
         appropriately."""
 
         if not isinstance(old_labels, list):
-            old_labels=[old_labels]
+            old_labels = [old_labels]
         if not isinstance(new_labels, list):
-            new_labels=[new_labels]
+            new_labels = [new_labels]
 
         for x in self.data:
             x.replace_label(old_labels, new_labels)
@@ -922,28 +931,27 @@ class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
         self.phys_label with standard labels "left", "right", "phys"
         """
         self.replace_labels([self.left_label, self.right_label,
-            self.phys_label], ["left"+suffix, "right"+suffix, "phys"+suffix])
+                             self.phys_label], ["left" + suffix, "right" + suffix, "phys" + suffix])
 
     def physical_site(self, n):
         """ Return position of n'th physical (pos=2*n+1)"""
-        return 2*n+1
+        return 2 * n + 1
 
     def singular_site(self, n):
         """ Return position of n'th singular value site (pos=2*n)"""
-        return 2*n
+        return 2 * n
 
     def physdim(self, site):
         """Return physical index dimesion for `physical_site(site)`"""
         return self.data[self.physical_site(site)].index_dimension(
-                self.phys_label)
+            self.phys_label)
 
     def singulardim(self, site):
         """Return chi for chi by chi singular matrix at
         `singular_site(site)`"""
         return self.data[self.singular_site(site)].index_dimension(
-                self.left_label)
+            self.left_label)
 
- 
     def bonddims(self):
         """Return list of all bond dimensions. Note that for
         MatrixProductStateCanonical every other site is a diagonal chi by chi
@@ -953,7 +961,7 @@ class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
 
     @property
     def nsites_physical(self):
-        return int((self.nsites-1)/2)
+        return int((self.nsites - 1) / 2)
 
     def norm(self, canonical_form=True):
         """Return norm of mps.
@@ -967,7 +975,7 @@ class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
 
         """
         if canonical_form is True:
-            return np.linalg.norm(self[-1].data)*np.linalg.norm(self[0].data)
+            return np.linalg.norm(self[-1].data) * np.linalg.norm(self[0].data)
         else:
             return np.sqrt(inner_product_mps(self, self))
 
@@ -984,19 +992,19 @@ class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
         and a list containing any un-normalised left-most or right-most sites.
         If print_output=True, will print useful information concerning whether 
         a given MPS is in canonical form."""
-        not_left_canonised=[]
-        not_right_canonised=[]
-        not_normalised=[]
+        not_left_canonised = []
+        not_right_canonised = []
+        not_normalised = []
         for i in range(self.nsites_physical):
-            A = (self[self.physical_site(i)-1][self.right_label,]
-                    *self[self.physical_site(i)][self.left_label,])
+            A = (self[self.physical_site(i) - 1][self.right_label,]
+                 * self[self.physical_site(i)][self.left_label,])
             Ad = tsr.conjugate(A)
-            I=tsr.contract(A, Ad, 
-                    [self.phys_label, self.left_label], 
-                    [self.phys_label, self.left_label])
-            #Check if tensor is left canonised.
-            if np.linalg.norm(I.data-np.identity(I.data.shape[0])) > threshold:
-                if i==0 or i == self.nsites_physical-1:
+            I = tsr.contract(A, Ad,
+                             [self.phys_label, self.left_label],
+                             [self.phys_label, self.left_label])
+            # Check if tensor is left canonised.
+            if np.linalg.norm(I.data - np.identity(I.data.shape[0])) > threshold:
+                if i == 0 or i == self.nsites_physical - 1:
                     If = I.data.flatten()
                     if len(If[np.abs(If) > threshold]) > 1:
                         not_left_canonised.append(i)
@@ -1006,14 +1014,14 @@ class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
                     not_left_canonised.append(i)
         for i in range(self.nsites_physical):
             B = (self[self.physical_site(i)][self.right_label,]
-                    *self[self.physical_site(i)+1][self.left_label,])
+                 * self[self.physical_site(i) + 1][self.left_label,])
             Bd = tsr.conjugate(B)
-            I=tsr.contract(B, Bd,
-                    [self.phys_label, self.right_label],
-                    [self.phys_label, self.right_label])
-            #Check if tensor is right canonised.
-            if np.linalg.norm(I.data-np.identity(I.data.shape[0])) > threshold:
-                if i==0 or i == self.nsites_physical-1:
+            I = tsr.contract(B, Bd,
+                             [self.phys_label, self.right_label],
+                             [self.phys_label, self.right_label])
+            # Check if tensor is right canonised.
+            if np.linalg.norm(I.data - np.identity(I.data.shape[0])) > threshold:
+                if i == 0 or i == self.nsites_physical - 1:
                     If = I.data.flatten()
                     if len(If[np.abs(If) > threshold]) > 1:
                         not_right_canonised.append(i)
@@ -1042,11 +1050,11 @@ class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
         site = self.singular_site(singular_site)
         if self.singulardim(site) == 1:
             return
-        start = site-2
-        end = site+2
-        self[end-1].prime_label(self.phys_label)
-        t = contract_virtual_indices(self, start, end+1,
-                periodic_boundaries=False)
+        start = site - 2
+        end = site + 2
+        self[end - 1].prime_label(self.phys_label)
+        t = contract_virtual_indices(self, start, end + 1,
+                                     periodic_boundaries=False)
         # Remember singular values
         S1_inv = self[start].copy()
         S1_inv.inv()
@@ -1054,21 +1062,21 @@ class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
         S2_inv.inv()
         # SVD and compress
         U, S, V = tsr.truncated_svd(t, [self.phys_label, self.left_label],
-                chi=chi, threshold=threshold, absorb_singular_values=None)
+                                    chi=chi, threshold=threshold, absorb_singular_values=None)
         U.replace_label("svd_in", self.right_label)
         V.replace_label("svd_out", self.left_label)
         S.replace_label(["svd_out", "svd_in"], [self.left_label,
-            self.right_label])
-        self[start+1] = S1_inv[self.right_label,]*U[self.left_label,]
-        self[start+2] = S
-        self[end-1] = V[self.right_label,]*S2_inv[self.left_label,]
-        self[end-1].unprime_label(self.phys_label)
+                                                self.right_label])
+        self[start + 1] = S1_inv[self.right_label,] * U[self.left_label,]
+        self[start + 2] = S
+        self[end - 1] = V[self.right_label,] * S2_inv[self.left_label,]
+        self[end - 1].unprime_label(self.phys_label)
 
     def compress_all(self, chi=None, threshold=1e-15, normalise=False):
         raise NotImplementedError
 
     def apply_gate(self, gate, firstsite, gate_outputs=None, gate_inputs=None,
-            chi=None, threshold=1e-15):
+                   chi=None, threshold=1e-15):
         """
         Apply multi-site gate to `physical_site(firstsite)`,
         `physical_site(firstsite+1)`, ... and perform optimal compression, 
@@ -1108,12 +1116,12 @@ class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
         """
         # Set gate_outputs and gate_inputs to default values if not given
         if gate_outputs is None and gate_inputs is None:
-            gate_outputs = gate.labels[:int(len(gate.labels)/2)]
-            gate_inputs = gate.labels[int(len(gate.labels)/2):]
+            gate_outputs = gate.labels[:int(len(gate.labels) / 2)]
+            gate_inputs = gate.labels[int(len(gate.labels) / 2):]
         elif gate_outputs is None:
-            gate_outputs =[x for x in gate.labels if x not in gate_inputs]
+            gate_outputs = [x for x in gate.labels if x not in gate_inputs]
         elif gate_inputs is None:
-            gate_inputs =[x for x in gate.labels if x not in gate_outputs]
+            gate_inputs = [x for x in gate.labels if x not in gate_outputs]
 
         nsites = len(gate_inputs)
         if len(gate_outputs) != nsites:
@@ -1122,10 +1130,10 @@ class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
             raise NotImplementedError("gate acting on more than two sites.")
 
         # contract the MPS sites first
-        start = self.physical_site(firstsite)-1
-        end = self.physical_site(firstsite+nsites-1)+1
-        t = contract_virtual_indices(self, start, end+1,
-                periodic_boundaries=False)
+        start = self.physical_site(firstsite) - 1
+        end = self.physical_site(firstsite + nsites - 1) + 1
+        t = contract_virtual_indices(self, start, end + 1,
+                                     periodic_boundaries=False)
 
         # contract all physical indices with gate input indices
         t = tsr.contract(t, gate, self.phys_label, gate_inputs)
@@ -1137,23 +1145,23 @@ class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
         S2_inv.inv()
         if nsites == 1:
             t.replace_label([gate_outputs[0]], [self.phys_label])
-            t = S1_inv[self.right_label,]*t[self.left_label,]
-            self[start+1] = t[self.right_label,]*S2_inv[self.left_label,]
-            #if chi is not None:
+            t = S1_inv[self.right_label,] * t[self.left_label,]
+            self[start + 1] = t[self.right_label,] * S2_inv[self.left_label,]
+            # if chi is not None:
             #    self.compress_bond(firstsite)
             #    self.compress_bond(firstsite+1)
         elif nsites == 2:
             U, S, V = tsr.truncated_svd(t, [gate_outputs[0], self.left_label],
-                    chi=chi, threshold=threshold, absorb_singular_values=None)
+                                        chi=chi, threshold=threshold, absorb_singular_values=None)
             U.replace_label(["svd_in", gate_outputs[0]],
-                    [self.right_label, self.phys_label])
+                            [self.right_label, self.phys_label])
             V.replace_label(["svd_out", gate_outputs[1]],
-                    [self.left_label, self.phys_label])
+                            [self.left_label, self.phys_label])
             S.replace_label(["svd_out", "svd_in"], [self.left_label,
-                self.right_label])
-            self[start+1] = S1_inv[self.right_label,]*U[self.left_label,]
-            self[start+2] = S
-            self[start+3] = V[self.right_label,]*S2_inv[self.left_label,]
+                                                    self.right_label])
+            self[start + 1] = S1_inv[self.right_label,] * U[self.left_label,]
+            self[start + 2] = S
+            self[start + 3] = V[self.right_label,] * S2_inv[self.left_label,]
 
     def swap_gate(self, i, chi=None, threshold=1e-15):
         """
@@ -1177,11 +1185,11 @@ class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
         in Y.-Y. Shi et al, Phys. Rev. A 74, 022320 (2006).
         """
         # contract the MPS sites first
-        start = self.physical_site(i)-1
-        end = self.physical_site(i+1)+1
-        self[start+1].prime_label(self.phys_label)
-        t = contract_virtual_indices(self, start, end+1,
-                periodic_boundaries=False)
+        start = self.physical_site(i) - 1
+        end = self.physical_site(i + 1) + 1
+        self[start + 1].prime_label(self.phys_label)
+        t = contract_virtual_indices(self, start, end + 1,
+                                     periodic_boundaries=False)
 
         # remember inverse singular values
         S1_inv = self[start].copy()
@@ -1190,16 +1198,16 @@ class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
         S2_inv.inv()
 
         U, S, V = tsr.truncated_svd(t, [self.left_label, self.phys_label],
-                chi=chi, threshold=threshold, absorb_singular_values=None)
+                                    chi=chi, threshold=threshold, absorb_singular_values=None)
         V.unprime_label(self.phys_label)
 
         U.replace_label("svd_in", self.right_label)
         V.replace_label('svd_out', self.left_label)
         S.replace_label(["svd_out", "svd_in"], [self.left_label,
-            self.right_label])
-        self[start+1] = S1_inv[self.right_label,]*U[self.left_label,]
-        self[start+2] = S
-        self[start+3] = V[self.right_label,]*S2_inv[self.left_label,]
+                                                self.right_label])
+        self[start + 1] = S1_inv[self.right_label,] * U[self.left_label,]
+        self[start + 2] = S
+        self[start + 3] = V[self.right_label,] * S2_inv[self.left_label,]
 
     def expval(self, gate, firstsite, gate_outputs=None, gate_inputs=None):
         """
@@ -1231,28 +1239,28 @@ class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
         """
         # Set gate_outputs and gate_inputs to default values if not given
         if gate_outputs is None and gate_inputs is None:
-            gate_outputs = gate.labels[:int(len(gate.labels)/2)]
-            gate_inputs = gate.labels[int(len(gate.labels)/2):]
+            gate_outputs = gate.labels[:int(len(gate.labels) / 2)]
+            gate_inputs = gate.labels[int(len(gate.labels) / 2):]
         elif gate_outputs is None:
-            gate_outputs =[x for x in gate.labels if x not in gate_inputs]
+            gate_outputs = [x for x in gate.labels if x not in gate_inputs]
         elif gate_inputs is None:
-            gate_inputs =[x for x in gate.labels if x not in gate_outputs]
+            gate_inputs = [x for x in gate.labels if x not in gate_outputs]
 
         nsites = len(gate_inputs)
         if len(gate_outputs) != nsites:
             raise ValueError("len(gate_outputs) != len(gate_inputs)")
 
         # contract the MPS sites first
-        start = self.physical_site(firstsite)-1
-        end = self.physical_site(firstsite+len(gate_inputs)-1)+1
-        t = contract_virtual_indices(self, start, end+1,
-                periodic_boundaries=False)
+        start = self.physical_site(firstsite) - 1
+        end = self.physical_site(firstsite + len(gate_inputs) - 1) + 1
+        t = contract_virtual_indices(self, start, end + 1,
+                                     periodic_boundaries=False)
         td = t.copy()
         td.conjugate()
 
         # contract all physical indices with gate indices
-        exp = t[self.phys_label,]*gate[gate_inputs]
-        exp = td[self.phys_label,]*exp[gate_outputs]
+        exp = t[self.phys_label,] * gate[gate_inputs]
+        exp = td[self.phys_label,] * exp[gate_outputs]
         # contract boundary indices
         exp.tr(self.left_label, self.left_label, index1=0, index2=1)
         exp.tr(self.right_label, self.right_label, index1=0, index2=1)
@@ -1280,10 +1288,10 @@ class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
         """
         if lastsite is None:
             lastsite = firstsite
-        start = self.physical_site(firstsite)-1
-        end = self.physical_site(lastsite)+1
-        t = contract_virtual_indices(self, start, end+1,
-                periodic_boundaries=False)
+        start = self.physical_site(firstsite) - 1
+        end = self.physical_site(lastsite) + 1
+        t = contract_virtual_indices(self, start, end + 1,
+                                     periodic_boundaries=False)
         td = t.copy()
         td.conjugate()
         # rename physical labels
@@ -1292,38 +1300,39 @@ class MatrixProductStateCanonical(OneDimensionalTensorNetwork):
                 t.labels[i] = l + "_out" + str(i)
                 td.labels[i] = l + "_in" + str(i)
         rho = (t[self.left_label, self.right_label]
-                *td[self.left_label, self.right_label])
+               * td[self.left_label, self.right_label])
         return rho
 
 
 class MatrixProductOperator(OneDimensionalTensorNetwork):
-    #TODO currently assumes open boundaries
+    # TODO currently assumes open boundaries
     """Matrix product operator "is a list of tensors, each having and index 
     labelled "phys" and at least one of the indices "left", "right"
     Input is a list of tensors, with three up to three index labels, If the 
     labels aren't already specified as "left", "right", "physin", "physout" 
     need to specify which labels correspond to these using 
     arguments left_label, right_label, physin_label and physout_label. """
-    def __init__(self, tensors, left_label="left", right_label="right", 
-            physout_label="physout", physin_label="physin"):
-        OneDimensionalTensorNetwork.__init__(self, tensors, left_label, 
-                right_label)
-        self.physout_label=physout_label
-        self.physin_label=physin_label
+
+    def __init__(self, tensors, left_label="left", right_label="right",
+                 physout_label="physout", physin_label="physin"):
+        OneDimensionalTensorNetwork.__init__(self, tensors, left_label,
+                                             right_label)
+        self.physout_label = physout_label
+        self.physin_label = physin_label
 
     def __repr__(self):
         return ("MatrixProductOperator(tensors=%r, left_label=%r,"
-                " right_label=%r, physout_label=%r, phsin_labe=%r)" 
+                " right_label=%r, physout_label=%r, phsin_labe=%r)"
                 % (self.data, self.left_label, self.right_label,
-                    self.physout_label, self.physin_label))
+                   self.physout_label, self.physin_label))
 
     def __str__(self):
         return ("MatrixProductOperator object: " +
-              "sites = " + str(len(self)) +
-              ", left_label = " + self.left_label +
-              ", right_label = " + self.right_label +
-              ", physout_label = " + self.physout_label +
-              ", physin_label = " + self.physin_label)
+                "sites = " + str(len(self)) +
+                ", left_label = " + self.left_label +
+                ", right_label = " + self.right_label +
+                ", physout_label = " + self.physout_label +
+                ", physin_label = " + self.physin_label)
 
     ###TODO replace copy method
 
@@ -1336,8 +1345,8 @@ class MatrixProductOperator(OneDimensionalTensorNetwork):
         return self.data[site].index_dimension(self.physin_label)
 
 
-def contract_multi_index_tensor_with_one_dim_array(tensor, array, label1, 
-        label2):
+def contract_multi_index_tensor_with_one_dim_array(tensor, array, label1,
+                                                   label2):
     """Will contract a one dimensional tensor array of length N 
     with a single tensor with N indices with label1.
     All virtual indices are also contracted. 
@@ -1348,24 +1357,25 @@ def contract_multi_index_tensor_with_one_dim_array(tensor, array, label1,
     It is assumed that only the indices to be contracted have the labels label1 
     label2."""
 
-    #To avoid possible label conflicts, rename labels temporarily 
-    temp_label=0 
+    # To avoid possible label conflicts, rename labels temporarily
+    temp_label = 0
     tensor.replace_label(label1, temp_label)
 
-    C=tsr.contract(tensor, array[0], temp_label, label2, index_slice1=[0])
+    C = tsr.contract(tensor, array[0], temp_label, label2, index_slice1=[0])
     for i in range(1, len(array)):
-        #TODO make this work
-        C=tsr.contract(C, array[i], [array.right_label, temp_label], 
-                [array.left_label, label2], index_slice1=[0,1])
+        # TODO make this work
+        C = tsr.contract(C, array[i], [array.right_label, temp_label],
+                         [array.left_label, label2], index_slice1=[0, 1])
 
-    #Contract boundaries of array
+    # Contract boundaries of array
     C.contract_internal(array.right_label, array.left_label)
-    #Restore original labelling to tensor
+    # Restore original labelling to tensor
     tensor.replace_label(temp_label, label1)
     return C
 
-def contract_virtual_indices(array_1d, start=0, end=None, 
-        periodic_boundaries=True):
+
+def contract_virtual_indices(array_1d, start=0, end=None,
+                             periodic_boundaries=True):
     """
     Return a Tensor by contracting all virtual indices of a segment of a
     OneDimensionalTensorNetwork.
@@ -1380,17 +1390,18 @@ def contract_virtual_indices(array_1d, start=0, end=None,
     periodic_boundaries : bool
         If `True` leftmost and rightmost virtual indices are contracted.
     """
-    C=array_1d[start].copy()
-    for x in array_1d[start+1:end]:
-        C=tsr.contract(C, x, array_1d.right_label, array_1d.left_label)
+    C = array_1d[start].copy()
+    for x in array_1d[start + 1:end]:
+        C = tsr.contract(C, x, array_1d.right_label, array_1d.left_label)
     if periodic_boundaries:
         # Contract left and right boundary indices (periodic boundaries)
         # Note that this will simply remove boundary indices of dimension one.
-        C.contract_internal(array_1d.right_label, array_1d.left_label) 
+        C.contract_internal(array_1d.right_label, array_1d.left_label)
     return C
 
-def left_canonical_form_mps(orig_mps, chi=0, threshold=1e-14, 
-        normalise=False):
+
+def left_canonical_form_mps(orig_mps, chi=0, threshold=1e-14,
+                            normalise=False):
     """
     Computes left canonical form of an MPS
 
@@ -1398,58 +1409,66 @@ def left_canonical_form_mps(orig_mps, chi=0, threshold=1e-14,
     --------
     Tensor.left_canonise()
     """
-    mps=orig_mps.copy()
+    mps = orig_mps.copy()
     mps.left_canonise(chi=chi, threshold=threshold, normalise=normalise)
     return mps
 
-def right_canonical_form_mps(orig_mps, chi=0, threshold=1e-14, 
-        normalise=False):
+
+def right_canonical_form_mps(orig_mps, chi=0, threshold=1e-14,
+                             normalise=False):
     """Computes left canonical form of an MPS"""
 
-    mps=orig_mps.copy()
+    mps = orig_mps.copy()
     mps.right_canonise(chi=chi, threshold=threshold, normalise=normalise)
     return mps
 
-def canonical_form_mps(orig_mps, chi=0, threshold=1e-14, 
-        normalise=False):
+
+def canonical_form_mps(orig_mps, chi=0, threshold=1e-14,
+                       normalise=False):
     """Computes canonical form of an MPS"""
 
-    mps=orig_mps.copy()
+    mps = orig_mps.copy()
     mps.right_canonise(chi=chi, threshold=threshold, normalise=normalise)
     return right_canonical_to_canonical(mps, threshold=threshold)
 
+
 def reverse_mps(orig_mps):
-    mps=orig_mps.copy()
+    mps = orig_mps.copy()
     mps.reverse()
     return mps
 
+
 def check_canonical_form_mps(mps, threshold=1e-14, print_output=True):
     return mps.check_canonical_form(threshold=threshold,
-            print_output=print_output)
-    
+                                    print_output=print_output)
+
+
 def svd_compress_mps(orig_mps, chi, threshold=1e-15, normalise=False):
     """Simply right canonise the left canonical form according to Schollwock"""
-    mps=left_canonical_form_mps(orig_mps, threshold=threshold, 
-            normalise=normalise)
-    return right_canonical_form_mps(mps, chi=chi, threshold=threshold, 
-            normalise=normalise)
+    mps = left_canonical_form_mps(orig_mps, threshold=threshold,
+                                  normalise=normalise)
+    return right_canonical_form_mps(mps, chi=chi, threshold=threshold,
+                                    normalise=normalise)
+
 
 def variational_compress_mps(mps, chi, max_iter=10, initial_guess=None,
-        tolerance=1e-15):
+                             tolerance=1e-15):
     return mps.variational_compress(chi, max_iter=max_iter,
-            initial_guess=initial_guess, tolerance=tolerance)
-   
+                                    initial_guess=initial_guess, tolerance=tolerance)
+
+
 def mps_complex_conjugate(mps):
     """Will take complex conjugate of every entry of every tensor in mps, 
     and append label_suffix to every label"""
-    new_mps=mps.copy()
-    for x in new_mps.data: 
+    new_mps = mps.copy()
+    for x in new_mps.data:
         x.conjugate()
     return new_mps
 
+
 def ladder_contract(array1, array2, label1, label2, start=0, end=None,
-        complex_conjugate_array1=False, left_output_label="left",
-        right_output_label="right", return_intermediate_contractions=False): 
+                    complex_conjugate_array1=False, left_output_label="left",
+                    right_output_label="right", return_intermediate_contractions=False):
     """
     Contract two one-dimensional tensor networks. Indices labelled `label1` in
     `array1` and indices labelled `label2` in `array2` are contracted pairwise
@@ -1521,99 +1540,99 @@ def ladder_contract(array1, array2, label1, label2, start=0, end=None,
     right.
     """
 
-    #If no end specified, will contract to end
-    if end==None:
-        end=min(array1.nsites, array2.nsites)-1 #index of the last site
+    # If no end specified, will contract to end
+    if end == None:
+        end = min(array1.nsites, array2.nsites) - 1  # index of the last site
 
     if end < start:
         raise ValueError("Badly defined interval (end before start).")
 
-    a1=array1.copy()
-    a2=array2.copy()
+    a1 = array1.copy()
+    a2 = array2.copy()
 
-    if complex_conjugate_array1: 
+    if complex_conjugate_array1:
         a1.complex_conjugate()
 
-    #Give all contracted indices unique labels so no conflicts with other 
-    #labels in array1, array2
+    # Give all contracted indices unique labels so no conflicts with other
+    # labels in array1, array2
     a1.unique_virtual_labels()
     a2.unique_virtual_labels()
-    rung_label=unique_label()
+    rung_label = unique_label()
     a1.replace_labels(label1, rung_label)
     a2.replace_labels(label2, rung_label)
 
-    intermediate_contractions=[]
-    if start==0: #Start contraction from left
-        for i in range(0, end+1):
-            if i==0:
-                C=tsr.contract(a1[0], a2[0], rung_label, rung_label)
+    intermediate_contractions = []
+    if start == 0:  # Start contraction from left
+        for i in range(0, end + 1):
+            if i == 0:
+                C = tsr.contract(a1[0], a2[0], rung_label, rung_label)
             else:
                 C.contract(a1[i], a1.right_label, a1.left_label)
-                C.contract(a2[i], [a2.right_label, rung_label], 
-                        [a2.left_label, rung_label])
+                C.contract(a2[i], [a2.right_label, rung_label],
+                           [a2.left_label, rung_label])
 
             if return_intermediate_contractions:
-                t=C.copy()
-                t.replace_label([a1.right_label, a2.right_label], 
-                        [right_output_label+"1", right_output_label+"2"])
-                #Remove dummy indices except the right indices
+                t = C.copy()
+                t.replace_label([a1.right_label, a2.right_label],
+                                [right_output_label + "1", right_output_label + "2"])
+                # Remove dummy indices except the right indices
                 t.remove_all_dummy_indices(labels=[x for x in t.labels if x
-                    not in [right_output_label+"1", right_output_label+"2"]])
+                                                   not in [right_output_label + "1", right_output_label + "2"]])
                 intermediate_contractions.append(t)
 
-        C.replace_label([a1.right_label, a2.right_label], 
-                [right_output_label+"1", right_output_label+"2"])
+        C.replace_label([a1.right_label, a2.right_label],
+                        [right_output_label + "1", right_output_label + "2"])
         C.remove_all_dummy_indices()
 
-    elif end==a1.nsites-1 and end==a2.nsites-1: #Contract from the right
-        for i in range(end, start-1, -1):
-            if i==end:
-                C=tsr.contract(a1[end], a2[end], rung_label, rung_label)
+    elif end == a1.nsites - 1 and end == a2.nsites - 1:  # Contract from the right
+        for i in range(end, start - 1, -1):
+            if i == end:
+                C = tsr.contract(a1[end], a2[end], rung_label, rung_label)
             else:
                 C.contract(a1[i], a1.left_label, a1.right_label)
-                C.contract(a2[i], [a2.left_label, rung_label], 
-                        [a2.right_label, rung_label])
+                C.contract(a2[i], [a2.left_label, rung_label],
+                           [a2.right_label, rung_label])
 
             if return_intermediate_contractions:
-                t=C.copy()
-                t.replace_label([a1.left_label, a2.left_label], 
-                        [left_output_label+"1", left_output_label+"2"])
-                #Remove dummy indices except the left indices
+                t = C.copy()
+                t.replace_label([a1.left_label, a2.left_label],
+                                [left_output_label + "1", left_output_label + "2"])
+                # Remove dummy indices except the left indices
                 t.remove_all_dummy_indices(labels=[x for x in t.labels if x
-                    not in [left_output_label+"1", left_output_label+"2"]])
-                intermediate_contractions.insert(0,t)
+                                                   not in [left_output_label + "1", left_output_label + "2"]])
+                intermediate_contractions.insert(0, t)
 
-        C.replace_label([a1.left_label, a2.left_label], 
-                [left_output_label+"1", left_output_label+"2"])
+        C.replace_label([a1.left_label, a2.left_label],
+                        [left_output_label + "1", left_output_label + "2"])
         C.remove_all_dummy_indices()
 
-    else: 
-        #When an interval does not contain a boundary, contract in pairs first
-        #then together
-        for i in range(start, end+1):
-            t=tsr.contract(a1[i], a2[i], rung_label, rung_label)
-            if i==start:
-                C=t
+    else:
+        # When an interval does not contain a boundary, contract in pairs first
+        # then together
+        for i in range(start, end + 1):
+            t = tsr.contract(a1[i], a2[i], rung_label, rung_label)
+            if i == start:
+                C = t
             else:
-                C.contract(t, [a1.right_label, a2.right_label], 
-                        [a1.left_label, a2.left_label])
+                C.contract(t, [a1.right_label, a2.right_label],
+                           [a1.left_label, a2.left_label])
 
             if return_intermediate_contractions:
-                t=C.copy()
-                t.replace_label([a1.right_label, a2.right_label, a1.left_label, 
-                    a2.left_label], [right_output_label+"1", 
-                        right_output_label+"2", left_output_label+"1", 
-                        left_output_label+"2"])
-                #Remove dummy indices except the left and right indices
+                t = C.copy()
+                t.replace_label([a1.right_label, a2.right_label, a1.left_label,
+                                 a2.left_label], [right_output_label + "1",
+                                                  right_output_label + "2", left_output_label + "1",
+                                                  left_output_label + "2"])
+                # Remove dummy indices except the left and right indices
                 t.remove_all_dummy_indices(labels=[x for x in t.labels if x
-                    not in [right_output_label+"1", right_output_label+"2", 
-                        left_output_label+"1", left_output_label+"2"]])
+                                                   not in [right_output_label + "1", right_output_label + "2",
+                                                           left_output_label + "1", left_output_label + "2"]])
                 t.remove_all_dummy_indices()
                 intermediate_contractions.append(t)
 
-        C.replace_label([a1.right_label, a2.right_label, a1.left_label, 
-            a2.left_label], [right_output_label+"1", right_output_label+"2", 
-                left_output_label+"1", left_output_label+"2"])
+        C.replace_label([a1.right_label, a2.right_label, a1.left_label,
+                         a2.left_label], [right_output_label + "1", right_output_label + "2",
+                                          left_output_label + "1", left_output_label + "2"])
         C.remove_all_dummy_indices()
 
     if return_intermediate_contractions:
@@ -1621,8 +1640,9 @@ def ladder_contract(array1, array2, label1, label2, start=0, end=None,
     else:
         return C
 
-def inner_product_mps(mps_bra, mps_ket, complex_conjugate_bra=True, 
-        return_whole_tensor=False):
+
+def inner_product_mps(mps_bra, mps_ket, complex_conjugate_bra=True,
+                      return_whole_tensor=False):
     """Compute the inner product of two MatrixProductState objects."""
     # If MPS are in canonical form, convert left-canonical first
     if isinstance(mps_bra, MatrixProductStateCanonical):
@@ -1633,16 +1653,18 @@ def inner_product_mps(mps_bra, mps_ket, complex_conjugate_bra=True,
         mps_ket_tmp = canonical_to_left_canonical(mps_ket)
     else:
         mps_ket_tmp = mps_ket
-    t=ladder_contract(mps_bra_tmp, mps_ket_tmp, mps_bra.phys_label, 
-            mps_ket.phys_label, complex_conjugate_array1=complex_conjugate_bra)
+    t = ladder_contract(mps_bra_tmp, mps_ket_tmp, mps_bra.phys_label,
+                        mps_ket.phys_label, complex_conjugate_array1=complex_conjugate_bra)
     if return_whole_tensor:
         return t
     else:
         return t.data
-    
+
+
 def frob_distance_squared(mps1, mps2):
-    ip=inner_product_mps
-    return ip(mps1, mps1) + ip(mps2, mps2) - 2*np.real(ip(mps1, mps2))
+    ip = inner_product_mps
+    return ip(mps1, mps1) + ip(mps2, mps2) - 2 * np.real(ip(mps1, mps2))
+
 
 def contract_mps_mpo(mps, mpo):
     """Will contract the physical index of mps with the physin index of mpo.
@@ -1651,21 +1673,21 @@ def contract_mps_mpo(mps, mpo):
     mpo.physout_label"""
     if isinstance(mps, MatrixProductStateCanonical):
         raise NotImplementedError(("Function not implemented for"
-            +"MatrixProductStateCanonical"))
-    N=len(mps)
-    new_mps=[]
+                                   + "MatrixProductStateCanonical"))
+    N = len(mps)
+    new_mps = []
     for i in range(N):
-        new_tensor=tsr.contract(mps[i], mpo[i], mps.phys_label, 
-                mpo.physin_label)
+        new_tensor = tsr.contract(mps[i], mpo[i], mps.phys_label,
+                                  mpo.physin_label)
         new_tensor.consolidate_indices()
         new_mps.append(new_tensor)
-    new_mps=MatrixProductState(new_mps, mps.left_label, mps.right_label, 
-            mpo.physout_label)
+    new_mps = MatrixProductState(new_mps, mps.left_label, mps.right_label,
+                                 mpo.physout_label)
     return new_mps
 
 
 def tensor_to_mps(tensor, phys_labels=None, mps_phys_label='phys',
-        left_label='left', right_label='right', chi=0, threshold=1e-15):
+                  left_label='left', right_label='right', chi=0, threshold=1e-15):
     """
     Split a tensor into MPS form by exact SVD
 
@@ -1696,30 +1718,30 @@ def tensor_to_mps(tensor, phys_labels=None, mps_phys_label='phys',
     The resulting MPS is left-canonised.
     """
     if phys_labels is None:
-        phys_labels =[x for x in tensor.labels if x not in
-                [left_label, right_label]]
+        phys_labels = [x for x in tensor.labels if x not in
+                       [left_label, right_label]]
 
     nsites = len(phys_labels)
     V = tensor.copy()
     mps = []
-    for k in range(nsites-1):
-        U, V, _ = tsr.truncated_svd(V, [left_label]*(left_label in V.labels)
-                +[phys_labels[k]], chi=chi, threshold=threshold,
-                absorb_singular_values='right')
+    for k in range(nsites - 1):
+        U, V, _ = tsr.truncated_svd(V, [left_label] * (left_label in V.labels)
+                                    + [phys_labels[k]], chi=chi, threshold=threshold,
+                                    absorb_singular_values='right')
         U.replace_label('svd_in', right_label)
         U.replace_label(phys_labels[k], mps_phys_label)
         mps.append(U)
-        #t = tsr.contract(S, V, ['svd_in'], ['svd_out'])
+        # t = tsr.contract(S, V, ['svd_in'], ['svd_out'])
         V.replace_label('svd_out', left_label)
-    V.replace_label(phys_labels[nsites-1], mps_phys_label)
+    V.replace_label(phys_labels[nsites - 1], mps_phys_label)
     mps.append(V)
     return MatrixProductState(mps, phys_label=mps_phys_label,
-            left_label=left_label, right_label=right_label)
+                              left_label=left_label, right_label=right_label)
 
 
 def tensor_to_mpo(tensor, physout_labels=None, physin_labels=None,
-        mpo_physout_label='physout', mpo_physin_label='physin',
-        left_label='left', right_label='right', chi=0, threshold=1e-15):
+                  mpo_physout_label='physout', mpo_physin_label='physin',
+                  left_label='left', right_label='right', chi=0, threshold=1e-15):
     """
     Split a tensor into MPO form by exact SVD
 
@@ -1756,15 +1778,15 @@ def tensor_to_mpo(tensor, physout_labels=None, physin_labels=None,
         values less than or equal to this value will be truncated.
     """
     # Set physout_labels and physin_labels to default values if not given
-    phys_labels =[x for x in tensor.labels if x not in
-            [left_label, right_label]]
+    phys_labels = [x for x in tensor.labels if x not in
+                   [left_label, right_label]]
     if physout_labels is None and physin_labels is None:
-        physout_labels = phys_labels[:int(len(phys_labels)/2)]
-        physin_labels = phys_labels[int(len(phys_labels)/2):]
+        physout_labels = phys_labels[:int(len(phys_labels) / 2)]
+        physin_labels = phys_labels[int(len(phys_labels) / 2):]
     elif physout_labels is None:
-        physout_labels =[x for x in phys_labels if x not in physin_labels]
+        physout_labels = [x for x in phys_labels if x not in physin_labels]
     elif physin_labels is None:
-        physin_labels =[x for x in phys_labels if x not in physout_labels]
+        physin_labels = [x for x in phys_labels if x not in physout_labels]
 
     nsites = len(physin_labels)
     if len(physout_labels) != nsites:
@@ -1772,72 +1794,72 @@ def tensor_to_mpo(tensor, physout_labels=None, physin_labels=None,
 
     V = tensor.copy()
     mpo = []
-    for k in range(nsites-1):
-        U, V, _ = tsr.truncated_svd(V, [left_label]*(left_label in V.labels)
-                +[physout_labels[k], physin_labels[k]],
-                chi=chi, threshold=threshold)
+    for k in range(nsites - 1):
+        U, V, _ = tsr.truncated_svd(V, [left_label] * (left_label in V.labels)
+                                    + [physout_labels[k], physin_labels[k]],
+                                    chi=chi, threshold=threshold)
         U.replace_label('svd_in', right_label)
         U.replace_label(physout_labels[k], mpo_physout_label)
         U.replace_label(physin_labels[k], mpo_physin_label)
         mpo.append(U)
         V.replace_label('svd_out', left_label)
-    V.replace_label(physout_labels[nsites-1], mpo_physout_label)
-    V.replace_label(physin_labels[nsites-1], mpo_physin_label)
+    V.replace_label(physout_labels[nsites - 1], mpo_physout_label)
+    V.replace_label(physin_labels[nsites - 1], mpo_physin_label)
     mpo.append(V)
     return MatrixProductOperator(mpo, physout_label=mpo_physout_label,
-            physin_label=mpo_physin_label, left_label=left_label,
-            right_label=right_label)
+                                 physin_label=mpo_physin_label, left_label=left_label,
+                                 right_label=right_label)
 
 
 def right_canonical_to_canonical(mps, threshold=1e-14):
     """
     Turn an MPS in right canonical form into an MPS in canonical form
     """
-    N=mps.nsites
+    N = mps.nsites
 
     S_prev = tsr.Tensor([[1.0]], labels=[mps.left_label, mps.right_label])
     S_prev_inv = S_prev.copy()
     B = mps[0]
     tensors = []
-    svd_label=unique_label()
+    svd_label = unique_label()
     for i in range(N):
         U, S, V = tsr.tensor_svd(B, [mps.phys_label, mps.left_label],
-                svd_label=svd_label)
-        #Truncate to threshold
-        singular_values=np.diag(S.data)
-        singular_values_to_keep = singular_values[singular_values > 
-                threshold]
-        S.data=np.diag(singular_values_to_keep)
-        #Truncate corresponding singular index of U and V
-        U.data=U.data[:,:,0:len(singular_values_to_keep)]
-        V.data=V.data[0:len(singular_values_to_keep)]
+                                 svd_label=svd_label)
+        # Truncate to threshold
+        singular_values = np.diag(S.data)
+        singular_values_to_keep = singular_values[singular_values >
+                                                  threshold]
+        S.data = np.diag(singular_values_to_keep)
+        # Truncate corresponding singular index of U and V
+        U.data = U.data[:, :, 0:len(singular_values_to_keep)]
+        V.data = V.data[0:len(singular_values_to_keep)]
 
-        U.replace_label(svd_label+"in", mps.right_label)
-        V.replace_label(svd_label+"out", mps.left_label)
-        S.replace_label([svd_label+"out", svd_label+"in"],
-                [mps.left_label, mps.right_label])
+        U.replace_label(svd_label + "in", mps.right_label)
+        V.replace_label(svd_label + "out", mps.left_label)
+        S.replace_label([svd_label + "out", svd_label + "in"],
+                        [mps.left_label, mps.right_label])
 
-        G = S_prev_inv[mps.right_label,]*U[mps.left_label,]
+        G = S_prev_inv[mps.right_label,] * U[mps.left_label,]
         tensors.append(S_prev)
         tensors.append(G)
 
-        if i==N-1:
-            #The final SVD has no right index, so S and V are just scalars.
-            #S is the norm of the state. 
+        if i == N - 1:
+            # The final SVD has no right index, so S and V are just scalars.
+            # S is the norm of the state.
             tensors.append(S)
         else:
-            V = S[mps.right_label,]*V[mps.left_label,]
-            B = V[mps.right_label,]*mps[i+1][mps.left_label,]
+            V = S[mps.right_label,] * V[mps.left_label,]
+            B = V[mps.right_label,] * mps[i + 1][mps.left_label,]
             # Store S and S^{-1} for next iteration
             S_prev = S.copy()
             S_prev_inv = S_prev.copy()
             S_prev_inv.inv()
-            #S_prev_inv.data = np.diag(1./singular_values_to_keep)
+            # S_prev_inv.data = np.diag(1./singular_values_to_keep)
 
     # Construct MPS in canonical form
     return MatrixProductStateCanonical(tensors,
-            left_label=mps.left_label, right_label=mps.right_label,
-            phys_label=mps.phys_label)
+                                       left_label=mps.left_label, right_label=mps.right_label,
+                                       phys_label=mps.phys_label)
 
 
 def left_canonical_to_canonical(mps, threshold=1e-14):
@@ -1854,33 +1876,31 @@ def canonical_to_right_canonical(mps):
     """
     Turn an MPS in canonical form into an MPS in right canonical form
     """
-    N=mps.nsites_physical
+    N = mps.nsites_physical
     tensors = []
-    for i in range(N-1):
+    for i in range(N - 1):
         tensors.append(mps[mps.physical_site(i)][mps.right_label,]
-                *mps[mps.physical_site(i)+1][mps.left_label,])
-    tensors.append(mps[mps.physical_site(N-1)])
-    tensors[0].data = (tensors[0].data*np.linalg.norm(mps[-1].data)
-            *np.linalg.norm(mps[0].data))
+                       * mps[mps.physical_site(i) + 1][mps.left_label,])
+    tensors.append(mps[mps.physical_site(N - 1)])
+    tensors[0].data = (tensors[0].data * np.linalg.norm(mps[-1].data)
+                       * np.linalg.norm(mps[0].data))
     return MatrixProductState(tensors,
-            left_label=mps.left_label, right_label=mps.right_label,
-            phys_label=mps.phys_label)
+                              left_label=mps.left_label, right_label=mps.right_label,
+                              phys_label=mps.phys_label)
+
 
 def canonical_to_left_canonical(mps):
     """
     Turn an MPS in canonical form into an MPS in left canonical form
     """
-    N=mps.nsites_physical
+    N = mps.nsites_physical
     tensors = []
     tensors.append(mps[mps.physical_site(0)])
-    for i in range(1,N):
-        tensors.append(mps[mps.physical_site(i)-1][mps.right_label,]
-                *mps[mps.physical_site(i)][mps.left_label,])
-    tensors[-1].data = (tensors[-1].data*np.linalg.norm(mps[-1].data)
-            *np.linalg.norm(mps[0].data))
+    for i in range(1, N):
+        tensors.append(mps[mps.physical_site(i) - 1][mps.right_label,]
+                       * mps[mps.physical_site(i)][mps.left_label,])
+    tensors[-1].data = (tensors[-1].data * np.linalg.norm(mps[-1].data)
+                        * np.linalg.norm(mps[0].data))
     return MatrixProductState(tensors,
-            left_label=mps.left_label, right_label=mps.right_label,
-            phys_label=mps.phys_label)
-
-
-
+                              left_label=mps.left_label, right_label=mps.right_label,
+                              phys_label=mps.phys_label)
