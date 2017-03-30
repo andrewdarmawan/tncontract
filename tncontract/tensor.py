@@ -1089,11 +1089,11 @@ def tensor_lq(tensor, row_labels, lq_label="lq_"):
 
 
 def truncated_svd(tensor, row_labels, chi=0, threshold=1e-15,
-                  absorb_singular_values="right"):
+                  absorb_singular_values="right", absolute = True):
     """
     Will perform svd of a tensor, as in tensor_svd, and provide approximate
-    decomposition by truncating all but the largest k singular values then 
-    absorbing S into U, V or both. Truncation is performedby specifying the 
+    decomposition by truncating all but the largest k singular values then
+    absorbing S into U, V or both. Truncation is performedby specifying the
     parameter chi (number of singular values to keep).
 
     Parameters
@@ -1102,30 +1102,45 @@ def truncated_svd(tensor, row_labels, chi=0, threshold=1e-15,
         Maximum number of singular values of each tensor to keep after
         performing singular-value decomposition.
     threshold : float
-        Relative threshold for the magnitude of singular values to keep.
-        Singular values less than or equal to this value will be truncated.
+        Threshold for the magnitude of singular values to keep.
+        If absolute then singular values which are less than threshold will be truncated.
+        If relative then singular values which are less than max(singular_values)*threshold will be truncated
     """
 
     U, S, V = tensor_svd(tensor, row_labels)
 
     singular_values = np.diag(S.data)
-    # Truncate to relative threshold and to specified chi
+
+    # Truncate to maximum number of singular values
+
     if chi:
         singular_values_to_keep = singular_values[:chi]
-        truncated_evals = singular_values[chi:]
+        truncated_evals_1 = singular_values[chi:]
     else:
         singular_values_to_keep = singular_values
-        truncated_evals = singular_values
-    # Absolute threshold
-    absthreshold = threshold * singular_values[0]
-    singular_values_to_keep = singular_values_to_keep[singular_values_to_keep >
-                                                      absthreshold]
-    truncated_evals = truncated_evals[truncated_evals < absthreshold]
+        truncated_evals_1 = np.array([])
+
+    # Thresholding
+
+    if absolute:
+        truncated_evals_2 = singular_values_to_keep[singular_values_to_keep <= threshold]
+        singular_values_to_keep = singular_values_to_keep[singular_values_to_keep > threshold]
+    else:
+        rel_thresh = singular_values[0]*threshold
+        truncated_evals_2 = singular_values_to_keep[singular_values_to_keep <= rel_thresh]
+        singular_values_to_keep = singular_values_to_keep[singular_values_to_keep > rel_thresh]
+
+    truncated_evals = np.concatenate((truncated_evals_2, truncated_evals_1), axis=0)
+
+    # Reconstitute and truncate corresponding singular index of U and V
 
     S.data = np.diag(singular_values_to_keep)
-    # Truncate corresponding singular index of U and V
-    U.data = U.data[:, :, 0:len(singular_values_to_keep)]
+
+    U.move_index("svd_in", 0)
+    U.data = U.data[0:len(singular_values_to_keep)]
+    U.move_index("svd_in", (np.size(U.labels) - 1))
     V.data = V.data[0:len(singular_values_to_keep)]
+
 
     if absorb_singular_values is None:
         return U, S, V
@@ -1142,6 +1157,7 @@ def truncated_svd(tensor, row_labels, chi=0, threshold=1e-15,
         sqrtS.data = np.sqrt(sqrtS.data)
         U_new = contract(U, sqrtS, ["svd_in"], ["svd_out"])
         V_new = contract(sqrtS, V, ["svd_in"], ["svd_out"])
+
     return U_new, V_new, truncated_evals
 
 
@@ -1151,8 +1167,3 @@ def conjugate(tensor):
     t.conjugate()
     return t
 
-
-if __name__ == "__main__":
-    import doctest
-
-    doctest.testmod()
