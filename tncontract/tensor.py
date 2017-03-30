@@ -600,16 +600,19 @@ class ToContract():
         # Tensor constructors
 
 
-def random_tensor(labels=None, base_label="i", *args):
+def random_tensor(*args, **kwargs):
     """Construct a random tensor of a given shape. Entries are generated using
     `numpy.random.rand`."""
-    labels = [] if labels is None else labels
+    labels = kwargs.pop("labels", [])
+    base_label = kwargs.pop("base_label", "i")
     return Tensor(np.random.rand(*args), labels=labels, base_label=base_label)
 
 
-def zeros_tensor(labels=None, dtype=np.float, base_label="i", *args):
+def zeros_tensor(*args, **kwargs):
     """Construct a tensor of a given shape with every entry equal to zero."""
-    labels = [] if labels is None else labels
+    labels = kwargs.pop("labels", [])
+    dtype = kwargs.pop("dtype", np.float)
+    base_label = kwargs.pop("base_label", "i")
     return Tensor(np.zeros(*args, dtype=dtype), labels=labels,
                   base_label=base_label)
 
