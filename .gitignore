@@ -105,6 +105,19 @@ ENV/
 .idea/libraries
 .idea/*
 
+# Sensitive or high-churn files:
+tncontract/.idea/dataSources.ids
+tncontract/.idea/dataSources.xml
+tncontract/.idea/dataSources.local.xml
+tncontract/.idea/sqlDataSources.xml
+tncontract/.idea/dynamic.xml
+tncontract/.idea/uiDesigner.xml
+
+# Gradle:
+tncontract/.idea/gradle.xml
+tncontract/.idea/libraries
+tncontract/.idea/*
+
 # Mongo Explorer plugin:
 .idea/mongoSettings.xml
 
