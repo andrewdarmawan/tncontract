@@ -2,16 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="96df57c6-8b32-406b-b648-a75054bf4002" name="Default" comment="">
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/test.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/tncontract/label.py" afterPath="$PROJECT_DIR$/tncontract/label.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/tncontract/matrices.py" afterPath="$PROJECT_DIR$/tncontract/matrices.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/tncontract/onedim/onedim_core.py" afterPath="$PROJECT_DIR$/tncontract/onedim/onedim_core.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/tncontract/onedim/onedim_utils.py" afterPath="$PROJECT_DIR$/tncontract/onedim/onedim_utils.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/tncontract/qutip_conv.py" afterPath="$PROJECT_DIR$/tncontract/qutip_conv.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/tncontract/tensor.py" afterPath="$PROJECT_DIR$/tncontract/tensor.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/tncontract/testing.py" afterPath="$PROJECT_DIR$/tncontract/testing.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/tncontract/tests/test_canonical_form_mps_conversion.py" afterPath="$PROJECT_DIR$/tncontract/tests/test_canonical_form_mps_conversion.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/tncontract/twodim/square_lattice.py" afterPath="$PROJECT_DIR$/tncontract/twodim/square_lattice.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.gitignore" afterPath="$PROJECT_DIR$/.gitignore" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
     </list>
     <ignored path="tncontract.iws" />
     <ignored path=".idea/workspace.xml" />
@@ -31,7 +23,7 @@
   </component>
   <component name="FileEditorManager">
     <leaf>
-      <file leaf-file-name="test_canonical_form_mps_conversion.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="test_canonical_form_mps_conversion.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/tncontract/tests/test_canonical_form_mps_conversion.py">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="108">
@@ -39,6 +31,16 @@
               <folding>
                 <element signature="e#0#108#0" expanded="true" />
               </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name=".gitignore" pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/.gitignore">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="54">
+              <caret line="3" column="0" selection-start-line="3" selection-start-column="0" selection-end-line="3" selection-end-column="0" />
+              <folding />
             </state>
           </provider>
         </entry>
@@ -92,6 +94,7 @@
         <option value="$PROJECT_DIR$/tncontract/onedim/onedim_core.py" />
         <option value="$PROJECT_DIR$/tncontract/tensor.py" />
         <option value="$PROJECT_DIR$/tncontract/tests/test_canonical_form_mps_conversion.py" />
+        <option value="$PROJECT_DIR$/.gitignore" />
       </list>
     </option>
   </component>
@@ -223,28 +226,7 @@
     <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
     <property name="settings.editor.splitter.proportion" value="0.2" />
   </component>
-  <component name="RunManager" selected="Python tests.Nosetests in tncontract (2)">
-    <configuration default="false" name="Nosetests in tncontract (4)" type="tests" factoryName="Nosetests" temporary="true" nameIsGenerated="true">
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs />
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <module name="tncontract" />
-      <option name="SCRIPT_NAME" value="" />
-      <option name="CLASS_NAME" value="" />
-      <option name="METHOD_NAME" value="" />
-      <option name="FOLDER_NAME" value="$PROJECT_DIR$" />
-      <option name="TEST_TYPE" value="TEST_FOLDER" />
-      <option name="PATTERN" value="" />
-      <option name="USE_PATTERN" value="false" />
-      <option name="PARAMS" value="" />
-      <option name="USE_PARAM" value="false" />
-      <method />
-    </configuration>
+  <component name="RunManager" selected="Python tests.Nosetests in tncontract (3)">
     <configuration default="false" name="Nosetests in tncontract" type="tests" factoryName="Nosetests" temporary="true" nameIsGenerated="true">
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -309,6 +291,27 @@
       <method />
     </configuration>
     <configuration default="false" name="Nosetests in tncontract (2)" type="tests" factoryName="Nosetests" temporary="true" nameIsGenerated="true">
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <module name="tncontract" />
+      <option name="SCRIPT_NAME" value="" />
+      <option name="CLASS_NAME" value="" />
+      <option name="METHOD_NAME" value="" />
+      <option name="FOLDER_NAME" value="$PROJECT_DIR$" />
+      <option name="TEST_TYPE" value="TEST_FOLDER" />
+      <option name="PATTERN" value="" />
+      <option name="USE_PATTERN" value="false" />
+      <option name="PARAMS" value="" />
+      <option name="USE_PARAM" value="false" />
+      <method />
+    </configuration>
+    <configuration default="false" name="Nosetests in tncontract (3)" type="tests" factoryName="Nosetests" temporary="true" nameIsGenerated="true">
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs />
@@ -464,19 +467,19 @@
       <method />
     </configuration>
     <list size="5">
-      <item index="0" class="java.lang.String" itemvalue="Python tests.Nosetests in tncontract (4)" />
-      <item index="1" class="java.lang.String" itemvalue="Python tests.Nosetests in tncontract" />
-      <item index="2" class="java.lang.String" itemvalue="Python tests.Nosetests in tncontract (5)" />
-      <item index="3" class="java.lang.String" itemvalue="Python tests.Nosetests in tncontract (1)" />
-      <item index="4" class="java.lang.String" itemvalue="Python tests.Nosetests in tncontract (2)" />
+      <item index="0" class="java.lang.String" itemvalue="Python tests.Nosetests in tncontract" />
+      <item index="1" class="java.lang.String" itemvalue="Python tests.Nosetests in tncontract (5)" />
+      <item index="2" class="java.lang.String" itemvalue="Python tests.Nosetests in tncontract (1)" />
+      <item index="3" class="java.lang.String" itemvalue="Python tests.Nosetests in tncontract (2)" />
+      <item index="4" class="java.lang.String" itemvalue="Python tests.Nosetests in tncontract (3)" />
     </list>
     <recent_temporary>
       <list size="5">
-        <item index="0" class="java.lang.String" itemvalue="Python tests.Nosetests in tncontract (2)" />
-        <item index="1" class="java.lang.String" itemvalue="Python tests.Nosetests in tncontract (1)" />
-        <item index="2" class="java.lang.String" itemvalue="Python tests.Nosetests in tncontract (5)" />
-        <item index="3" class="java.lang.String" itemvalue="Python tests.Nosetests in tncontract" />
-        <item index="4" class="java.lang.String" itemvalue="Python tests.Nosetests in tncontract (4)" />
+        <item index="0" class="java.lang.String" itemvalue="Python tests.Nosetests in tncontract (3)" />
+        <item index="1" class="java.lang.String" itemvalue="Python tests.Nosetests in tncontract (2)" />
+        <item index="2" class="java.lang.String" itemvalue="Python tests.Nosetests in tncontract (1)" />
+        <item index="3" class="java.lang.String" itemvalue="Python tests.Nosetests in tncontract (5)" />
+        <item index="4" class="java.lang.String" itemvalue="Python tests.Nosetests in tncontract" />
       </list>
     </recent_temporary>
   </component>
@@ -494,9 +497,6 @@
     <servers />
   </component>
   <component name="TestHistory">
-    <history-entry file="Nosetests_in_tncontract - 2017.03.30 at 15h 26m 40s.xml">
-      <configuration name="Nosetests in tncontract" configurationId="tests" />
-    </history-entry>
     <history-entry file="Nosetests_in_tncontract - 2017.03.30 at 15h 39m 34s.xml">
       <configuration name="Nosetests in tncontract" configurationId="tests" />
     </history-entry>
@@ -518,6 +518,9 @@
     <history-entry file="Nosetests_in_tncontract_(3) - 2017.03.30 at 15h 38m 54s.xml">
       <configuration name="Nosetests in tncontract (3)" configurationId="tests" />
     </history-entry>
+    <history-entry file="Nosetests_in_tncontract_(3) - 2017.03.30 at 15h 42m 31s.xml">
+      <configuration name="Nosetests in tncontract (3)" configurationId="tests" />
+    </history-entry>
     <history-entry file="Nosetests_in_tncontract_(4) - 2017.03.30 at 15h 39m 10s.xml">
       <configuration name="Nosetests in tncontract (4)" configurationId="tests" />
     </history-entry>
@@ -527,7 +530,7 @@
   </component>
   <component name="ToolWindowManager">
     <frame x="65" y="-1056" width="1855" height="1056" extended-state="6" />
-    <editor active="true" />
+    <editor active="false" />
     <layout>
       <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
@@ -699,6 +702,14 @@
           <folding>
             <element signature="e#0#108#0" expanded="true" />
           </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/.gitignore">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="54">
+          <caret line="3" column="0" selection-start-line="3" selection-start-column="0" selection-end-line="3" selection-end-column="0" />
+          <folding />
         </state>
       </provider>
     </entry>
