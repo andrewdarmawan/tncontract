@@ -1,3 +1,7 @@
+from __future__ import (absolute_import, division,
+                        print_function, unicode_literals)
+from builtins import *
+
 """
 label
 ==========
@@ -6,8 +10,7 @@ Module for string-like labels
 """
 
 __all__ = ['prime_label', 'unprime_label', 'noprime_label', 'prime_level',
-        'unique_label']
-
+           'unique_label']
 
 import uuid
 
@@ -51,9 +54,11 @@ class Label(str):
                 break
         return level
 
+
 def prime_label(label, prime="'"):
     """Put a prime on a label object"""
-    return Label(str(label)+prime, parent=label)
+    return Label(str(label) + prime, parent=label)
+
 
 def unprime_label(label, prime="'"):
     """Remove one prime from label object"""
@@ -61,10 +66,11 @@ def unprime_label(label, prime="'"):
         parent = label.parent
     except AttributeError:
         raise ValueError("label is not primed")
-    if str(parent)+prime == label:
+    if str(parent) + prime == label:
         return parent
     else:
         raise ValueError("label is not primed with \"" + prime + "\"")
+
 
 def noprime_label(label):
     """Remove all primes from a label object"""
@@ -73,12 +79,14 @@ def noprime_label(label):
     except AttributeError:
         return label
 
+
 def prime_level(label):
     """Return number of primes on label object"""
     try:
         return label.parents
     except AttributeError:
         return 0
+
 
 def unique_label():
     """Generate a long, random string that is very likely to be unique."""
