@@ -20,9 +20,11 @@ __all__ = ['MatrixProductState', 'MatrixProductStateCanonical',
            'tensor_to_mps',
            'right_canonical_to_canonical', 'left_canonical_to_canonical',
            'canonical_to_right_canonical', 'canonical_to_left_canonical',
+           'add_mps',
            ]
 
 import numpy as np
+import scipy as sp
 
 from tncontract import tensor as tsr
 from tncontract.label import unique_label
@@ -1904,3 +1906,38 @@ def canonical_to_left_canonical(mps):
     return MatrixProductState(tensors,
                               left_label=mps.left_label, right_label=mps.right_label,
                               phys_label=mps.phys_label)
+
+
+def add_mps(mps1, mps2):
+    """
+    Add two mps1 + mps2, assuming open boundary conditions.
+    """
+    if len(mps1) != len(mps2):
+        raise ValueError("Can not add MPS of different length.")
+    tensors = []
+    for j in range(len(mps1)):
+        A = mps1[j].copy()
+        A.move_indices([mps1.phys_label, mps1.left_label], 0)
+        B = mps2[j].copy()
+        B.move_indices([mps2.phys_label, mps2.left_label], 0)
+        if j == 0:
+            C = np.zeros((mps1.physdim(j), 1,
+                          mps1.rightdim(j) + mps2.rightdim(j)))
+            for k in range(mps1.physdim(j)):
+                    C[k, :, :] = np.hstack((A.data[k, :, :], B.data[k, :, :]))
+        elif j == len(mps1)-1:
+            C = np.zeros((mps1.physdim(j), mps1.leftdim(j) + mps2.leftdim(j),
+                          1))
+            for k in range(mps1.physdim(j)):
+                    C[k, :, :] = np.vstack((A.data[k, :, :], B.data[k, :, :]))
+        else:
+            C = np.zeros((mps1.physdim(j), mps1.leftdim(j) + mps2.leftdim(j),
+                          mps1.rightdim(j) + mps2.rightdim(j)))
+            for k in range(mps1.physdim(j)):
+                    C[k, :, :] = sp.linalg.block_diag(A.data[k, :, :],
+                                                      B.data[k, :, :])
+        tensors.append(tsr.Tensor(C, [mps1.phys_label, mps1.left_label,
+                                      mps1.right_label]))
+    return MatrixProductState(tensors, left_label=mps1.left_label,
+                              right_label=mps1.right_label,
+                              phys_label=mps1.phys_label)
