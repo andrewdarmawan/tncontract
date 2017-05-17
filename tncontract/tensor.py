@@ -487,16 +487,6 @@ class Tensor():
         self.labels.insert(0, label)
         self.move_index(label, position)
 
-    def remove_dummy_index(self, label):
-        """Remove the first dummy index (that is, an index of dimension 1) 
-        with specified label."""
-        if not self.index_dimension('label' == 1):
-            # index not a dummy index
-            raise ValueError("Index specified is not a dummy index.")
-        self.move_index(label, 0)
-        self.labels = self.labels[1:]
-        self.data = self.data[0]
-
     def remove_all_dummy_indices(self, labels=None):
         """Removes all dummy indices (i.e. indices with dimension 1)
         which have labels specified by the labels argument. None
