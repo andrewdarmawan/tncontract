@@ -1,7 +1,6 @@
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 from builtins import *
-from future.utils import raise_from
 
 __all__ = ['Tensor', 'contract', 'distance', 'matrix_to_tensor',
            'tensor_to_matrix', 'random_tensor', 'tensor_product', 'tensor_svd',
@@ -713,22 +712,24 @@ def contract(tensor1, tensor2, labels1, labels2, index_slice1=None,
         # Print more useful info in case of ValueError.
         # Check if number of indices are equal
         if not len(tensor1_indices) == len(tensor2_indices):
-            raise_from(ValueError('Number of indices in contraction does not match.',
-                                  len(tensor1_indices), len(tensor2_indices)), e)
+            raise ValueError('Number of indices in contraction '
+                    'does not match.')
         # Check if indices have equal dimensions
         for i in range(len(tensor1_indices)):
             d1 = tensor1.data.shape[tensor1_indices[i]]
             d2 = tensor2.data.shape[tensor2_indices[i]]
             if d1 != d2:
-                raise_from(ValueError((labels1[i] + ' with dim=' + str(d1) +
+                raise ValueError(labels1[i] + ' with dim=' + str(d1) +
                                        ' does not match ' + labels2[i] +
-                                       ' with dim=' + str(d2))), e)
+                                       ' with dim=' + str(d2))
         # Check if indices exist
         for i in range(len(labels1)):
             if not labels1[i] in tensor1.labels:
-                raise_from(ValueError(labels1[i] + ' not in list of labels for tensor1'), e)
+                raise ValueError(labels1[i] + 
+                        ' not in list of labels for tensor1')
             if not labels2[i] in tensor2.labels:
-                raise_from(ValueError(labels2[i] + ' not in list of labels for tensor2'), e)
+                raise ValueError(labels2[i] + 
+                        ' not in list of labels for tensor2')
         # Re-raise exception
         raise e
 
