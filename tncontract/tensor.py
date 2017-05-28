@@ -1,6 +1,5 @@
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
-from builtins import *
 
 __all__ = ['Tensor', 'contract', 'distance', 'matrix_to_tensor',
            'tensor_to_matrix', 'random_tensor', 'tensor_product', 'tensor_svd',
