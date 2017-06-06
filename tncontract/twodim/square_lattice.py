@@ -13,6 +13,7 @@ __all__ = ['SquareLatticeTensorNetwork', 'SquareLatticePEPS', 'column_to_mpo']
 import numpy as np
 
 import tncontract.onedim as od
+import tncontract as tn
 
 
 class SquareLatticeTensorNetwork():
@@ -165,6 +166,42 @@ class SquareLatticePEPS(SquareLatticeTensorNetwork):
                                             right_label, down_label, left_label)
         self.phys_label = phys_label
 
+    def outer_product(self, physin_label="physin", physout_label="physout"):
+        """
+        Take the outer product of this PEPS with itself, returning a PEPO. 
+        The outer product of each  tensor in the PEPS is taken and 
+        virtual indices are consolidated. Returns an instance of SquareLatticePEPO."""
+        tensor_array=[]
+        for row in range(self.shape[0]):
+            new_row=[]
+            for col in range(self.shape[1]):
+                #This takes the outer product of two tensors
+                #Without contracting any indices
+                outer = tn.contract(self[row,col], self[row,col], [], []) 
+                #Replace the first physical label with physin label
+                outer.labels[outer.labels.index(self.phys_label)]=physin_label
+                #Replace the second physical label with physin label
+                outer.labels[outer.labels.index(self.phys_label)]=physout_label
+
+                #Consolidate indices
+                outer.consolidate_indices()
+
+                new_row.append(outer)
+            tensor_array.append(new_row)
+
+        return SquareLatticePEPO(tensor_array, up_label=self.up_label, 
+                down_label=self.down_label, right_label=self.right_label,
+                left_label=self.left_label, physin_label=physin_label,
+                physout_label=physout_label)
+
+class SquareLatticePEPO(SquareLatticeTensorNetwork):
+    def __init__(self, tensors, up_label="up", right_label="right",
+                 down_label="down", left_label="left", physin_label="physin",
+                 physout_label="physout"):
+        SquareLatticeTensorNetwork.__init__(self, tensors, up_label,
+                                            right_label, down_label, left_label)
+        self.physin_label = physin_label
+        self.physout_label = physout_label
 
 def column_to_mpo(square_tn, col):
     """
