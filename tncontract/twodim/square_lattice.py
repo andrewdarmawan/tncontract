@@ -93,7 +93,7 @@ class SquareLatticeTensorNetwork():
             mpo = column_to_mpo(self, i)
             C = od.contract_multi_index_tensor_with_one_dim_array(C, mpo,
                                                                   self.right_label, self.left_label)
-            C.remove_all_dummy_indices()
+            C.remove_all_dummy_indices([self.left_label, self.up_label, self.down_label])
         return C
 
     def mps_contract(self, chi, compression_type="svd", normalise=False,

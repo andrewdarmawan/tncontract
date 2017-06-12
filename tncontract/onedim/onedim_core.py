@@ -1357,7 +1357,7 @@ def contract_multi_index_tensor_with_one_dim_array(tensor, array, label1,
     label2."""
 
     # To avoid possible label conflicts, rename labels temporarily
-    temp_label = 0
+    temp_label = unique_label()
     tensor.replace_label(label1, temp_label)
 
     C = tsr.contract(tensor, array[0], temp_label, label2, index_slice1=[0])
