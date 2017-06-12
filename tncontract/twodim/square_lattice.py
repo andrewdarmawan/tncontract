@@ -194,6 +194,9 @@ class SquareLatticePEPS(SquareLatticeTensorNetwork):
                 left_label=self.left_label, physin_label=physin_label,
                 physout_label=physout_label)
 
+    #Alias for outer_product
+    density_operator = outer_product
+
 class SquareLatticePEPO(SquareLatticeTensorNetwork):
     def __init__(self, tensors, up_label="up", right_label="right",
                  down_label="down", left_label="left", physin_label="physin",
@@ -202,6 +205,21 @@ class SquareLatticePEPO(SquareLatticeTensorNetwork):
                                             right_label, down_label, left_label)
         self.physin_label = physin_label
         self.physout_label = physout_label
+
+    def trace(self):
+        """Contract the physin and physout indices of every tensor. Returns
+        an instance of SquareLatticeTensorNetwork."""
+        tensor_array=[]
+        for i in range(self.shape[0]):
+            row=[]
+            for j in range(self.shape[1]):
+                tmp=self[i,j].copy()
+                tmp.trace(self.physin_label, self.physout_label)
+                row.append(tmp)
+            tensor_array.append(row)
+        return SquareLatticeTensorNetwork(tensor_array, up_label=self.up_label,
+                down_label=self.down_label, right_label=self.right_label, 
+                left_label=self.left_label)
 
 def column_to_mpo(square_tn, col):
     """
