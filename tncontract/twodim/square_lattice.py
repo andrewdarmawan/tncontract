@@ -67,6 +67,13 @@ class SquareLatticeTensorNetwork():
     def __setitem__(self, key, value):
         self.data.__setitem__(key, value)
 
+    def copy(self):
+        """Return a copy of SquareLatticeTensorNetwork that is not linked in
+        memory to the original."""
+        return SquareLatticeTensorNetwork(self.data, 
+                up_label=self.up_label, right_label=self.right_label, 
+                down_label=self.down_label, left_label=self.left_label,
+                copy_data=True)
     @property
     def shape(self):
         return self.data.shape
@@ -161,10 +168,20 @@ class SquareLatticeTensorNetwork():
 
 class SquareLatticePEPS(SquareLatticeTensorNetwork):
     def __init__(self, tensors, up_label="up", right_label="right",
-                 down_label="down", left_label="left", phys_label="phys"):
+                 down_label="down", left_label="left", phys_label="phys", 
+                 copy_data=True):
         SquareLatticeTensorNetwork.__init__(self, tensors, up_label,
-                                            right_label, down_label, left_label)
+                                            right_label, down_label, left_label, 
+                                            copy_data=copy_data)
         self.phys_label = phys_label
+
+    def copy(self):
+        """Return a copy of SquareLatticePEPS that is not linked in
+        memory to the original."""
+        return SquareLatticePEPS(self.data, 
+                up_label=self.up_label, right_label=self.right_label, 
+                down_label=self.down_label, left_label=self.left_label,
+                phys_label=self.phys_label, copy_data=True)
 
     def outer_product(self, physin_label="physin", physout_label="physout"):
         """
@@ -200,11 +217,20 @@ class SquareLatticePEPS(SquareLatticeTensorNetwork):
 class SquareLatticePEPO(SquareLatticeTensorNetwork):
     def __init__(self, tensors, up_label="up", right_label="right",
                  down_label="down", left_label="left", physin_label="physin",
-                 physout_label="physout"):
+                 physout_label="physout", copy_data=True):
         SquareLatticeTensorNetwork.__init__(self, tensors, up_label,
-                                            right_label, down_label, left_label)
+                                            right_label, down_label, left_label, copy_data=copy_data)
         self.physin_label = physin_label
         self.physout_label = physout_label
+
+    def copy(self):
+        """Return a copy of SquareLatticePEPO that is not linked in
+        memory to the original."""
+        return SquareLatticePEPO(self.data, 
+                up_label=self.up_label, right_label=self.right_label, 
+                down_label=self.down_label, left_label=self.left_label,
+                physin_label=self.physin_label, 
+                physout_label=self.physout_label, copy_data=True)
 
     def trace(self):
         """Contract the physin and physout indices of every tensor. Returns
