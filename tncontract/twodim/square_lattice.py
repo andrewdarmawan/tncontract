@@ -201,7 +201,8 @@ class SquareLatticePEPS(SquareLatticeTensorNetwork):
                 outer.labels[outer.labels.index(self.phys_label)]=physout_label
 
                 #Consolidate indices
-                outer.consolidate_indices()
+                outer.consolidate_indices(labels=[self.left_label, 
+                    self.right_label, self.up_label, self.down_label])
 
                 new_row.append(outer)
             tensor_array.append(new_row)
@@ -213,6 +214,40 @@ class SquareLatticePEPS(SquareLatticeTensorNetwork):
 
     #Alias for outer_product
     density_operator = outer_product
+
+def outer_product_peps(peps1, peps2, physin_label="physin", physout_label="physout"):
+    """Return the outer product of two PEPS networks. Assumes that 
+    input PEPS are the same size. The output physin label replaces the 
+    phys label of `peps1` and the output label physout replaces the phys label  
+    of `peps2`."""
+    #TODO input PEPS must have the same left right up down labels. Check this
+    if peps1.shape != peps2.shape:
+        raise ValueError("Peps input do not have same dimension.")
+    tensor_array=[]
+    for row in range(peps1.shape[0]):
+        new_row=[]
+        for col in range(peps1.shape[1]):
+            #This takes the outer product of two tensors
+            #Without contracting any indices
+            outer = tn.contract(peps1[row,col], peps2[row,col], [], []) 
+            #Replace the physical label of peps1 with physin label
+            outer.labels[outer.labels.index(peps1.phys_label)]=physin_label
+            #Replace the physical label of peps2 with  physout label
+            outer.labels[outer.labels.index(peps2.phys_label)]=physout_label
+
+            #Consolidate indices
+            outer.consolidate_indices(labels=[peps1.left_label, 
+                peps1.right_label, peps1.up_label, peps1.down_label])
+
+            new_row.append(outer)
+        tensor_array.append(new_row)
+
+    return SquareLatticePEPO(tensor_array, up_label=peps1.up_label, 
+                down_label=peps1.down_label, right_label=peps1.right_label,
+                left_label=peps1.left_label, physin_label=physin_label,
+                physout_label=physout_label)
+
+
 
 class SquareLatticePEPO(SquareLatticeTensorNetwork):
     def __init__(self, tensors, up_label="up", right_label="right",

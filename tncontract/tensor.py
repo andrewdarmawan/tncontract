@@ -322,11 +322,16 @@ class Tensor():
     trace = contract_internal
     tr = contract_internal
 
-    def consolidate_indices(self):
+    def consolidate_indices(self, labels=[]):
         """Combines all indices with the same label into a single label.
-        Also puts labels in alphabetical order (and reshapes data accordingly).
+        If `labels` keyword argument is non-empty, only labels in `labels` will 
+        be consolidated. Puts labels in alphabetical order (and reshapes data 
+        accordingly) if `labels` is empty.
         """
         labels_unique = sorted(set(self.labels))
+        if len(labels) !=0:
+            #If `labels` is set, only consolidate indices in `labels`
+            labels_unique=[x for x in labels_unique if x in labels]
         for p, label in enumerate(labels_unique):
             indices = [i for i, j in enumerate(self.labels) if j == label]
             # Put all of these indices together
