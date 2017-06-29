@@ -216,10 +216,13 @@ class SquareLatticePEPS(SquareLatticeTensorNetwork):
     density_operator = outer_product
 
 def outer_product_peps(peps1, peps2, physin_label="physin", physout_label="physout"):
-    """Return the outer product of two PEPS networks. Assumes that 
-    input PEPS are the same size. The output physin label replaces the 
-    phys label of `peps1` and the output label physout replaces the phys label  
-    of `peps2`."""
+    """Return the outer product of two PEPS networks i.e. if |a> and |b> are
+    both PEPS, then outer_product_peps returns the density operator
+    corresponding to |a><b|, where "physin" is the physical index associated
+    with <b|" and "physout" is associated with |a>.  Assumes that input PEPS
+    are the same size. The output physin label replaces the phys label of
+    `peps2` and the output label physout replaces the phys label  of
+    `peps1`."""
     #TODO input PEPS must have the same left right up down labels. Check this
     if peps1.shape != peps2.shape:
         raise ValueError("Peps input do not have same dimension.")
@@ -229,11 +232,12 @@ def outer_product_peps(peps1, peps2, physin_label="physin", physout_label="physo
         for col in range(peps1.shape[1]):
             #This takes the outer product of two tensors
             #Without contracting any indices
-            outer = tn.contract(peps1[row,col], peps2[row,col], [], []) 
-            #Replace the physical label of peps1 with physin label
-            outer.labels[outer.labels.index(peps1.phys_label)]=physin_label
-            #Replace the physical label of peps2 with  physout label
-            outer.labels[outer.labels.index(peps2.phys_label)]=physout_label
+            outer = tn.contract(tn.tensor.conjugate(peps1[row,col]), 
+                    peps2[row,col], [], []) 
+            #Replace the physical label of peps2 with physin label
+            outer.labels[outer.labels.index(peps2.phys_label)]=physin_label
+            #Replace the physical label of peps1 with  physout label
+            outer.labels[outer.labels.index(peps1.phys_label)]=physout_label
 
             #Consolidate indices
             outer.consolidate_indices(labels=[peps1.left_label, 
@@ -246,8 +250,6 @@ def outer_product_peps(peps1, peps2, physin_label="physin", physout_label="physo
                 down_label=peps1.down_label, right_label=peps1.right_label,
                 left_label=peps1.left_label, physin_label=physin_label,
                 physout_label=physout_label)
-
-
 
 class SquareLatticePEPO(SquareLatticeTensorNetwork):
     def __init__(self, tensors, up_label="up", right_label="right",
