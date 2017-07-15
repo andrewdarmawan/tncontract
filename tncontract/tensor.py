@@ -122,6 +122,23 @@ class Tensor():
                             + self.__class__.__name__ + "' and '"
                             + other.__class__.__name__ + "'")
 
+    def __add__(self, other):
+        """
+        Return a new tensor with the same labels as Tensor objects `self` (and `other`)  
+        with a data array equal to the sum of the data arrays of `self` and 
+        `other`. Requires that the labels of `self` and `other` are the same and,
+        that their corresponding indices have the same dimension. 
+        """
+        try: 
+            a=self.copy()
+            b=other.copy()
+            a.consolidate_indices()
+            b.consolidate_indices()
+            return Tensor(a.data+b.data, labels=a.labels)
+        except:
+            raise TypeError("Can only add together tensors with the same"+
+                    " indices: labels and dimensions of each index must match.")
+
     def __getitem__(self, *args):
         """Used to allow convenient shorthand for defining tensor
         contraction."""
