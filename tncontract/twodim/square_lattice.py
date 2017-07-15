@@ -8,8 +8,6 @@ square_lattice
 Core module for square lattice tensor networks
 """
 
-__all__ = ['SquareLatticeTensorNetwork', 'SquareLatticePEPS', 'column_to_mpo']
-
 import numpy as np
 
 import tncontract.onedim as od
@@ -128,6 +126,9 @@ class SquareLatticeTensorNetwork():
                                                      normalise=False)
                 # Normalise MPS (although keep normalisation factor in `norm`)
                 mps_norm = compressed_mps.norm(canonical_form="right")
+                #Return 0 if the norm of the MPS is zero
+                if mps_norm==0.0: 
+                    return 0.0
                 compressed_mps[0].data = compressed_mps[0].data / mps_norm
                 norm *= mps_norm
             elif compression_type == "variational":
@@ -135,6 +136,9 @@ class SquareLatticeTensorNetwork():
                     chi, max_iter=max_iter, tolerance=tolerance)
                 # Normalise MPS (although keep normalisation factor in `norm`)
                 mps_norm = compressed_mps.norm(canonical_form="left")
+                #Return 0 if the norm of the MPS is zero
+                if mps_norm==0.0: 
+                    return 0.0
                 compressed_mps[-1].data = compressed_mps[-1].data / mps_norm
                 norm *= mps_norm
 
@@ -214,6 +218,26 @@ class SquareLatticePEPS(SquareLatticeTensorNetwork):
 
     #Alias for outer_product
     density_operator = outer_product
+
+def inner_product_peps(peps_ket, peps_bra, exact_contract="True", 
+        complex_conjugate_bra=True, compression_type="svd", chi=2,  
+        max_iter=10, tolerance=1e-14):
+    new_tensors=[] #Tensors formed by contracting the physical indices of peps_ket and bra
+    for i in range(peps_ket.shape[0]):
+        new_row=[]
+        for j in range(peps_ket.shape[1]):
+            t=(tn.tensor.conjugate(peps_bra[i,j])["phys"]*
+                    peps_ket[i,j]["phys"])
+            t.consolidate_indices()
+            new_row.append(t)
+        new_tensors.append(new_row)
+    
+    ip=SquareLatticeTensorNetwork(new_tensors)
+    if exact_contract:
+        return ip.exact_contract()
+    else:
+        return ip.mps_contract(chi, compression_type=compression_type, 
+                    max_iter=max_iter, tolerance=tolerance)
 
 def outer_product_peps(peps1, peps2, physin_label="physin", 
         physout_label="physout"):

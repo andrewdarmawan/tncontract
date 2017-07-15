@@ -25,6 +25,7 @@ import numpy as np
 
 from tncontract import tensor as tsr
 from tncontract.label import unique_label
+from tncontract.onedim.onedim_utils import init_mps_allzero
 
 
 class OneDimensionalTensorNetwork:
@@ -267,9 +268,16 @@ class MatrixProductState(OneDimensionalTensorNetwork):
             for i in range(start, end):
                 if i == N - 1:
                     # The final QR has no right index, so R are just
-                    # scalars. S is the norm of the state.
+                    # scalars. R is the norm of the state.
+                    norm = np.linalg.norm(self[i].data)
+                    #If the norm of the state is zero, convert self a zero product state.
+                    if norm==0.0:
+                        for k in range(N):
+                            self[k].data=np.zeros((self[k].index_dimension(self.phys_label), 1,1))
+                            self[k].labels=[self.phys_label, self.left_label, self.right_label]
+                        return
                     if normalise == True and start == 0:  # Whole chain is canonised
-                        self[i].data = self[i].data / np.linalg.norm(self[i].data)
+                        self[i].data = self[i].data / norm
                     return
                 else:
                     qr_label = unique_label()
@@ -293,6 +301,12 @@ class MatrixProductState(OneDimensionalTensorNetwork):
                 if i == N - 1:
                     # The final SVD has no right index, so S and V are just scalars.
                     # S is the norm of the state.
+                    #If the norm of the state is zero, convert self a zero product state.
+                    if np.linalg.norm(self[i].data)==0.0:
+                        for k in range(N):
+                            self[k].data=np.zeros((self[k].index_dimension(self.phys_label), 1,1))
+                            self[k].labels=[self.phys_label, self.left_label, self.right_label]
+                        return
                     if normalise == True and start == 0:  # Whole chain is canonised
                         self[i].data = self[i].data / np.linalg.norm(self[i].data)
                     else:
@@ -306,6 +320,15 @@ class MatrixProductState(OneDimensionalTensorNetwork):
                 # Truncate to threshold and to specified chi
                 singular_values = np.diag(S.data)
                 largest_singular_value = singular_values[0]
+                if largest_singular_value==0.0:
+                    #Return an MPS of same size but all entries zero
+                    #And virtual bond dimension 1
+                    #i.e. a product state of zeros
+                    for k in range(N):
+                        self[k].data=np.zeros((self[k].index_dimension(self.phys_label), 1,1))
+                        self[k].labels=[self.phys_label, self.left_label, self.right_label]
+                    return
+
                 # Normalise S
                 singular_values = singular_values / largest_singular_value
                 norm *= largest_singular_value
