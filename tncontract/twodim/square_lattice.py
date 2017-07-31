@@ -310,6 +310,23 @@ class SquareLatticePEPO(SquareLatticeTensorNetwork):
                 down_label=self.down_label, right_label=self.right_label, 
                 left_label=self.left_label)
 
+def apply_pepo_to_peps(peps, pepo):
+    nrows, ncols = peps.shape
+
+    new_tensors=[]
+    for i in range(nrows):
+        new_row=[]
+        for j in range(ncols):
+            new_tensor=peps[i,j][peps.phys_label]*pepo[i,j][pepo.physin_label]
+            new_tensor.replace_label(pepo.physout_label, peps.phys_label)
+            new_tensor.consolidate_indices()
+            new_row.append(new_tensor)
+        new_tensors.append(new_row)
+    return SquareLatticePEPS(new_tensors, 
+                up_label=peps.up_label, right_label=peps.right_label, 
+                down_label=peps.down_label, left_label=peps.left_label,
+                phys_label=peps.phys_label)
+
 def column_to_mpo(square_tn, col):
     """
     Will extract column col from square_tn (which is assumed to be a 
