@@ -84,6 +84,31 @@ class SquareLatticeTensorNetwork():
                 return True
         return False
 
+    def can_contract(self):
+        """Check whether the virtual indices of the tensor network can be 
+        contracted, based on bond dimensions."""
+        rows, cols = self.data.shape
+        left_unmatched=[]
+        up_unmatched=[]
+        for i in range(1,rows):
+            for j in range(1,cols):
+                #Check all horizontal and vertical bonds
+                if (self[i,j].index_dimension(self.left_label)!=
+                        self[i-1,j].index_dimension(self.right_label)):
+                    left_unmatched.append((i,j))
+                if (self[i,j].index_dimension(self.up_label)!=
+                        self[i,j-1].index_dimension(self.down_label)):
+                    up_unmatched.append((i,j))
+        if len(left_unmatched) == 0 and len(up_unmatched) == 0:
+            return True
+        else:
+            print("Unmatched bonds found between the following sites:")
+            for k in left_unmatched:
+                print("("+str(k[0]-1)+", "+ str(k[1])+")"+" and "+str(k))
+            for m in up_unmatched:
+                print("("+str(k[0])+", "+ str(k[1]-1)+")"+" and "+str(k))
+            return False
+
     def exact_contract(self, until_column=-1):
         """Will perform exact contraction of all virtual indices of the square
         lattice, starting from the top-left, contracting the whole first 
@@ -97,8 +122,9 @@ class SquareLatticeTensorNetwork():
                 return C
             mpo = column_to_mpo(self, i)
             C = od.contract_multi_index_tensor_with_one_dim_array(C, mpo,
-                                                                  self.right_label, self.left_label)
-            C.remove_all_dummy_indices([self.left_label, self.up_label, self.down_label])
+                                            self.right_label, self.left_label)
+            C.remove_all_dummy_indices([self.left_label, self.up_label, 
+                                                self.down_label])
         return C
 
     def mps_contract(self, chi, compression_type="svd", normalise=False,
