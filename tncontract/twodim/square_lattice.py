@@ -93,11 +93,11 @@ class SquareLatticeTensorNetwork():
         for i in range(1,rows):
             for j in range(1,cols):
                 #Check all horizontal and vertical bonds
-                if (self[i,j].index_dimension(self.left_label)!=
-                        self[i-1,j].index_dimension(self.right_label)):
-                    left_unmatched.append((i,j))
                 if (self[i,j].index_dimension(self.up_label)!=
-                        self[i,j-1].index_dimension(self.down_label)):
+                        self[i-1,j].index_dimension(self.down_label)):
+                    left_unmatched.append((i,j))
+                if (self[i,j].index_dimension(self.left_label)!=
+                        self[i,j-1].index_dimension(self.right_label)):
                     up_unmatched.append((i,j))
         if len(left_unmatched) == 0 and len(up_unmatched) == 0:
             return True
