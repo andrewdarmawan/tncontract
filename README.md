@@ -61,6 +61,6 @@ Tensor object: shape = (3, 4), labels = ['i1', 'i3']
 
 ## Contributors
 
-[Andrew Darmawan](https://github.com/andrewdarmawan) The University of Tokyo
+[Andrew Darmawan](https://github.com/andrewdarmawan) Yukawa Institute for Theoretical Physics (YITP) — Kyoto University
 
-[Arne Grimsmo](https://github.com/arnelg) Université de Sherbrooke
+[Arne Grimsmo](https://github.com/arnelg) The University of Sydney
