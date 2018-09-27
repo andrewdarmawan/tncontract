@@ -195,6 +195,22 @@ class SquareLatticeTensorNetwork():
                                               left_label=self.up_label,
                                               right_label=self.down_label)
 
+    def fliplr(self):
+        """
+        Returns left-right mirror image of TN. Note: will not modify labels of
+        constituent tensors, but will switch the `left_label` and `right_label`
+        attributes of `SquareLatticeTensorNetwork`. 
+        """
+        mirror_tn=self.copy()
+        mirror_data=np.fliplr(mirror_tn)
+        mirror_tn.data=mirror_data
+        mirror_tn.right_label=self.left_label
+        mirror_tn.left_label=self.right_label
+
+        return mirror_tn
+        
+
+
 
 class SquareLatticePEPS(SquareLatticeTensorNetwork):
     def __init__(self, tensors, up_label="up", right_label="right",
