@@ -127,14 +127,12 @@ class SquareLatticeTensorNetwork():
                                                 self.down_label])
         return C
 
-    def mps_contract(self, chi, compression_type="svd", normalise=False,
-                     until_column=-1, max_iter=10, tolerance=1e-14, 
-                     return_all_columns = False):
+    def mps_contract(self, chi, compression_type="svd", until_column=-1, 
+            max_iter=10, tolerance=1e-14, return_all_columns = False):
         """Approximately contract a square lattice tensor network using MPS 
         evolution and compression. Will contract from left to right.
-        If normalise is set to True, the normalise argument to 
-        svd_compress_mps will be set to true. If `return_all_columns` is true,
-        will return the MPS corresponding to the contraction up to each column.
+        If `return_all_columns` is true, will return a list of MPS 
+        corresponding to the contraction up to each column.
         """
 
         nrows, ncols = self.shape
@@ -175,16 +173,13 @@ class SquareLatticeTensorNetwork():
                 norm *= mps_norm
 
             if return_all_columns:
-                if normalise:
-                    column_list.append(compressed_mps)
-                else:
-                    column_list.append(compressed_mps*norm)
+                mps_copy=compressed_mps.copy()
+                mps_copy[0].data *= norm
+                column_list.append(mps_copy)
 
             if col == until_column:
                 if return_all_columns:
                     return column_list
-                elif normalise == True:
-                    return compressed_mps
                 elif compression_type == "svd":
                     compressed_mps[0].data *= norm
                     return compressed_mps
@@ -194,8 +189,14 @@ class SquareLatticeTensorNetwork():
 
         # For final column, compute contraction exactly
         final_column_mps = column_to_mpo(self, ncols - 1)
-        return od.inner_product_mps(compressed_mps, final_column_mps,
-                                    return_whole_tensor=True, complex_conjugate_bra=False) * norm
+        full_contraction = od.inner_product_mps(compressed_mps, 
+               final_column_mps, return_whole_tensor=True, 
+               complex_conjugate_bra=False) * norm
+        if return_all_columns:
+            column_list.append(full_contraction)
+            return column_list
+        else:
+            return full_contraction
 
     def col_to_1D_array(self, col):
         """
