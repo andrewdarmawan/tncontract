@@ -128,13 +128,19 @@ class SquareLatticeTensorNetwork():
         return C
 
     def mps_contract(self, chi, compression_type="svd", normalise=False,
-                     until_column=-1, max_iter=10, tolerance=1e-14):
+                     until_column=-1, max_iter=10, tolerance=1e-14, 
+                     return_all_columns = False):
         """Approximately contract a square lattice tensor network using MPS 
         evolution and compression. Will contract from left to right.
         If normalise is set to True, the normalise argument to 
-        svd_compress_mps will be set to true."""
+        svd_compress_mps will be set to true. If `return_all_columns` is true,
+        will return the MPS corresponding to the contraction up to each column.
+        """
 
         nrows, ncols = self.shape
+
+        if return_all_columns:
+            column_list=[]
 
         # Divide matrix product state by its norm after each compression
         # but keep these factors in the variable `norm`
@@ -168,8 +174,16 @@ class SquareLatticeTensorNetwork():
                 compressed_mps[-1].data = compressed_mps[-1].data / mps_norm
                 norm *= mps_norm
 
+            if return_all_columns:
+                if normalise:
+                    column_list.append(compressed_mps)
+                else:
+                    column_list.append(compressed_mps*norm)
+
             if col == until_column:
-                if normalise == True:
+                if return_all_columns:
+                    return column_list
+                elif normalise == True:
                     return compressed_mps
                 elif compression_type == "svd":
                     compressed_mps[0].data *= norm
@@ -263,7 +277,7 @@ class SquareLatticePEPS(SquareLatticeTensorNetwork):
 
 def inner_product_peps(peps_ket, peps_bra, exact_contract="True", 
         complex_conjugate_bra=True, compression_type="svd", chi=2,  
-        max_iter=10, tolerance=1e-14):
+        max_iter=10, tolerance=1e-14, contract_virtual=True):
     new_tensors=[] #Tensors formed by contracting the physical indices of peps_ket and bra
     for i in range(peps_ket.shape[0]):
         new_row=[]
@@ -275,6 +289,9 @@ def inner_product_peps(peps_ket, peps_bra, exact_contract="True",
         new_tensors.append(new_row)
     
     ip=SquareLatticeTensorNetwork(new_tensors)
+    if not contract_virtual:
+        return ip
+
     if exact_contract:
         return ip.exact_contract()
     else:
