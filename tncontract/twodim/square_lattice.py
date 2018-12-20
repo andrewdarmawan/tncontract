@@ -105,7 +105,7 @@ class SquareLatticeTensorNetwork():
             print("Unmatched bonds found between the following sites:")
             for k in left_unmatched:
                 print("("+str(k[0]-1)+", "+ str(k[1])+")"+" and "+str(k))
-            for m in up_unmatched:
+            for k in up_unmatched:
                 print("("+str(k[0])+", "+ str(k[1]-1)+")"+" and "+str(k))
             return False
 
