@@ -280,7 +280,6 @@ class Tensor():
         >>> distance(t, t_orig)
         0.0
         """
-        indices = [i for i, x in enumerate(self.labels) if x in indices_to_fuse]
         # Move the indices to fuse to position zero
         self.move_indices(indices_to_fuse, 0,
                           preserve_relative_order=preserve_relative_order)
@@ -289,10 +288,9 @@ class Tensor():
         for i, x in enumerate(self.labels):
             if x in indices_to_fuse:
                 total_dim *= self.data.shape[i]
-            else:
-                new_labels = [new_label] + self.labels[i:]
-                new_shape = (total_dim,) + self.data.shape[i:]
-                break
+                last_idx=i #Last fused index
+        new_labels = [new_label] + self.labels[last_idx+1:]
+        new_shape = (total_dim,) + self.data.shape[last_idx+1:]
 
         self.data = np.reshape(self.data, new_shape)
         self.labels = new_labels
