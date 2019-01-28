@@ -153,7 +153,7 @@ class SquareLatticeTensorNetwork():
 
             if compression_type == "svd":
                 compressed_mps = od.svd_compress_mps(mps_to_compress, chi,
-                                                     normalise=False)
+                                        normalise=False, threshold=tolerance)
                 # Normalise MPS (although keep normalisation factor in `norm`)
                 mps_norm = compressed_mps.norm(canonical_form="right")
                 #Return 0 if the norm of the MPS is zero
