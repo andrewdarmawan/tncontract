@@ -236,7 +236,7 @@ class Tensor():
                     self.labels[i] = lbl.unprime_label(self.labels[i])
 
     def fuse_indices(self, indices_to_fuse, new_label,
-                     preserve_relative_order=True):
+                     preserve_relative_order=False):
         """Fuse multiple indices into a single index. If
         `preserve_relative_order` is True, the relative order of the fused
         indices will be preserved. Otherwise, the order will follow the order
@@ -495,6 +495,13 @@ class Tensor():
         for label in self.labels:
             new_labels.append(label + suffix)
         self.labels = new_labels
+
+    def suf(self, suffix):
+        """Return copy of `self`, with string `suffix` appended to all labels.
+        """
+        t=self.copy()
+        t.labels=[x+suffix for x in t.labels]
+        return t
 
     def add_dummy_index(self, label, position=0):
         """Add an additional index to the tensor with dimension 1, and label 
