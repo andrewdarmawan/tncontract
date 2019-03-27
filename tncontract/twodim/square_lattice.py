@@ -142,7 +142,7 @@ class SquareLatticeTensorNetwork():
 
         # Divide matrix product state by its norm after each compression
         # but keep these factors in the variable `norm`
-        norm = 1
+        norm = np.longdouble(1)
         for col in range(ncols - 1):
             if col == 0:
                 mps_to_compress = column_to_mpo(self, 0)
@@ -181,6 +181,10 @@ class SquareLatticeTensorNetwork():
                 if return_all_columns:
                     return column_list
                 elif compression_type == "svd":
+                    #Convert to longdouble to store small or large values
+                    #Note this will be stored on the first tensor
+                    compressed_mps[0].data = np.longdouble(
+                            compressed_mps[0].data)
                     compressed_mps[0].data *= norm
                     return compressed_mps
                 elif compression_type == "variational":
