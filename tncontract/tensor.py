@@ -770,9 +770,13 @@ def contract(tensor1, tensor2, labels1, labels2, index_slice1=None,
     return C
 
 
-def tensor_product(tensor1, tensor2):
-    """Take tensor product of two tensors without contracting any indices"""
-    return contract(tensor1, tensor2, [], [])
+def tensor_product(*args):
+    """Take tensor product of all tensors provided as input, without 
+    contracting any indices."""
+    t=args[0]
+    for x in args[1:]:
+        t=contract(t, x, [], [])
+    return t
 
 
 def distance(tensor1, tensor2):
