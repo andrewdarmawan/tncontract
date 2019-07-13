@@ -1,9 +1,11 @@
 # tncontract
-**tncontract** is an open-source tensor-network library for Python. The goal of tncontract is to provide a simple and intuitive framework for writing tensor-network algorithms. The tncontract library uses the powerful NumPy library as a numerical backend. It can easily interface with many other Python libraries, and has built-in conversions for the popular quantum library: QuTiP. Currently, tncontract includes many algorithms for one-dimensional and two-dimensional tensor networks. While far from complete, it is under active development with new features being constantly added.
+**Note from developer: tncontract has reached a usable state, however is not currently being actively developed. Maintenance/support may occasionally be provided if time allows, however should not be expected.**
+
+**tncontract** is an open-source tensor-network library for Python. The goal of tncontract is to provide a simple and intuitive framework for writing tensor-network algorithms. The tncontract library uses the powerful NumPy library as a numerical backend. It can easily interface with many other Python libraries, and has built-in conversions for the popular quantum library: QuTiP. Currently, tncontract includes many algorithms for one-dimensional and two-dimensional tensor networks. 
 
 ## Installation
 
-tncontract requires recent versions of Python, NumPy, and SciPy. To install tncontract, download the source code using the link above, then in the root directory of the package run
+tncontract requires recent versions of Python, NumPy, and SciPy (note there appear to be problems with the Python2 support, so Python3 is recommended). To install tncontract, download the source code using the link above, then in the root directory of the package run
 
 ```shell
 $ python setup.py install
