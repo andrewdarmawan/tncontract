@@ -60,6 +60,71 @@ The following contracts a pair of indices within the same tensor.
 >>> print(B)
 Tensor object: shape = (3, 4), labels = ['i1', 'i3']
 ```
+### Contract multiple tensors
+
+tncontract contains the function, con, to perform general contractions of multiple Tensor objects. It is similar in purpose to NCON, described in [arxiv.org/abs/1402.0939](arxiv.org/abs/1402.0939), but is designed to work with the Tensor objects of tncontract.
+
+For the examples below, we define three tensors
+
+```python
+>>> A = tn.Tensor(np.random.rand(3,2,4), labels=["a", "b", "c"])
+>>> B = tn.Tensor(np.random.rand(3,4), labels=["d", "e"])
+>>> C = tn.Tensor(np.random.rand(5,5,2), labels=["f", "g", "h"])
+```
+
+#### Contract a pair indices between two tensors 
+The following contracts  pairs of indices "a","d" and "c","e" of tensors
+`A` and `B`. It is identical to `A["a", "c"]*B["d", "e"]`
+
+```python
+>>> tn.con(A, B, ("a", "d" ), ("c", "e")) 
+Tensor object: shape = (2), labels = ["b"]
+```
+
+#### Contract a pair of indices beloning to one tensor (internal edges)
+The following contracts the "f" and "g" indices of tensor `C`
+
+```python
+>>> t.con(C, ("f", "g"))
+Tensor object: shape = (2), labels = ["h"]
+```
+
+#### Return the tensor product of a pair of tensors
+After all indices have been contracted, con will return the tensor
+product of the disconnected components of the tensor contraction. The
+following example returns the tensor product of `A` and `B`. 
+
+```python
+>>> tn.con(A, B) 
+Tensor object: shape = (3, 2, 4, 3, 4), labels = ["a", "b", "c", "d", "e"]
+```
+
+#### Contract a network of several tensors
+
+It is possible to contract a network of several tensors. Internal edges are
+contracted first then edges connecting separate tensors, and then the
+tensor product is taken of the disconnected components resulting from the
+contraction. Edges between separate tensors are contracted in the order
+they appear in the argument list. The result of the example below is a
+scalar (since all indices will be contracted). 
+
+```python
+>>> tn.con(A, B, C, ("a", "d" ), ("c", "e"), ("f", "g"), ("h", "b"))  
+```
+
+#### Notes
+
+Lists of tensors and index pairs for contraction may be used as arguments. 
+The following example contracts 100 rank 2 tensors in a ring with periodic
+boundary conditions. 
+
+```python
+>>> N=100
+>>> A = tn.Tensor(np.random.rand(2,2), labels=["left","right"])
+>>> tensor_list = [A.suf(str(i)) for i in range(N)]
+>>> idx_pairs = [("right"+str(j), "left"+str(j+1)) for j in range(N-1)]
+>>> tn.con(tensor_list, idx_pairs, ("right"+str(N-1), "left0"))
+```
 
 ## Contributors
 
