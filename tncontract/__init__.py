@@ -18,7 +18,7 @@ twodim
 from tncontract.version import __version__
 from tncontract.tensor import *
 from tncontract.label import *
-from tncontract.con import con
+from tncontract.tncon import con
 import tncontract.testing
 import tncontract.matrices
 import tncontract.onedim
